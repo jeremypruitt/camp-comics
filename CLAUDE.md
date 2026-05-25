@@ -62,6 +62,7 @@ Required env: `GCP_PROJECT`, plus `gcloud auth application-default login`.
 - **Quota**: `gemini-2.5-flash-image` per-minute quota is per-region and non-adjustable. Use `GCP_LOCATIONS` rotation if running a full cohort.
 - **Caption ≤12 words**: hard cap. CSS layout breaks if exceeded.
 - **Panel 12 mirrors Panel 1**: the YAML `reference_panel` override on panel 12 points back at panel 1 so the continuity anchor doesn't drag druid regalia into the "return home" beat. Don't remove without thought.
+- **SSH commit signing**: `commit.gpgsign=true` with `gpg.format=ssh` using `~/.ssh/github_ed`. The key has a passphrase, so agentic `git commit` from a non-TTY shell will hang silently. Have Jeremy run `! ssh-add ~/.ssh/github_ed` once per shell session before the first commit; ssh-agent caches the passphrase for the rest of the session.
 
 ## State convention (legacy)
 
