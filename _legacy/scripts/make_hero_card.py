@@ -27,7 +27,7 @@ import yaml
 from google import genai
 from google.genai import types
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PROJECT_ID = os.environ.get("GCP_PROJECT", "your-gcp-project-id")
 LOCATION = os.environ.get("GCP_LOCATION", "us-central1")
 MODEL = "gemini-2.5-flash-image"

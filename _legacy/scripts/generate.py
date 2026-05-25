@@ -105,7 +105,8 @@ PANEL_ASPECT_RATIOS = {
 }
 COVER_ASPECT = "3:4"
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+LEGACY_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = LEGACY_ROOT.parent
 
 # -----------------------------------------------------------------------------
 # Prompt assembly
@@ -306,8 +307,8 @@ def main() -> None:
     args = parser.parse_args()
 
     # Resolve paths
-    intake_dir = REPO_ROOT / "intake" / args.camper
-    out_dir = REPO_ROOT / "outputs" / args.camper
+    intake_dir = LEGACY_ROOT / "intake" / args.camper
+    out_dir = LEGACY_ROOT / "outputs" / args.camper
     template_path = REPO_ROOT / "templates" / f"{args.class_name}.yaml"
     hero_card_path = REPO_ROOT / "templates" / "refs" / f"{args.class_name}_hero.png"
     photo_path = intake_dir / "photo.jpg"

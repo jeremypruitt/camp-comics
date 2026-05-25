@@ -56,9 +56,11 @@ from generate import (  # noqa: E402
 # Config
 # -----------------------------------------------------------------------------
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-INTAKE_DIR = REPO_ROOT / "intake"
-OUTPUTS_DIR = REPO_ROOT / "outputs"
+LEGACY_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = LEGACY_ROOT.parent
+INTAKE_DIR = LEGACY_ROOT / "intake"
+OUTPUTS_DIR = LEGACY_ROOT / "outputs"
+# templates/ stays at the actual repo root, shared with the new iOS app.
 TEMPLATES_DIR = REPO_ROOT / "templates"
 
 PROJECT_ID = os.environ.get("GCP_PROJECT", "your-gcp-project-id")
@@ -97,8 +99,8 @@ OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
 app = Flask(
     __name__,
-    template_folder=str(REPO_ROOT / "intake_ui" / "templates"),
-    static_folder=str(REPO_ROOT / "intake_ui" / "static"),
+    template_folder=str(LEGACY_ROOT / "intake_ui" / "templates"),
+    static_folder=str(LEGACY_ROOT / "intake_ui" / "static"),
 )
 app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024  # 25 MB upload cap
 

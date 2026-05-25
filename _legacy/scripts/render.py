@@ -22,9 +22,10 @@ from jinja2 import Environment, FileSystemLoader
 from PIL import Image, ImageDraw
 from weasyprint import HTML
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-OUTPUTS = REPO_ROOT / "outputs"
-LAYOUT = REPO_ROOT / "layout"
+LEGACY_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = LEGACY_ROOT.parent
+OUTPUTS = LEGACY_ROOT / "outputs"
+LAYOUT = LEGACY_ROOT / "layout"
 
 # Override per camp.
 CAMP_NAME = "Camp Eldermoot"

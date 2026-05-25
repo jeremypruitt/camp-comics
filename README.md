@@ -7,32 +7,30 @@ summer camp participants.
 
 ## Quick map
 
+The legacy Python pipeline has moved under `_legacy/` (sandbox / prompt-iteration
+only — not the production path). The native iPhone app under `docs/prd/iphone-intake.md`
+is the path forward. `templates/` stays at the repo root because the new iOS
+app and the legacy pipeline both consume it.
+
 ```
 camp-comics/
 ├── spec/design.md             ← design source of truth (read first)
+├── docs/prd/iphone-intake.md  ← active migration plan (iPhone SwiftUI app)
 ├── templates/
 │   ├── {class}.yaml × 6       ← class arc templates (druid, warrior, wizard, bard, healer, trickster)
 │   └── refs/                  ← class hero-card reference PNGs (you generate pre-camp)
-├── intake/
-│   └── camper_NNN/            ← auto-assigned by the intake app, never manually
-│       ├── photo.jpg
-│       ├── tokens.json        ← intake answers + mid-week translations
-│       ├── qa_test.png        ← QA gate test image
-│       └── qa_passed          ← marker file (zero bytes)
-├── outputs/
-│   └── camper_NNN/
-│       ├── panel_01.png … panel_12.png
-│       ├── cover.png
-│       ├── manifest.json
-│       └── comic.pdf          ← final assembled book
-├── scripts/
-│   ├── intake_server.py       ← Stages 1 (intake + QA + finalize) and the mid-week translation step
-│   ├── generate.py            ← Stage 2: image gen via Vertex AI
-│   └── render.py              ← Stage 3: HTML+CSS → PDF via WeasyPrint
-├── intake_ui/templates/       ← Flask templates for the intake app
-└── layout/
-    ├── comic.html.j2          ← 5-page comic template
-    └── comic.css              ← print layout (6.625×10.25", D&D book aesthetic)
+├── prototype/intake-mobile/   ← mobile-web prototype (Variant B "Checklist" is the chosen capture UX)
+└── _legacy/                   ← Python sandbox (still runnable, kept for prompt iteration)
+    ├── scripts/
+    │   ├── intake_server.py   ← Stages 1 (intake + QA + finalize) + mid-week translation
+    │   ├── generate.py        ← Stage 2: image gen via Vertex AI
+    │   └── render.py          ← Stage 3: HTML+CSS → PDF via WeasyPrint
+    ├── intake_ui/templates/   ← Flask templates for the intake app
+    ├── layout/
+    │   ├── comic.html.j2      ← 5-page comic template
+    │   └── comic.css          ← print layout (6.625×10.25", D&D book aesthetic)
+    ├── intake/camper_NNN/     ← photo + tokens.json + QA artifacts
+    └── outputs/camper_NNN/    ← panels, manifest.json, comic.pdf
 ```
 
 ## Setup
@@ -45,11 +43,11 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # Core deps (intake app + generation):
-pip install -r requirements.txt
+pip install -r _legacy/requirements.txt
 
 # Stage 3 render deps (separate because WeasyPrint needs native libs):
 brew install pango     # macOS only; Debian: sudo apt install libpango-1.0-0 libpangoft2-1.0-0
-pip install -r requirements-render.txt
+pip install -r _legacy/requirements-render.txt
 
 # Auth to Vertex AI:
 gcloud auth application-default login
@@ -69,10 +67,10 @@ Every session, activate the venv first: `source .venv/bin/activate`.
 
 ```bash
 # Start the intake app (Days 1–4 — leave running on a laptop at the photo station):
-python scripts/intake_server.py
+python _legacy/scripts/intake_server.py
 # → open http://localhost:5001
 # (Port defaults to 5001 because macOS AirPlay Receiver hogs 5000.
-#  Override with: PORT=5002 python scripts/intake_server.py)
+#  Override with: PORT=5002 python _legacy/scripts/intake_server.py)
 ```
 
 The intake app handles:
@@ -97,10 +95,10 @@ them.
 
 ```bash
 # Stage 2 — generation (Days 3–4 evenings, terminal):
-python scripts/generate.py --camper camper_001 --class druid
+python _legacy/scripts/generate.py --camper camper_001 --class druid
 
 # Stage 3 — render (Day 5 morning):
-python scripts/render.py --all
+python _legacy/scripts/render.py --all
 ```
 
 ## `tokens.json` shape (managed by the app, not by hand)

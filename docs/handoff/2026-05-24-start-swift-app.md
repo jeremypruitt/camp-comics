@@ -74,4 +74,8 @@ In rough priority order:
 
 ## Verdict from the prototype
 
-Captured here because the prototype skill says to capture the answer somewhere durable: **PENDING** — Jeremy reviewed all three variants on his phone but did not declare a winner before handoff. First thing the new session should ask.
+**Winner: Variant B — Checklist.** Confirmed 2026-05-24 by Jeremy in the
+follow-up session. The SwiftUI capture flow ports the spirit of variant B:
+all required shots visible at once on one screen, tappable in any order, a
+small per-row preview with retake, and a single "submit" gated on all rows
+being green. Variants A (story cards) and C (coach) are not being built.

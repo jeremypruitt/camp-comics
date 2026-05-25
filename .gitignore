@@ -10,22 +10,32 @@ __pycache__/
 # macOS
 .DS_Store
 
-# Camp Comics — runtime artifacts
+# Camp Comics — legacy Python runtime artifacts
 # Camper data: keep tokens.json (cheap, hand-curated) but ignore the heavy
-# intermediate images. Comment these out if you want to commit a small
-# test corpus for repro.
-intake/*/qa_test.png
-outputs/*/_pending_*.png
-outputs/*/_diag_*.png
-outputs/*/_attempts.json
-outputs/*/_skipped_*
+# intermediate images AND the source photos themselves (face data stays out
+# of git by default; commit a synthetic test corpus only if needed).
+# Patterns are doubly-anchored (`**/`) so they catch files under _legacy/
+# as well as any future repro corpus at the root.
+**/intake/*/photo.jpg
+**/intake/*/qa_test.png
+**/outputs/*/_pending_*.png
+**/outputs/*/_diag_*.png
+**/outputs/*/_attempts.json
+**/outputs/*/_skipped_*
+**/outputs/*/manifest.json
 
 # Final renders are big (~17 MB each) — don't put binaries in git history.
-outputs/*/panel_*.png
-outputs/*/cover.png
-outputs/*/comic.pdf
+**/outputs/*/panel_*.png
+**/outputs/*/cover.png
+**/outputs/*/comic.pdf
 
 # IDE
 .vscode/
 .idea/
 *.swp
+
+# Xcode — per-user state and build output, never share
+**/xcuserdata/
+**/*.xcuserstate
+DerivedData/
+build/

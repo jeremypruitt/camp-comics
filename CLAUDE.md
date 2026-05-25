@@ -24,28 +24,33 @@ moving to `_legacy/` and doesn't need to be sweep-renamed. New iOS code uses
 | `docs/prd/iphone-intake.md` | The active migration plan: iPhone (SwiftUI) app replaces the Python pipeline. |
 | `templates/{class}.yaml` × 6 | Per-class panel scripts (druid, warrior, wizard, bard, healer, trickster). Will gain `emotion:` + `position:` fields per panel as part of the iPhone migration. |
 | `templates/refs/{class}_hero.png` | Pre-generated class hero-card style anchors. |
-| `scripts/intake_server.py` | Legacy Flask app — intake, QA gate, finalize, translate, generate, render. Stages 1–3 all drive through here today. |
-| `scripts/generate.py` | Legacy Vertex AI panel/cover generation. Imported by intake_server. |
-| `scripts/render.py` | Legacy Jinja2 + WeasyPrint → comic.pdf. |
-| `scripts/make_hero_card.py` | Pre-camp utility to (re)build hero refs. |
-| `intake_ui/templates/` | Legacy Flask Jinja templates for the web UI. |
-| `layout/comic.html.j2` + `comic.css` | Print layout (6.625×10.25", D&D book aesthetic). Will be ported (mostly as-is) to the iOS app's `WKWebView` PDF renderer. |
-| `intake/camper_NNN/` | Per-player photo + tokens.json + QA artifacts (legacy layout — IDs and dir names keep "camper" prefix). |
-| `outputs/camper_NNN/` | Generated panels, manifest.json, comic.pdf (legacy layout). |
+| `_legacy/scripts/intake_server.py` | Legacy Flask app — intake, QA gate, finalize, translate, generate, render. Kept runnable as Jeremy's prompt-iteration sandbox; not on the production path anymore. |
+| `_legacy/scripts/generate.py` | Legacy Vertex AI panel/cover generation. Imported by intake_server. |
+| `_legacy/scripts/render.py` | Legacy Jinja2 + WeasyPrint → comic.pdf. |
+| `_legacy/scripts/make_hero_card.py` | Pre-camp utility to (re)build hero refs in `templates/refs/`. |
+| `_legacy/intake_ui/templates/` | Legacy Flask Jinja templates for the web UI. |
+| `_legacy/layout/comic.html.j2` + `comic.css` | Print layout (6.625×10.25", D&D book aesthetic). Will be ported (mostly as-is) to the iOS app's `WKWebView` PDF renderer. |
+| `_legacy/intake/camper_NNN/` | Per-player photo + tokens.json + QA artifacts (legacy layout — IDs and dir names keep "camper" prefix). |
+| `_legacy/outputs/camper_NNN/` | Generated panels, manifest.json, comic.pdf (legacy layout). |
 
 ## Running it (legacy Python sandbox)
 
-Always activate the venv first: `source .venv/bin/activate`.
+The legacy pipeline lives under `_legacy/` but still runs end-to-end from
+the repo root. Always activate the venv first: `source .venv/bin/activate`.
 
 ```bash
 # Day 1–4 intake + generation UI (port 5001 — macOS AirPlay hogs 5000):
-python scripts/intake_server.py
+python _legacy/scripts/intake_server.py
 # → http://localhost:5001
 
 # Stage 2/3 also runnable from CLI:
-python scripts/generate.py --camper camper_001 --class druid
-python scripts/render.py --all
+python _legacy/scripts/generate.py --camper camper_001 --class druid
+python _legacy/scripts/render.py --all
 ```
+
+`templates/` stays at the repo root (shared with the new iOS app). Everything
+else legacy — scripts, intake_ui, layout, intake, outputs, requirements*.txt —
+moved under `_legacy/`.
 
 Required env: `GCP_PROJECT`, plus `gcloud auth application-default login`.
 `GCP_LOCATIONS` (comma-sep) cycles regions to dodge per-region image-gen quotas.
