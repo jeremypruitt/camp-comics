@@ -7,8 +7,17 @@ let package = Package(
     products: [
         .library(name: "CampComicsCore", targets: ["CampComicsCore"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.0"),
+    ],
     targets: [
-        .target(name: "CampComicsCore"),
-        .testTarget(name: "CampComicsCoreTests", dependencies: ["CampComicsCore"]),
+        .target(
+            name: "CampComicsCore",
+            dependencies: ["Yams"]
+        ),
+        .testTarget(
+            name: "CampComicsCoreTests",
+            dependencies: ["CampComicsCore"]
+        ),
     ]
 )
