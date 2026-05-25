@@ -2,19 +2,28 @@ import SwiftUI
 import UIKit
 import CampComicsCore
 
+enum SubmissionState {
+    case idle
+    case submitting
+    case succeeded(UIImage)
+    case failed(String)
+}
+
 struct CaptureFlowView: View {
     let player: PlayerProfile
     let template: ClassTemplate
+    let generator: any PanelGenerator
 
     @State private var captureState: CaptureState
     @State private var photoStore: [UUID: UIImage] = [:]
     @State private var reviewing: PanelRequirement?
     @State private var capturing: PanelRequirement?
-    @State private var submitted: Bool = false
+    @State private var submission: SubmissionState = .idle
 
-    init(player: PlayerProfile, template: ClassTemplate) {
+    init(player: PlayerProfile, template: ClassTemplate, generator: any PanelGenerator = FirebaseAIPanelGenerator()) {
         self.player = player
         self.template = template
+        self.generator = generator
         let plan = CapturePlanner.plan(for: template)
         _captureState = State(initialValue: CaptureState(plan: plan))
     }
@@ -62,11 +71,35 @@ struct CaptureFlowView: View {
             }
             .ignoresSafeArea()
         }
-        .alert("Submitted (mock)", isPresented: $submitted) {
-            Button("OK") { submitted = false }
-        } message: {
-            Text("In a later slice this triggers Gemini test-generation. Right now it just acknowledges the captured set.")
+        .sheet(isPresented: isShowingResult) {
+            if case .succeeded(let panel) = submission {
+                QAResultSheet(image: panel, onDone: { submission = .idle })
+            }
         }
+        .alert("Generation failed", isPresented: isShowingError) {
+            Button("OK") { submission = .idle }
+        } message: {
+            if case .failed(let msg) = submission { Text(msg) }
+        }
+    }
+
+    private var isSubmitting: Bool {
+        if case .submitting = submission { return true }
+        return false
+    }
+
+    private var isShowingResult: Binding<Bool> {
+        Binding(
+            get: { if case .succeeded = submission { true } else { false } },
+            set: { if !$0 { submission = .idle } }
+        )
+    }
+
+    private var isShowingError: Binding<Bool> {
+        Binding(
+            get: { if case .failed = submission { true } else { false } },
+            set: { if !$0 { submission = .idle } }
+        )
     }
 
     private var summary: some View {
@@ -85,19 +118,58 @@ struct CaptureFlowView: View {
 
     private var submitButton: some View {
         Button {
-            submitted = true
+            Task { await submit() }
         } label: {
-            Text(captureState.isReadyToSubmit
-                 ? "All set — submit"
-                 : "\(captureState.remainingCount) more to go")
-                .frame(maxWidth: .infinity)
-                .fontWeight(.semibold)
-                .padding(.vertical, 6)
+            Group {
+                if isSubmitting {
+                    HStack(spacing: 8) {
+                        ProgressView().tint(.white)
+                        Text("Generating test panel…")
+                    }
+                } else {
+                    Text(captureState.isReadyToSubmit
+                         ? "All set — submit"
+                         : "\(captureState.remainingCount) more to go")
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .fontWeight(.semibold)
+            .padding(.vertical, 6)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .disabled(!captureState.isReadyToSubmit)
+        .disabled(!captureState.isReadyToSubmit || isSubmitting)
         .padding(.top, 8)
+    }
+
+    private func submit() async {
+        let gate = PanelRequirement(emotion: .neutral, position: .front)
+        guard let photo = image(for: gate),
+              let photoData = photo.jpegData(compressionQuality: 0.9) else {
+            submission = .failed("No neutral|front photo found. Retake it before submitting.")
+            return
+        }
+        submission = .submitting
+        let prompt = QAGatePrompt.assemble(for: template)
+        do {
+            let panelData = try await generator.generateQAPanel(prompt: prompt, photo: photoData)
+            guard let panel = UIImage(data: panelData) else {
+                submission = .failed("Generator returned data that wasn't a usable image.")
+                return
+            }
+            submission = .succeeded(panel)
+        } catch let err as PanelGeneratorError {
+            submission = .failed(message(for: err))
+        } catch {
+            submission = .failed(String(describing: error))
+        }
+    }
+
+    private func message(for error: PanelGeneratorError) -> String {
+        switch error {
+        case .noImageReturned: return "Gemini returned no image."
+        case .underlying(let msg): return msg
+        }
     }
 
     private var playerHeadline: String {
@@ -234,6 +306,32 @@ private struct ReviewSheet: View {
         }
         .padding()
         .presentationDetents([.medium, .large])
+    }
+}
+
+private struct QAResultSheet: View {
+    let image: UIImage
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Test panel generated")
+                .font(.title2.weight(.semibold))
+            Text("Use this to sanity-check that the gate photo carries the player's likeness.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxHeight: 420)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            Button("Done", action: onDone)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+        }
+        .padding()
+        .presentationDetents([.large])
     }
 }
 
