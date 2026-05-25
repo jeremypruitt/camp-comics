@@ -1,10 +1,12 @@
 import SwiftUI
+import UIKit
 import CampComicsCore
 
 struct ContentView: View {
     let store: PlayerStore
 
     @State private var players: [PlayerRecord] = []
+    @State private var avatars: [String: UIImage] = [:]
     @State private var activePlayer: PlayerRecord?
     @State private var showingIntake = false
 
@@ -45,6 +47,9 @@ struct ContentView: View {
                     )
                 }
                 .onAppear { refresh() }
+                .onChange(of: activePlayer) { _, new in
+                    if new == nil { refresh() }
+                }
         }
     }
 
@@ -62,7 +67,7 @@ struct ContentView: View {
                     Button {
                         activePlayer = player
                     } label: {
-                        PlayerRow(player: player)
+                        PlayerRow(player: player, avatar: avatars[player.id])
                     }
                     .buttonStyle(.plain)
                 }
@@ -71,18 +76,36 @@ struct ContentView: View {
     }
 
     private func refresh() {
-        players = (try? store.list()) ?? []
+        let loaded = (try? store.list()) ?? []
+        players = loaded
+        var next: [String: UIImage] = [:]
+        for player in loaded {
+            if let data = store.loadQAPanel(playerId: player.id),
+               let image = UIImage(data: data) {
+                next[player.id] = image
+            }
+        }
+        avatars = next
     }
 }
 
 private struct PlayerRow: View {
     let player: PlayerRecord
+    let avatar: UIImage?
 
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
-                Circle().fill(Color.accentColor.opacity(0.18))
-                Text(initials).font(.headline).foregroundStyle(.tint)
+                if let avatar {
+                    Image(uiImage: avatar)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 44, height: 44)
+                        .clipShape(Circle())
+                } else {
+                    Circle().fill(Color.accentColor.opacity(0.18))
+                    Text(initials).font(.headline).foregroundStyle(.tint)
+                }
             }
             .frame(width: 44, height: 44)
 

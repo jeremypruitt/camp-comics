@@ -126,4 +126,52 @@ struct PlayerStoreTests {
         let d = try store.create(playerName: "D", characterName: "", classKey: "druid")
         #expect(d.id == "player_004")
     }
+
+    // MARK: - QA panel persistence
+
+    @Test func saveQAPanelRoundTripsBytes() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        let bytes = Data((0..<4096).map { _ in UInt8.random(in: 0...255) })
+        try store.saveQAPanel(playerId: player.id, pngData: bytes)
+        #expect(store.loadQAPanel(playerId: player.id) == bytes)
+    }
+
+    @Test func saveQAPanelOverwritesPriorBytes() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.saveQAPanel(playerId: player.id, pngData: Data([0x01]))
+        try store.saveQAPanel(playerId: player.id, pngData: Data([0x02, 0x03]))
+        #expect(store.loadQAPanel(playerId: player.id) == Data([0x02, 0x03]))
+    }
+
+    @Test func loadQAPanelReturnsNilWhenAbsent() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        #expect(store.loadQAPanel(playerId: player.id) == nil)
+    }
+
+    @Test func deleteQAPanelRemovesIt() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.saveQAPanel(playerId: player.id, pngData: Data([0x09]))
+        try store.deleteQAPanel(playerId: player.id)
+        #expect(store.loadQAPanel(playerId: player.id) == nil)
+    }
+
+    @Test func deleteQAPanelIsNoOpWhenAbsent() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.deleteQAPanel(playerId: player.id)
+    }
+
+    @Test func hasQAPanelReflectsDiskState() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        #expect(store.hasQAPanel(playerId: player.id) == false)
+        try store.saveQAPanel(playerId: player.id, pngData: Data([0x01]))
+        #expect(store.hasQAPanel(playerId: player.id) == true)
+        try store.deleteQAPanel(playerId: player.id)
+        #expect(store.hasQAPanel(playerId: player.id) == false)
+    }
 }

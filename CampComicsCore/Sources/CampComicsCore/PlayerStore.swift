@@ -32,6 +32,7 @@ public enum PlayerStoreError: Error, Equatable {
 ///
 ///   {root}/players/player_001/tokens.json
 ///   {root}/players/player_001/photos/{emotion}_{position}.jpg
+///   {root}/players/player_001/panels/qa_avatar.png
 ///
 /// All methods are non-mutating; the struct is a thin façade over FileManager.
 public struct PlayerStore: Sendable {
@@ -102,6 +103,29 @@ public struct PlayerStore: Sendable {
         }
     }
 
+    // MARK: - QA panel (the avatar preview)
+
+    public func saveQAPanel(playerId: String, pngData: Data) throws {
+        try FileManager.default.createDirectory(at: panelsDir(for: playerId),
+                                                withIntermediateDirectories: true)
+        try pngData.write(to: qaPanelURL(playerId: playerId), options: .atomic)
+    }
+
+    public func loadQAPanel(playerId: String) -> Data? {
+        try? Data(contentsOf: qaPanelURL(playerId: playerId))
+    }
+
+    public func deleteQAPanel(playerId: String) throws {
+        let url = qaPanelURL(playerId: playerId)
+        if FileManager.default.fileExists(atPath: url.path) {
+            try FileManager.default.removeItem(at: url)
+        }
+    }
+
+    public func hasQAPanel(playerId: String) -> Bool {
+        FileManager.default.fileExists(atPath: qaPanelURL(playerId: playerId).path)
+    }
+
     public func capturedRequirements(playerId: String) -> Set<PanelRequirement> {
         let dir = photosDir(for: playerId)
         let entries = (try? FileManager.default.contentsOfDirectory(
@@ -144,6 +168,14 @@ public struct PlayerStore: Sendable {
 
     private func photoURL(playerId: String, requirement: PanelRequirement) -> URL {
         photosDir(for: playerId).appendingPathComponent(Self.filename(for: requirement))
+    }
+
+    private func panelsDir(for id: String) -> URL {
+        playerDir(for: id).appendingPathComponent("panels")
+    }
+
+    private func qaPanelURL(playerId: String) -> URL {
+        panelsDir(for: playerId).appendingPathComponent("qa_avatar.png")
     }
 
     // MARK: - tokens.json

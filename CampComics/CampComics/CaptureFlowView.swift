@@ -20,6 +20,8 @@ struct CaptureFlowView: View {
     @State private var reviewing: PanelRequirement?
     @State private var capturing: PanelRequirement?
     @State private var submission: SubmissionState = .idle
+    @State private var savedAvatar: UIImage?
+    @State private var viewingSavedAvatar = false
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -42,12 +44,17 @@ struct CaptureFlowView: View {
         }
         _captureState = State(initialValue: state)
         _photoStore = State(initialValue: hydrated)
+        let avatar = store.loadQAPanel(playerId: player.id).flatMap(UIImage.init(data:))
+        _savedAvatar = State(initialValue: avatar)
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 summary
+                if let savedAvatar {
+                    SavedAvatarChip(image: savedAvatar) { viewingSavedAvatar = true }
+                }
                 VStack(spacing: 12) {
                     ForEach(captureState.plan) { requirement in
                         ChecklistRow(
@@ -97,6 +104,22 @@ struct CaptureFlowView: View {
                     },
                     onRetake: { retakeGatePhoto() },
                     onDone: { submission = .idle }
+                )
+            }
+        }
+        .sheet(isPresented: $viewingSavedAvatar) {
+            if let savedAvatar {
+                QAResultSheet(
+                    image: savedAvatar,
+                    onReroll: {
+                        viewingSavedAvatar = false
+                        Task { await submit() }
+                    },
+                    onRetake: {
+                        viewingSavedAvatar = false
+                        retakeGatePhoto()
+                    },
+                    onDone: { viewingSavedAvatar = false }
                 )
             }
         }
@@ -181,6 +204,8 @@ struct CaptureFlowView: View {
                 submission = .failed("Generator returned data that wasn't a usable image.")
                 return
             }
+            try? store.saveQAPanel(playerId: player.id, pngData: panelData)
+            savedAvatar = panel
             submission = .succeeded(panel)
         } catch let err as PanelGeneratorError {
             submission = .failed(message(for: err))
@@ -200,6 +225,8 @@ struct CaptureFlowView: View {
         let gate = PanelRequirement(emotion: .neutral, position: .front)
         discardPhoto(for: gate)
         captureState.retake(gate)
+        try? store.deleteQAPanel(playerId: player.id)
+        savedAvatar = nil
         submission = .idle
         capturing = gate
     }
@@ -286,6 +313,40 @@ private struct ChecklistRow: View {
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(isCaptured ? Color.accentColor.opacity(0.08) : Color(.secondarySystemGroupedBackground))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct SavedAvatarChip: View {
+    let image: UIImage
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Test panel ready")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("Tap to view, re-roll, or retake the gate photo.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
             )
             .contentShape(Rectangle())
         }
