@@ -39,3 +39,7 @@ __pycache__/
 **/*.xcuserstate
 DerivedData/
 build/
+
+# SwiftPM build artifacts (from `swift build` / `swift test`)
+.build/
+.swiftpm/
