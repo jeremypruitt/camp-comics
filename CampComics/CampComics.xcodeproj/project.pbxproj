@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A49693CB2FC43854000BF5E9 /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = A49693CA2FC43854000BF5E9 /* FirebaseAI */; };
 		A49693CD2FC43854000BF5E9 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = A49693CC2FC43854000BF5E9 /* FirebaseAnalytics */; };
+		B49693D12FC60000000BF5E9 /* CampComicsCore in Frameworks */ = {isa = PBXBuildFile; productRef = B49693D02FC60000000BF5E9 /* CampComicsCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +60,7 @@
 			files = (
 				A49693CD2FC43854000BF5E9 /* FirebaseAnalytics in Frameworks */,
 				A49693CB2FC43854000BF5E9 /* FirebaseAI in Frameworks */,
+				B49693D12FC60000000BF5E9 /* CampComicsCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,6 +123,7 @@
 			packageProductDependencies = (
 				A49693CA2FC43854000BF5E9 /* FirebaseAI */,
 				A49693CC2FC43854000BF5E9 /* FirebaseAnalytics */,
+				B49693D02FC60000000BF5E9 /* CampComicsCore */,
 			);
 			productName = CampComics;
 			productReference = A496939E2FC430C4000BF5E9 /* CampComics.app */;
@@ -620,6 +623,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A49693C92FC43854000BF5E9 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
+		};
+		B49693D02FC60000000BF5E9 /* CampComicsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A49693C82FC43763000BF5E9 /* XCLocalSwiftPackageReference "../CampComicsCore" */;
+			productName = CampComicsCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

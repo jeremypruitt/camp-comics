@@ -1,21 +1,20 @@
-//
-//  ContentView.swift
-//  CampComics
-//
-//  Created by Jeremy Pruitt on 5/25/26.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    @State private var activePlayer: PlayerProfile?
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationStack {
+            IntakeFormView { profile in
+                activePlayer = profile
+            }
+            .navigationDestination(item: $activePlayer) { profile in
+                CaptureFlowView(
+                    player: profile,
+                    template: BundledTemplates.template(forClassKey: profile.classKey)
+                )
+            }
         }
-        .padding()
     }
 }
 
