@@ -6,7 +6,7 @@ struct FirebaseAIPanelGenerator: PanelGenerator {
     static let modelName = "gemini-2.5-flash-image"
 
     func generateQAPanel(prompt: String, photo: Data) async throws -> Data {
-        let ai = FirebaseAI.firebaseAI()
+        let ai = FirebaseAI.firebaseAI(backend: .vertexAI())
         let model = ai.generativeModel(modelName: Self.modelName)
         let imagePart = InlineDataPart(data: photo, mimeType: "image/jpeg")
         do {

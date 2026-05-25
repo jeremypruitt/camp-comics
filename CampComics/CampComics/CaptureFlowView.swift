@@ -73,7 +73,15 @@ struct CaptureFlowView: View {
         }
         .sheet(isPresented: isShowingResult) {
             if case .succeeded(let panel) = submission {
-                QAResultSheet(image: panel, onDone: { submission = .idle })
+                QAResultSheet(
+                    image: panel,
+                    onReroll: {
+                        submission = .idle
+                        Task { await submit() }
+                    },
+                    onRetake: { retakeGatePhoto() },
+                    onDone: { submission = .idle }
+                )
             }
         }
         .alert("Generation failed", isPresented: isShowingError) {
@@ -170,6 +178,14 @@ struct CaptureFlowView: View {
         case .noImageReturned: return "Gemini returned no image."
         case .underlying(let msg): return msg
         }
+    }
+
+    private func retakeGatePhoto() {
+        let gate = PanelRequirement(emotion: .neutral, position: .front)
+        discardPhoto(for: gate)
+        captureState.retake(gate)
+        submission = .idle
+        capturing = gate
     }
 
     private var playerHeadline: String {
@@ -311,27 +327,88 @@ private struct ReviewSheet: View {
 
 private struct QAResultSheet: View {
     let image: UIImage
+    let onReroll: () -> Void
+    let onRetake: () -> Void
     let onDone: () -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Text("Test panel generated")
                 .font(.title2.weight(.semibold))
-            Text("Use this to sanity-check that the gate photo carries the player's likeness.")
+            Text("Pinch to zoom. Re-roll to regenerate from the same photo, or retake the gate photo.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(maxHeight: 420)
+            ZoomableImage(image: image)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            Button("Done", action: onDone)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            HStack(spacing: 12) {
+                Button("Retake photo", role: .destructive, action: onRetake)
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                Button("Re-roll", action: onReroll)
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                Button("Done", action: onDone)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+            }
         }
         .padding()
         .presentationDetents([.large])
+    }
+}
+
+private struct ZoomableImage: UIViewRepresentable {
+    let image: UIImage
+
+    func makeUIView(context: Context) -> UIScrollView {
+        let scroll = UIScrollView()
+        scroll.delegate = context.coordinator
+        scroll.minimumZoomScale = 1
+        scroll.maximumZoomScale = 6
+        scroll.bouncesZoom = true
+        scroll.showsHorizontalScrollIndicator = false
+        scroll.showsVerticalScrollIndicator = false
+
+        let iv = UIImageView(image: image)
+        iv.contentMode = .scaleAspectFit
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        iv.isUserInteractionEnabled = true
+        scroll.addSubview(iv)
+        NSLayoutConstraint.activate([
+            iv.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
+            iv.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
+            iv.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
+            iv.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
+            iv.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor),
+            iv.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor),
+        ])
+
+        let doubleTap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleDoubleTap(_:)))
+        doubleTap.numberOfTapsRequired = 2
+        scroll.addGestureRecognizer(doubleTap)
+
+        context.coordinator.imageView = iv
+        return scroll
+    }
+
+    func updateUIView(_ scrollView: UIScrollView, context: Context) {
+        context.coordinator.imageView?.image = image
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator: NSObject, UIScrollViewDelegate {
+        weak var imageView: UIImageView?
+
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? { imageView }
+
+        @objc func handleDoubleTap(_ gr: UITapGestureRecognizer) {
+            guard let scroll = gr.view as? UIScrollView else { return }
+            let target: CGFloat = scroll.zoomScale > 1.01 ? 1 : 2.5
+            scroll.setZoomScale(target, animated: true)
+        }
     }
 }
 
