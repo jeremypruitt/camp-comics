@@ -72,3 +72,17 @@ Required env: `GCP_PROJECT`, plus `gcloud auth application-default login`.
 - No comments unless a constraint is non-obvious (e.g. the panel-12 reference override above earns a comment; ordinary control flow does not).
 - Match the existing terse-but-pointed docstring style.
 - This is a git repo as of `81ed9bc` (initialized 2026-05-24). Commit small, named, often.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues via the `gh` CLI. Repo has no remote yet — run `gh repo create` once before any skill that publishes to issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — `CONTEXT.md` + `docs/adr/` at the repo root. Neither exists yet; `/grill-with-docs` will create them lazily. See `docs/agents/domain.md`.
