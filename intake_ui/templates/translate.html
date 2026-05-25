@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Translate tokens — {{ camper_id }}{% endblock %}
+{% block content %}
+<h1>Translate to fantasy fragments</h1>
+<p class="subtitle">
+  <code>{{ camper_id }}</code> — {{ tokens.camper_name }} ({{ tokens.class|capitalize }})
+</p>
+
+<p>Convert the camper's raw words into short fantasy descriptions that will slot directly into prompts at panels 2, 7, and 11. Keep each one short and concrete.</p>
+
+<p>
+  <button type="button" id="suggest-all-btn" class="button" onclick="suggestAll()">
+    ✨ Suggest 3 of each (uses Gemini, ~$0.0001)
+  </button>
+  <span id="suggest-status" style="margin-left:0.8rem;opacity:0.7;font-style:italic"></span>
+</p>
+
+<form method="POST">
+
+  <h2>Panel 2 — the summons (background imagery)</h2>
+  <div class="raw-note">Raw: <em>{{ tokens.hometown_landmark_raw }}</em></div>
+  <div class="suggestions-row" id="suggest-hometown_landmark"></div>
+  <label>
+    Translated fantasy description (used as <code>{hometown_landmark}</code>)
+    <span class="hint">e.g., "a lighthouse glowing on a windswept cliff above gray waves"</span>
+    <input type="text" name="hometown_landmark" required
+           value="{{ tokens.hometown_landmark or '' }}">
+  </label>
+  <button type="button" class="button secondary suggest-one-btn" data-field="hometown_landmark">↻ Suggest more for this field</button>
+
+  <h2>Panel 7 — the challenge (fear made manifest)</h2>
+  <div class="raw-note">Raw: <em>{{ tokens.fear_raw }}</em></div>
+  <div class="suggestions-row" id="suggest-fear_image"></div>
+  <label>
+    Translated fantasy obstacle (used as <code>{fear_image}</code>)
+    <span class="hint">e.g., "a translucent ghostly figure of an elder looking on with sorrowful eyes"</span>
+    <textarea name="fear_image" required>{{ tokens.fear_image or '' }}</textarea>
+  </label>
+  <button type="button" class="button secondary suggest-one-btn" data-field="fear_image">↻ Suggest more for this field</button>
+
+  <h2>Panel 11 — the reward (quality made symbol)</h2>
+  <div class="raw-note">Raw: <em>{{ tokens.quality_raw }}</em></div>
+  <div class="suggestions-row" id="suggest-quality_symbol"></div>
+  <label>
+    Translated symbolic object (used as <code>{quality_symbol}</code>)
+    <span class="hint">e.g., "a small lit torch handed to them by unseen hands"</span>
+    <input type="text" name="quality_symbol" required
+           value="{{ tokens.quality_symbol or '' }}">
+  </label>
+  <button type="button" class="button secondary suggest-one-btn" data-field="quality_symbol">↻ Suggest more for this field</button>
+
+  <div class="cheat-sheet">
+    <strong>Translation patterns that work well:</strong><br>
+    Fear → a concrete creature or object the hero can physically face<br>
+    Quality → a small object handed over (torch, key, seed, scroll, pendant)<br>
+    Landmark → a single visual scene fragment, not a sentence
+  </div>
+
+  <p style="margin-top:1.5rem"><button type="submit" class="button">Save translations</button></p>
+</form>
+
+<script>
+  const SUGGEST_URL = "{{ url_for('suggest', camper_id=camper_id) }}";
+
+  async function callSuggest(formData) {
+    const status = document.getElementById('suggest-status');
+    status.innerText = 'Asking Gemini...';
+    try {
+      const res = await fetch(SUGGEST_URL, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.error) {
+        status.innerText = '✗ ' + data.error;
+        return null;
+      }
+      status.innerText = '';
+      return data;
+    } catch (e) {
+      status.innerText = '✗ ' + e.message;
+      return null;
+    }
+  }
+
+  async function suggestAll() {
+    const btn = document.getElementById('suggest-all-btn');
+    btn.disabled = true;
+    const data = await callSuggest(new FormData());
+    btn.disabled = false;
+    if (!data) return;
+    btn.innerText = '✨ Re-suggest all';
+    for (const field of Object.keys(data)) renderSuggestions(field, data[field]);
+  }
+
+  async function suggestOne(field) {
+    const fd = new FormData();
+    fd.append('field', field);
+    const data = await callSuggest(fd);
+    if (data) renderSuggestions(field, data[field]);
+  }
+
+  function renderSuggestions(field, options) {
+    const container = document.getElementById('suggest-' + field);
+    container.innerHTML = '';
+    for (const opt of options) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'suggestion-chip';
+      chip.innerText = opt;
+      chip.onclick = () => {
+        const target = document.querySelector('[name="' + field + '"]');
+        target.value = opt;
+        target.focus();
+      };
+      container.appendChild(chip);
+    }
+  }
+
+  document.querySelectorAll('.suggest-one-btn').forEach(btn => {
+    btn.addEventListener('click', () => suggestOne(btn.dataset.field));
+  });
+</script>
+{% endblock %}

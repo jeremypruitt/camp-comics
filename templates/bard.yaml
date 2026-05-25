@@ -1,0 +1,100 @@
+# Bard — clone of druid.yaml adapted for the Bard class.
+# See spec/design.md §3 (value), §4 (beats), §8 (prompt anatomy).
+
+class: bard
+display_name: Bard
+value: "The power of telling your own story — voice, creativity, lifting others up"
+
+palette:
+  lighting: "sunset orange and magenta sky, warm firelight from a roadside camp, deep twilight blues in shadow, hints of stage gold"
+  colors: "sunset orange, plum magenta, deep twilight indigo, antique gold, warm umber"
+
+costume: "a traveling cloak with bright contrasting lining, a sturdy belted tunic in warm earth tones, a versatile stringed instrument (lute) slung across the back, traveling boots, a small worn satchel of notebooks and ink, gender-neutral silhouette"
+
+hero_card_reference: refs/bard_hero.png
+
+tokens:
+  universal_translated:
+    - hometown_landmark
+    - fear_image
+    - quality_symbol
+  class_specific:
+    - art_form   # e.g., "playing the violin", "writing poetry", "telling jokes", "drawing comics"
+
+panels:
+  - n: 1
+    scene: "{camper_name} in modern everyday clothes, standing in an ordinary contemporary setting, looking thoughtful with quiet potential, soft natural daylight"
+    composition: "medium shot, eye-level, neutral expression with hint of warmth"
+    caption: "Before the call, there was only the ordinary world."
+
+  - n: 2
+    scene: "{camper_name} hears music drifting impossibly from {hometown_landmark} — a single haunting note hanging in the air, a glowing trail of musical staves curling toward them like an invitation"
+    composition: "wide shot, camper small in frame, glowing music dominant"
+    caption: "But a song had been waiting, holding its first note."
+
+  - n: 3
+    scene: "{camper_name} stepping into the swirl of music as a colorful traveling cloak materializes around them, half ordinary clothes and half bard's regalia, mid-transformation, golden notes orbiting them"
+    composition: "three-quarter shot, dance-like stride into frame"
+    caption: "The first note was theirs to sing. They sang it."
+
+  - n: 4
+    scene: "{camper_name} in full bard regalia, heroic stance on a roadside campfire stage, instrument raised, golden firelight glowing, an enraptured small crowd of travelers gathered in shadow, full transformation reveal"
+    composition: "full body hero shot, low angle, cinematic firelight"
+    caption: "And the road remembered every face it lit that night."
+
+  - n: 5
+    scene: "vast lyrical realm with rolling hills, distant traveling caravans, music halls glowing on hilltops, {camper_name} walking a winding road, small in frame, world dominant"
+    composition: "extreme wide establishing shot, camper as small silhouette"
+    caption: "The world was full of unfinished songs and waiting ears."
+
+  - n: 6
+    scene: "{camper_name} meeting an old wandering bard mentor — a weathered figure with kind eyes and a battered instrument — gesturing for them to take a seat by a roadside fire"
+    composition: "medium shot, two-figure framing, warm firelight"
+    caption: "The old bard said: the song is true because it is yours."
+
+  - n: 7
+    scene: "{camper_name} faces the challenge — {fear_image} — a village or gathering frozen in silent gray sorrow, voices stolen, the obstacle a great silence that swallows sound, the bard small before it"
+    composition: "wide shot, gray silent crowd dominating background, bard in foreground"
+    caption: "Silence had taken the village. Someone had to break it."
+
+  - n: 8
+    scene: "{camper_name} attempting to perform a borrowed grand song or imitation of a famous tune — striking dramatic pose, instrument in hand — but the music falls flat against the silence, notes dissolving"
+    composition: "dynamic action shot, performance falling flat, awkward moment"
+    caption: "Other people's songs slid off the silence like rain off stone."
+
+  - n: 9
+    scene: "{camper_name} setting down the instrument and beginning their own work — {art_form} — performing or creating something honest and small and theirs, color and sound returning to the gray figures around them as they listen"
+    composition: "intimate medium shot, performance moment, color spreading outward"
+    caption: "Their own song, sung small and true, brought the colors back."
+
+  - n: 10
+    scene: "{camper_name} taking a small bow as the gathered crowd, now restored and colorful, listens in still warmth, no triumph on the bard's face — only quiet gratitude"
+    composition: "medium shot, calm aftermath, restored crowd listening"
+    caption: "Triumph wore the quiet shape of being heard."
+
+  - n: 11
+    scene: "{camper_name} in a sunlit theater receiving a glowing {quality_symbol} from the old bard mentor, both figures haloed in warm gold light, ceremonial stillness, the instrument resting nearby"
+    composition: "medium two-shot, ceremonial composition, vertical light"
+    caption: "What the bard gave away, the bard kept forever."
+
+  - n: 12
+    scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but humming softly, wearing a small enameled music-note pendant on a cord, eyes alight with hidden melody"
+    composition: "medium shot, eye-level, mirror of panel 1, half-smile, soft hum"
+    caption: "Home was the same. Only they had changed."
+
+cover:
+  pose_directive: "heroic full-body portrait in full bard regalia, instrument raised mid-strum, colorful cloak swirling, golden firelight from below, sparks and musical staves spiraling upward, generous empty sky at the top of the frame for title text overlay"
+
+fallbacks:
+  1:  "A young person in modern everyday clothes standing in a quiet outdoor setting, soft natural light, hint of quiet warmth"
+  2:  "A glowing trail of musical staves curling through the air on a hillside at sunset, single haunting note hanging"
+  3:  "A young figure stepping into a swirl of golden musical notes as a colorful cloak materializes"
+  4:  "A bard in colorful regalia standing on a roadside stage with instrument raised, firelight glowing, crowd in shadow"
+  5:  "A vast lyrical realm with rolling hills and distant traveling caravans, a tiny figure walking a winding road"
+  6:  "A young bard meeting an old wandering bard mentor at a roadside fire"
+  7:  "A village or gathering frozen in silent gray sorrow, a bard standing small before the silence"
+  8:  "A bard attempting a grand performance that falls flat against silence, notes dissolving"
+  9:  "A bard performing their own honest work as color and sound return to gray figures around them"
+  10: "A bard taking a small bow as a restored colorful crowd listens"
+  11: "A bard receiving a glowing token from an old bard mentor in a sunlit theater"
+  12: "A young person back in modern clothes humming softly, wearing a music-note pendant, in an ordinary contemporary setting"

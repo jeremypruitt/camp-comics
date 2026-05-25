@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Camp Comics — Dashboard{% endblock %}
+{% block content %}
+<h1>Camp Comics</h1>
+<p class="subtitle">{{ campers|length }} campers in the system</p>
+
+{% if campers %}
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Cabin</th>
+      <th>Class</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in campers %}
+    <tr>
+      <td><code>{{ c.id }}</code></td>
+      <td>
+        {{ c.name }}
+        {% if c.character_name %}<br><span style="font-style:italic;opacity:0.7;font-size:0.85rem">{{ c.character_name }}</span>{% endif %}
+      </td>
+      <td>{{ c.cabin }}</td>
+      <td>
+        {% if c.finalized %}<strong>{{ c.class|capitalize }}</strong>
+        {% else %}<span style="opacity:0.6">{{ c.class_top_3|join(' / ') }}</span>{% endif %}
+      </td>
+      <td class="status">
+        <span class="pill {% if c.qa_passed %}done{% else %}missing{% endif %}">photo</span>
+        <span class="pill {% if c.finalized %}done{% else %}missing{% endif %}">class</span>
+        <span class="pill {% if c.translated %}done{% else %}missing{% endif %}">translated</span>
+        <span class="pill {% if c.generated %}done{% else %}missing{% endif %}">generated</span>
+        <span class="pill {% if c.rendered %}done{% else %}missing{% endif %}">rendered</span>
+      </td>
+      <td>
+        {% if not c.qa_passed %}
+          <a href="{{ url_for('qa', camper_id=c.id) }}" class="button">QA gate</a>
+        {% elif not c.finalized %}
+          <a href="{{ url_for('finalize', camper_id=c.id) }}" class="button">Finalize class</a>
+        {% elif not c.translated %}
+          <a href="{{ url_for('translate', camper_id=c.id) }}" class="button">Translate</a>
+        {% elif not c.rendered %}
+          <a href="{{ url_for('generate_page', camper_id=c.id) }}" class="button">Generate &amp; render</a>
+        {% else %}
+          <a href="{{ url_for('comic_pdf', camper_id=c.id) }}" class="button secondary">PDF ↗</a>
+          <a href="{{ url_for('generate_page', camper_id=c.id) }}" style="font-size:0.85rem; margin-left:0.4rem">edit</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Batch CLI alternative</h3>
+<p style="font-size:0.9rem">If you'd rather generate every translated camper in one shot from the terminal (skips per-panel browser review — uses CLI prompts instead):</p>
+<p><code style="font-size:0.8rem">for cid in {% for c in campers %}{% if c.translated and not c.generated %}{{ c.id }} {% endif %}{% endfor %}; do python scripts/generate.py --camper $cid --class $(python -c "import json,sys; print(json.load(open('intake/'+'$cid'+'/tokens.json'))['class'])"); done && python scripts/render.py --all</code></p>
+
+{% else %}
+<p>No campers yet. <a href="{{ url_for('intake_new') }}">Start the first intake →</a></p>
+{% endif %}
+{% endblock %}

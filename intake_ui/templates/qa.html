@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Photo QA gate — {{ camper_id }}{% endblock %}
+{% block content %}
+<h1>Photo QA gate</h1>
+<p class="subtitle"><code>{{ camper_id }}</code> — test generation to verify likeness transfers cleanly</p>
+
+{% if error %}
+  <div class="error">
+    <strong>QA generation failed:</strong> {{ error }}
+    <p>Check that <code>GCP_PROJECT</code> is set and credentials are valid (<code>gcloud auth application-default login</code>).</p>
+  </div>
+{% else %}
+  <div class="form-row">
+    <div>
+      <h3>Source photo</h3>
+      <img class="qa-image" src="{{ url_for('camper_photo', camper_id=camper_id) }}" alt="">
+    </div>
+    <div>
+      <h3>Test generation</h3>
+      <img class="qa-image" src="{{ url_for('qa_image', camper_id=camper_id) }}" alt="">
+    </div>
+  </div>
+
+  <p style="margin-top:1rem">
+    <strong>Does the face look unmistakably like them?</strong> Likeness is the load-bearing test;
+    composition and exact pose don't matter here.
+  </p>
+
+  <form method="POST" style="display:inline">
+    <button type="submit" name="action" value="accept" class="button">Looks like them — accept</button>
+  </form>
+  <form method="POST" style="display:inline">
+    <button type="submit" name="action" value="regen" class="button secondary">Re-roll test gen</button>
+  </form>
+  <form method="POST" style="display:inline">
+    <button type="submit" name="action" value="retake" class="button danger">Retake photo</button>
+  </form>
+{% endif %}
+{% endblock %}

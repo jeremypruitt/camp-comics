@@ -1,0 +1,6 @@
+# Core: intake app (Stage 1) + generation (Stage 2).
+# These all install cleanly with pip; no system deps needed.
+flask>=3.0
+google-genai>=0.4
+pyyaml>=6.0
+pillow>=10.0

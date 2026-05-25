@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ character_name }} — A Tale from {{ camp_name }}</title>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital,wght@0,400;1,400&display=swap">
+  <link rel="stylesheet" href="layout/comic.css">
+</head>
+<body>
+
+  {# -------- Page 1: Cover -------- #}
+  <section class="page cover">
+    <img class="cover-art" src="{{ cover_image }}" alt="">
+    <div class="cover-overlay">
+      <h1 class="character-name">{{ character_name }}</h1>
+      <p class="subtitle">A Tale from {{ camp_name }}</p>
+      <p class="weeknote">{{ week_label }}</p>
+    </div>
+  </section>
+
+  {# -------- Pages 2–4: Interior. Per-page asymmetric grids in comic.css.  #}
+  {#         On page 3, panels 10 and 11 are rendered as ONE container      #}
+  {#         spanning both grid columns — a single SVG with two clip-pathed #}
+  {#         <image> elements that fill the full row width and meet on a    #}
+  {#         diagonal. This avoids the "narrow trapezoids with wide cream   #}
+  {#         middle" problem caused by each panel taking only half the row. #}
+  {% for page_num in [1, 2, 3] %}
+    <section class="page interior page-act-{{ page_num }}">
+      <div class="panel-grid">
+        {% for slot in range(4) %}
+          {% set panel_idx = (page_num - 1) * 4 + slot %}
+          {% set panel_num = panel_idx + 1 %}
+          {% if page_num == 3 and panel_num == 10 %}
+            {# Diagonal pair: two PNGs with alpha-masked trapezoid shapes
+               (baked in by render.py:_make_diagonal_pair_images), overlaid
+               at full row width. Together they tile the row seamlessly
+               along their shared diagonal edge. The SVG on top draws the
+               diagonal stroke and the outer rectangular border. #}
+            <figure class="panel panel-pair-10-11">
+              <img class="diag-img" src="{{ panel_dir }}/_diag_left.png"  alt="">
+              <img class="diag-img" src="{{ panel_dir }}/_diag_right.png" alt="">
+              {# Diagonal border is drawn into each trapezoid PNG; the
+                 cream gap between them is the container background. #}
+
+              <figcaption class="cap-left">{{ captions[9] }}</figcaption>
+              <figcaption class="cap-right">{{ captions[10] }}</figcaption>
+            </figure>
+          {% elif page_num == 3 and panel_num == 11 %}
+            {# Skipped — rendered as part of panel-pair-10-11 above. #}
+          {% else %}
+            <figure class="panel panel-{{ panel_num }}">
+              <img src="{{ panel_dir }}/panel_{{ '%02d' % panel_num }}.png" alt="">
+              <figcaption>{{ captions[panel_idx] }}</figcaption>
+            </figure>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+  {% endfor %}
+
+  {# -------- Page 5: Back cover — cabin roster -------- #}
+  <section class="page roster">
+    <h2 class="roster-title">The Heroes of Cabin {{ cabin }}</h2>
+    <div class="roster-grid">
+      {% for member in cabin_members %}
+        <figure class="roster-card">
+          <img src="{{ member.hero_image }}" alt="">
+          <figcaption>
+            <strong class="roster-name">{{ member.character_name }}</strong>
+            <span class="roster-class">{{ member.class | capitalize }}</span>
+          </figcaption>
+        </figure>
+      {% endfor %}
+    </div>
+  </section>
+
+</body>
+</html>

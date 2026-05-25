@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Retake photo — {{ camper_id }}{% endblock %}
+{% block content %}
+<h1>Retake photo</h1>
+<p class="subtitle"><code>{{ camper_id }}</code></p>
+
+<p>Upload a new photo. The previous QA result will be discarded and the gate re-run.</p>
+
+<form method="POST" enctype="multipart/form-data">
+  <input type="file" name="photo" accept="image/*" required>
+  <p style="margin-top:1.2rem">
+    <button type="submit" class="button">Upload & re-run QA</button>
+    <a href="{{ url_for('dashboard') }}" class="button secondary">Cancel</a>
+  </p>
+</form>
+{% endblock %}

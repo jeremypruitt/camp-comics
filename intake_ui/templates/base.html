@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Camp Comics{% endblock %}</title>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'EB Garamond', Garamond, serif;
+      background: #f5ecd9;
+      color: #2a1f15;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem 4rem;
+      font-size: 18px;
+      line-height: 1.45;
+    }
+    h1, h2, h3 { font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: 0.02em; }
+    h1 { font-size: 2rem; margin: 0 0 0.2rem; }
+    h2 { font-size: 1.4rem; margin: 1.6rem 0 0.6rem; }
+    h3 { font-size: 1.1rem; margin: 1.2rem 0 0.4rem; }
+    a { color: #6b3a16; }
+    .subtitle { font-style: italic; opacity: 0.7; margin: 0 0 1.5rem; }
+    nav { margin: 0.4rem 0 1.4rem; padding-bottom: 0.6rem; border-bottom: 1px solid #c9b58c; }
+    nav a { margin-right: 1.2rem; text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    .button {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: #6b3a16;
+      color: #fffaf0;
+      border: none;
+      border-radius: 4px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.95rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .button:hover { background: #8b4f25; }
+    .button.secondary { background: #c9b58c; color: #2a1f15; }
+    .button.danger { background: #8b2c1f; }
+    label { display: block; margin-top: 1rem; font-weight: 600; }
+    label .hint { font-weight: 400; opacity: 0.6; font-size: 0.9rem; display: block; margin-top: 0.1rem; }
+    input[type="text"], textarea, select {
+      width: 100%; padding: 0.5rem 0.6rem; margin-top: 0.3rem;
+      font-family: inherit; font-size: 1rem;
+      border: 1px solid #a89568; border-radius: 4px;
+      background: #fffaf0;
+    }
+    textarea { min-height: 4.5rem; resize: vertical; }
+    input[type="file"] { margin-top: 0.4rem; }
+    .form-row { display: flex; gap: 1rem; }
+    .form-row > * { flex: 1; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid #d4c098; }
+    th { font-family: 'Cinzel', serif; font-weight: 700; font-size: 0.9rem; }
+    .status { font-size: 0.85rem; }
+    .pill {
+      display: inline-block; padding: 0.1rem 0.5rem; border-radius: 10px;
+      font-size: 0.75rem; font-family: 'Cinzel', serif; letter-spacing: 0.03em;
+      margin-right: 0.2rem; background: #e8d6a8;
+    }
+    .pill.done { background: #6b3a16; color: #fffaf0; }
+    .pill.missing { background: #d4c098; color: #6b5a3a; }
+    .qa-image { max-width: 100%; border: 2px solid #6b3a16; margin: 1rem 0; }
+    .raw-note {
+      background: #ece0bd; border-left: 3px solid #6b3a16;
+      padding: 0.5rem 0.8rem; margin: 0.4rem 0; font-style: italic;
+    }
+    .cheat-sheet {
+      background: #ece0bd; padding: 0.8rem 1rem; border-radius: 4px;
+      margin-top: 1.5rem; font-size: 0.9rem;
+    }
+    code {
+      font-family: ui-monospace, Menlo, monospace;
+      background: #ece0bd; padding: 0.1rem 0.4rem; border-radius: 3px;
+      font-size: 0.9rem;
+    }
+    .error { background: #f3d6c8; border-left: 4px solid #8b2c1f; padding: 0.8rem 1rem; }
+    .suggestions-row { margin: 0.5rem 0 0; }
+    .suggestion-chip {
+      display: inline-block;
+      background: #fffaf0;
+      border: 1px solid #a89568;
+      border-radius: 4px;
+      padding: 0.35rem 0.6rem;
+      margin: 0 0.3rem 0.3rem 0;
+      font-family: 'EB Garamond', serif;
+      font-size: 0.92rem;
+      line-height: 1.3;
+      text-align: left;
+      cursor: pointer;
+      max-width: 100%;
+      white-space: normal;
+    }
+    .suggestion-chip:hover { background: #ece0bd; }
+    .suggest-one-btn { font-size: 0.8rem; padding: 0.25rem 0.6rem; margin-top: 0.4rem; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('intake_new') }}">+ New camper intake</a>
+  </nav>
+  {% block content %}{% endblock %}
+</body>
+</html>

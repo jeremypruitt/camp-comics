@@ -1,0 +1,31 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# Camp Comics — runtime artifacts
+# Camper data: keep tokens.json (cheap, hand-curated) but ignore the heavy
+# intermediate images. Comment these out if you want to commit a small
+# test corpus for repro.
+intake/*/qa_test.png
+outputs/*/_pending_*.png
+outputs/*/_diag_*.png
+outputs/*/_attempts.json
+outputs/*/_skipped_*
+
+# Final renders are big (~17 MB each) — don't put binaries in git history.
+outputs/*/panel_*.png
+outputs/*/cover.png
+outputs/*/comic.pdf
+
+# IDE
+.vscode/
+.idea/
+*.swp

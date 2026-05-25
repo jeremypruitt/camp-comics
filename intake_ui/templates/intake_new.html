@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}New camper intake — Camp Comics{% endblock %}
+{% block content %}
+<h1>New camper</h1>
+<p class="subtitle">Day 1 photo station — auto-assigns a camper ID on save.</p>
+
+<form method="POST" action="{{ url_for('intake_create') }}" enctype="multipart/form-data">
+
+  <h2>Identity</h2>
+  <div class="form-row">
+    <label>
+      Camper's real name
+      <input type="text" name="camper_name" required>
+    </label>
+    <label>
+      Character name (optional — appears on cover)
+      <input type="text" name="character_name" placeholder="e.g., Thornroot the Patient">
+    </label>
+  </div>
+  <label>
+    Cabin
+    <input type="text" name="cabin" required placeholder="e.g., Oakhaven">
+  </label>
+
+  <h2>Class ranking</h2>
+  <p style="font-size:0.9rem;opacity:0.7">Pick your top 3 in order. The class you actually get may shift if a cohort fills up.</p>
+  <div class="form-row">
+    {% for n in [1, 2, 3] %}
+    <label>
+      Choice #{{ n }}
+      <select name="class_choice_{{ n }}" required>
+        {% for c in classes %}
+          <option value="{{ c }}">{{ c|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endfor %}
+  </div>
+
+  <h2>Photo</h2>
+  <p style="font-size:0.9rem;opacity:0.7">
+    One head-and-shoulders shot, front-facing, eyes to camera, neutral background, even lighting.
+    Glasses-wearers: photographed with glasses on (consistency). One excellent photo beats three mediocre ones.
+  </p>
+  <input type="file" name="photo" accept="image/*" required>
+
+  <h2>Three short answers</h2>
+  <p style="font-size:0.9rem;opacity:0.7">
+    Capture the camper's raw words. You'll translate these into fantasy fragments mid-week, not here.
+  </p>
+
+  <label>
+    A landmark or place that feels like home
+    <span class="hint">"the old lighthouse", "the diner on 4th", "my grandma's porch"</span>
+    <input type="text" name="hometown_landmark_raw" required>
+  </label>
+
+  <label>
+    One fear you want to face down this week
+    <span class="hint">"fear of letting my family down", "fear of speaking up", "fear of failing again"</span>
+    <input type="text" name="fear_raw" required>
+  </label>
+
+  <label>
+    One quality you want to grow into
+    <span class="hint">"courage", "patience", "kindness", "trusting myself"</span>
+    <input type="text" name="quality_raw" required>
+  </label>
+
+  <p style="margin-top:2rem"><button type="submit" class="button">Save & run photo QA gate →</button></p>
+</form>
+{% endblock %}

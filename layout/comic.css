@@ -1,0 +1,236 @@
+/* Camp Comics — print layout
+ *
+ * Page size: 6.625" × 10.25" (comic standard, see spec/design.md §1).
+ * 5 pages: cover + 3 interior + back roster.
+ *
+ * Each interior page has its own ASYMMETRIC grid that mixes wide, tall, and
+ * square cells per the page's narrative beat. Panel placement uses explicit
+ * grid-column / grid-row rules (not grid-template-areas — WeasyPrint 68's
+ * named-area support is incomplete). Per-panel aspect ratios in
+ * scripts/generate.py PANEL_ASPECT_RATIOS are picked to match the cell shape.
+ *
+ * Panels 10 and 11 use a DIAGONAL CLIP-PATH split for a real-comic feel —
+ * the right edge of P10 cuts inward, P11 is pulled left to overlap that cut.
+ */
+
+@page {
+  size: 6.625in 10.25in;
+  margin: 0;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'EB Garamond', Garamond, 'Times New Roman', serif;
+  color: #2a1f15;
+  background: #fffaf0;
+}
+
+.page {
+  width: 6.625in;
+  height: 10.25in;
+  page-break-after: always;
+  break-after: page;
+  break-inside: avoid;
+  overflow: hidden;
+  position: relative;
+}
+.page:last-child { page-break-after: auto; break-after: auto; }
+
+/* -------- Cover -------- */
+
+.cover { padding: 0; background: #000; }
+.cover-art { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover-overlay {
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: 0.6in 0.4in 0;
+  text-align: center; color: #fff8e6;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.75);
+}
+.character-name {
+  font-family: 'Cinzel', 'Trajan Pro', serif;
+  font-size: 42pt; font-weight: 700; letter-spacing: 0.04em; line-height: 1.1;
+}
+.subtitle {
+  font-family: 'Cinzel', serif;
+  font-size: 13pt; font-style: italic; margin-top: 0.15in; letter-spacing: 0.05em;
+}
+.weeknote { font-size: 10pt; opacity: 0.85; margin-top: 0.05in; }
+
+/* -------- Interior: shared frame -------- */
+
+.interior { padding: 0.3in; }
+
+.panel-grid {
+  display: grid;
+  gap: 0.16in;
+  width: 100%;
+  height: 100%;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.panel {
+  position: relative;
+  overflow: hidden;
+  border: 1pt solid #2a1f15;
+  background: #000;
+  box-shadow: 0 1pt 3pt rgba(0, 0, 0, 0.3);
+  /* Critical for CSS Grid: lets cells shrink below their content's intrinsic
+   * size. Without this, images grow grid rows past their fr allocation and
+   * the whole grid overflows the page (WeasyPrint paginates the spillover). */
+  min-height: 0;
+  min-width: 0;
+}
+.panel img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  /* Bias the crop toward the top of the source image — faces tend to be in
+   * the upper half, so when a wider/narrower cell crops the image, we'd
+   * rather lose feet than lose the face. */
+  object-position: center top;
+}
+.panel figcaption {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: rgba(20, 14, 8, 0.85);
+  color: #fffaf0;
+  font-family: 'EB Garamond', Garamond, serif;
+  font-style: italic;
+  font-size: 8.5pt;
+  line-height: 1.3;
+  padding: 0.07in 0.1in;
+  text-align: center;
+}
+
+/* -------- Act I (panels 1–4): Ordinary → Call ------------------------- *
+ *   +----+----+      P1: square eye-level (Tuesday)
+ *   | P1 |    |      P2: tall portrait (mystical figure looming)
+ *   +----+ P2 |      P3: square macro (transformation detail)
+ *   | P3 |    |      P4: wide splash (HERO REVEAL)
+ *   +----+----+
+ *   |   P4    |
+ *   +----+----+                                                            */
+.page-act-1 .panel-grid { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr); }
+.page-act-1 .panel-1 { grid-column: 1; grid-row: 1; }
+.page-act-1 .panel-2 { grid-column: 2; grid-row: 1 / span 2; }
+.page-act-1 .panel-3 { grid-column: 1; grid-row: 2; }
+.page-act-1 .panel-4 { grid-column: 1 / span 2; grid-row: 3; }
+
+/* -------- Act II (panels 5–8): The Quest ------------------------------ *
+ *   +----+----+      P5: wide splash (bird's-eye world)
+ *   |   P5    |      P6: square (intimate mentor)
+ *   +----+----+      P7: tall (towering obstacle)
+ *   | P6 |    |      P8: square (action close — failed attempt)
+ *   +----+ P7 |
+ *   | P8 |    |
+ *   +----+----+                                                            */
+.page-act-2 .panel-grid { grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
+.page-act-2 .panel-5 { grid-column: 1 / span 2; grid-row: 1; }
+.page-act-2 .panel-6 { grid-column: 1; grid-row: 2; }
+.page-act-2 .panel-7 { grid-column: 2; grid-row: 2 / span 2; }
+.page-act-2 .panel-8 { grid-column: 1; grid-row: 3; }
+
+/* -------- Act III (panels 9–12): The Return --------------------------- *
+ *   +----+----+      P9:  wide splash (emotional climax)
+ *   |   P9    |      P10: DIAGONAL — cut on right edge
+ *   +----+----+      P11: DIAGONAL — cut on left edge, pulled left to overlap
+ *   |P10 \P11|       P12: wide (return mirror)
+ *   +----+----+
+ *   |  P12    |
+ *   +----+----+                                                            */
+.page-act-3 .panel-grid { grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
+.page-act-3 .panel-9  { grid-column: 1 / span 2; grid-row: 1; }
+.page-act-3 .panel-12 { grid-column: 1 / span 2; grid-row: 3; }
+
+/* Diagonal pair P10+P11: one container spanning the full row, with two
+ * SVG-clipped images that meet on a diagonal. Outer rectangular border
+ * stays straight + aligned with P9 above and P12 below; the SVG draws
+ * the diagonal stroke between the two images. */
+.page-act-3 .panel-pair-10-11 {
+  grid-column: 1 / span 2;  /* span both columns explicitly */
+  grid-row: 2;
+  position: relative;
+  /* Cream background — shows through the diagonal gap between the two
+   * trapezoids, matching the grid gutters between other panel pairs. */
+  background: #fffaf0;
+  /* Explicit border:none to OVERRIDE the inherited `.panel { border: 1pt
+   * solid }`. Without this, the inherited border draws a rectangular
+   * outline around the whole row, making the diagonal gap look connected
+   * at the top, bottom, and outer-left edges. Each trapezoid carries its
+   * own 1pt border baked into its PNG by render.py instead. */
+  border: none;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+.page-act-3 .panel-pair-10-11 .diag-img {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  /* `cover` with `center top` — works correctly once P10/P11 are
+   * generated at 16:9. The trapezoid mask, the panel image, and the
+   * diagonal stroke layer are all 16:9, so they crop identically and
+   * the seam aligns. If you see misalignment, the source is still pre-16:9
+   * — Redo P10 and P11 in the UI to regenerate at the new aspect. */
+  object-fit: cover;
+  object-position: center top;
+}
+.page-act-3 .panel-pair-10-11 .diag-overlay {
+  display: block;
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Panel 5 is a wide bird's-eye world establishing shot — anchor crop to
+ * the bottom so the camper/foreground stays in frame even when an old 4:3
+ * source image is shoehorned into the 16:9 cell. Until we wire up AI
+ * face-detect for smart cropping per panel. */
+.page-act-2 .panel-5 img { object-position: center bottom; }
+.page-act-3 .panel-pair-10-11 .cap-left,
+.page-act-3 .panel-pair-10-11 .cap-right {
+  position: absolute;
+  bottom: 0;
+  background: rgba(20, 14, 8, 0.85);
+  color: #fffaf0;
+  font-family: 'EB Garamond', Garamond, serif;
+  font-style: italic;
+  font-size: 8.5pt;
+  line-height: 1.3;
+  padding: 0.07in 0.1in;
+  text-align: center;
+  z-index: 2;
+}
+/* Explicit left:auto / right:auto to cancel the inherited
+ * `.panel figcaption { left: 0; right: 0 }` — otherwise both captions
+ * end up stretching the full width / sitting at left:0.
+ * `bottom: 3pt` lifts the caption up just enough so the PIL-drawn bottom
+ * border (sitting at the very bottom of the trapezoid PNG) is visible
+ * below the caption — matching how P9/P12 captions sit just above their
+ * CSS-drawn bottom borders. */
+.page-act-3 .panel-pair-10-11 .cap-left  { left: 0;    right: auto; width: 28%; bottom: 3pt; }
+.page-act-3 .panel-pair-10-11 .cap-right { left: auto; right: 0;    width: 28%; bottom: 3pt; }
+
+/* -------- Back cover: cabin roster -------- */
+
+.roster { padding: 0.5in 0.4in; background: #f5ecd9; }
+.roster-title {
+  font-family: 'Cinzel', serif;
+  font-size: 22pt; font-weight: 700; text-align: center;
+  margin-bottom: 0.3in; color: #2a1f15;
+}
+.roster-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2in 0.25in;
+}
+.roster-card { text-align: center; }
+.roster-card img {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+  border: 1pt solid #2a1f15; display: block;
+}
+.roster-card figcaption { margin-top: 0.06in; font-size: 10pt; line-height: 1.3; }
+.roster-name { font-weight: 700; display: block; }
+.roster-class { font-style: italic; opacity: 0.7; font-size: 9pt; }

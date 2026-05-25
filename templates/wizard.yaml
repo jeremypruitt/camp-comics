@@ -1,0 +1,100 @@
+# Wizard — clone of druid.yaml adapted for the Wizard class.
+# See spec/design.md §3 (value), §4 (beats), §8 (prompt anatomy).
+
+class: wizard
+display_name: Wizard
+value: "Curiosity and the patience to learn — knowledge earned, not demanded"
+
+palette:
+  lighting: "cool indigo twilight, brass candlelight on parchment, soft glow from arcane diagrams, deep blue shadows with hints of starlight"
+  colors: "midnight indigo, antique brass, parchment cream, ink-black, candle-amber accents"
+
+costume: "simple deep-blue scholar's robes with rolled sleeves, a leather-bound spellbook bound at the hip, a slender wooden staff with a small clear crystal at the tip, ink-stained fingers, a thin silver circlet, gender-neutral silhouette"
+
+hero_card_reference: refs/wizard_hero.png
+
+tokens:
+  universal_translated:
+    - hometown_landmark
+    - fear_image
+    - quality_symbol
+  class_specific:
+    - question_to_answer   # a real question they want answered; informs the puzzle in panel 7
+
+panels:
+  - n: 1
+    scene: "{camper_name} in modern everyday clothes, standing in an ordinary contemporary setting, looking thoughtful and a little distracted, soft natural daylight"
+    composition: "medium shot, eye-level, curious expression"
+    caption: "Before the call, there was only the ordinary world."
+
+  - n: 2
+    scene: "{camper_name} sees an impossible thing — an ancient book floating out from {hometown_landmark}, pages turning in a wind that touches nothing else, a single sigil glowing on the open page"
+    composition: "wide shot, camper small in frame, glowing book dominant"
+    caption: "But the page had been turning, waiting to be read."
+
+  - n: 3
+    scene: "{camper_name} stepping toward the book as deep-blue robes materialize around them, half ordinary clothes and half scholar's robes, mid-transformation, motes of arcane light orbiting them"
+    composition: "three-quarter shot, reverent stride toward the book"
+    caption: "The first word was the door. They spoke it."
+
+  - n: 4
+    scene: "{camper_name} in full wizard regalia, heroic standing pose on the steps of an arcane library, staff raised, the crystal glowing soft blue, constellations swirling overhead, full transformation reveal"
+    composition: "full body hero shot, low angle, cinematic lighting"
+    caption: "And the stars rearranged themselves to greet them."
+
+  - n: 5
+    scene: "vast arcane realm with floating libraries, towers of books reaching into clouds, distant magical observatories, {camper_name} walking a path of glowing glyphs, small in frame, world dominant"
+    composition: "extreme wide establishing shot, camper as small silhouette"
+    caption: "The world was older than memory, full of unfinished sentences."
+
+  - n: 6
+    scene: "{camper_name} meeting an ancient archmage mentor — a wise figure with star-streaked hair and patient eyes — offering them an open book and gesturing for them to sit and read"
+    composition: "medium shot, two-figure framing, warm candlelight"
+    caption: "The mentor offered no answers, only better questions."
+
+  - n: 7
+    scene: "{camper_name} faces the challenge — {fear_image} — manifested as an impossibly complex magical puzzle hanging in the air (it represents {question_to_answer}), glowing symbols beyond reach"
+    composition: "medium shot, puzzle dominating background, wizard in foreground considering it"
+    caption: "Some answers were not to be conjured. Only earned."
+
+  - n: 8
+    scene: "{camper_name} attempting the showy spell — staff raised, blazing light, dramatic gesture — and the puzzle dissolves their spell without effect, the wizard breathless and disheveled"
+    composition: "dynamic action shot, spell sparks fizzling, wizard's hair wild"
+    caption: "Cleverness was not the same as wisdom. Yet."
+
+  - n: 9
+    scene: "{camper_name} sitting cross-legged on the ground with the spellbook open in their lap, reading by candlelight, the puzzle slowly resolving above them as understanding dawns, soft glow on their face"
+    composition: "intimate medium shot, candlelight study, quiet focus"
+    caption: "The wizard read. The wizard wondered. The wizard knew."
+
+  - n: 10
+    scene: "{camper_name} rising calmly with staff in hand, the puzzle now solved and dissolving into harmless motes of light, no triumph on their face — only quiet certainty"
+    composition: "medium shot, calm aftermath, motes of light around them"
+    caption: "Triumph wore the quiet shape of a question answered."
+
+  - n: 11
+    scene: "{camper_name} in a moonlit observatory receiving a glowing {quality_symbol} from the archmage mentor, both figures haloed in starlight, ceremonial stillness"
+    composition: "medium two-shot, ceremonial composition, vertical light"
+    caption: "The greatest spell they learned was the patience to learn."
+
+  - n: 12
+    scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but holding a slim leather-bound notebook, wearing a small brass pendant shaped like a crescent moon, eyes brighter with curiosity"
+    composition: "medium shot, eye-level, mirror of panel 1, faint thoughtful smile"
+    caption: "Home was the same. Only they had changed."
+
+cover:
+  pose_directive: "heroic full-body portrait in full wizard regalia, staff held diagonally with crystal glowing soft blue, spellbook open and floating beside them, constellations swirling overhead, generous empty sky at the top of the frame for title text overlay"
+
+fallbacks:
+  1:  "A young person in modern everyday clothes standing in a quiet outdoor setting, soft natural light, thoughtful expression"
+  2:  "An ancient book floating in midair with pages turning in an unseen wind, a single glowing sigil, ethereal"
+  3:  "A young figure stepping into a swirl of arcane motes as deep-blue robes materialize around them"
+  4:  "A wizard in deep-blue robes standing heroically on library steps, staff raised, constellations swirling overhead"
+  5:  "A vast arcane realm with floating libraries and towers of books reaching into clouds, a tiny figure walking a path"
+  6:  "A young wizard meeting an ancient archmage mentor in a candlelit study"
+  7:  "A wizard facing an impossibly complex glowing magical puzzle hanging in midair"
+  8:  "A wizard attempting a showy spell that fizzles against a magical puzzle, hair wild"
+  9:  "A wizard sitting cross-legged reading a spellbook by candlelight, a puzzle resolving above them"
+  10: "A wizard rising calmly with staff in hand as a magical puzzle dissolves into motes of light"
+  11: "A wizard receiving a glowing token from an archmage mentor in a moonlit observatory"
+  12: "A young person back in modern clothes holding a slim leather notebook, in an ordinary contemporary setting"

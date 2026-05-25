@@ -1,0 +1,100 @@
+# Healer — clone of druid.yaml adapted for the Healer class.
+# See spec/design.md §3 (value), §4 (beats), §8 (prompt anatomy).
+
+class: healer
+display_name: Healer
+value: "Empathy as strength — caring for others is heroic"
+
+palette:
+  lighting: "warm honey-amber morning light, soft white-gold halos, gentle herbal greens in shadow, sunrise pinks on the horizon"
+  colors: "honey amber, soft cream, sage and herbal green, sunrise pink, gentle wood-brown"
+
+costume: "simple flowing robes in cream and sage with rolled sleeves, a leather belt hung with small pouches of herbs and stoppered vials, a wooden symbol on a leather cord at the neck, soft moccasin boots, gender-neutral silhouette"
+
+hero_card_reference: refs/healer_hero.png
+
+tokens:
+  universal_translated:
+    - hometown_landmark
+    - fear_image
+    - quality_symbol
+  class_specific:
+    - mentor_figure   # someone in their life they look up to; informs the guide design in panel 6
+
+panels:
+  - n: 1
+    scene: "{camper_name} in modern everyday clothes, standing in an ordinary contemporary setting, looking quietly attentive, soft natural daylight"
+    composition: "medium shot, eye-level, gentle expression"
+    caption: "Before the call, there was only the ordinary world."
+
+  - n: 2
+    scene: "{camper_name} sees an impossible thing — a wounded glowing creature limping out from {hometown_landmark}, leaving a soft trail of silver light, looking at them with pleading eyes"
+    composition: "wide shot, camper small in frame, wounded creature dominant"
+    caption: "But somewhere, something hurt, and was hoping for them."
+
+  - n: 3
+    scene: "{camper_name} kneeling toward the wounded creature as flowing cream robes materialize around them, half ordinary clothes and half healer's regalia, mid-transformation, soft amber light surrounding the moment"
+    composition: "three-quarter shot, gentle kneeling motion"
+    caption: "The first gesture was reaching out. They reached."
+
+  - n: 4
+    scene: "{camper_name} in full healer regalia, heroic gentle stance in a sunlit grove, cradling the now-healed glowing creature in their arms, warm halo of light, gentle herbal magic swirling around them, full transformation reveal"
+    composition: "full body hero shot, slight low angle, soft cinematic lighting"
+    caption: "And the world remembered there were hands meant for mending."
+
+  - n: 5
+    scene: "vast peaceful realm with hillside sanctuaries, distant healing springs steaming gently, herb gardens stretching to the horizon, {camper_name} walking a soft path, small in frame, world dominant"
+    composition: "extreme wide establishing shot, camper as small silhouette"
+    caption: "The world was full of small wounds and quiet patience."
+
+  - n: 6
+    scene: "{camper_name} meeting their guide — a figure inspired by {mentor_figure}, warm-eyed and kind — offering them a small healing vial and a knowing smile in a sunlit garden"
+    composition: "medium shot, two-figure framing, warm honey light"
+    caption: "The one they had always admired was simply waiting to be met."
+
+  - n: 7
+    scene: "{camper_name} faces the challenge — {fear_image} — a wounded figure or being lashing out in pain and fear, claws or magic flailing, the obstacle being the being's own suffering, the healer standing carefully nearby"
+    composition: "medium shot, wounded suffering being dominating background, healer in foreground considering"
+    caption: "The wound was not what it seemed. The pain spoke first."
+
+  - n: 8
+    scene: "{camper_name} attempting to fix the wound quickly — pressing a glowing hand forward in haste — the wounded being recoiling and lashing out, the healer pulling back hurt and frustrated"
+    composition: "dynamic action shot, recoil moment, hands held up"
+    caption: "Speed was not the same as care. Some hurts needed time."
+
+  - n: 9
+    scene: "{camper_name} kneeling at a respectful distance from the wounded being, hands open and resting on their own knees, simply present and listening with patient warm eyes, soft golden light slowly enveloping both of them as the being calms"
+    composition: "intimate medium shot, two-figure framing at distance, soft enveloping light"
+    caption: "The healer sat. The healer listened. The healer stayed."
+
+  - n: 10
+    scene: "{camper_name} now sitting beside the once-wounded being who is calm and luminous, no triumph on the healer's face — only quiet steady warmth, both figures softly glowing"
+    composition: "medium two-shot, peaceful aftermath, side by side"
+    caption: "Triumph wore the quiet shape of staying."
+
+  - n: 11
+    scene: "{camper_name} in a sunrise meadow receiving a glowing {quality_symbol} from their {mentor_figure}-inspired guide, both figures haloed in warm pink-gold light, ceremonial stillness"
+    composition: "medium two-shot, ceremonial composition, vertical light"
+    caption: "What they gave away in care, no wound could ever take."
+
+  - n: 12
+    scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but with a small wooden symbol on a cord at their neck, eyes soft and steady with new patience"
+    composition: "medium shot, eye-level, mirror of panel 1, soft warm smile"
+    caption: "Home was the same. Only they had changed."
+
+cover:
+  pose_directive: "heroic full-body portrait in full healer regalia, hands cupped before them holding soft warm golden light, a small luminous healed creature resting on their shoulder or at their feet, sunrise sky behind, generous empty sky at the top of the frame for title text overlay"
+
+fallbacks:
+  1:  "A young person in modern everyday clothes standing in a quiet outdoor setting, soft natural light, gentle expression"
+  2:  "A wounded glowing magical creature limping from a doorway, trail of silver light, ethereal and tender"
+  3:  "A young figure kneeling as flowing cream robes materialize around them, soft amber light surrounding"
+  4:  "A healer in cream and sage robes cradling a glowing healed creature, sunlit grove, warm halo of light"
+  5:  "A vast peaceful realm with hillside sanctuaries and distant healing springs, a tiny figure walking a soft path"
+  6:  "A young healer meeting a warm-eyed mentor figure in a sunlit garden"
+  7:  "A wounded being lashing out in pain, a healer standing carefully nearby with hands held open"
+  8:  "A healer attempting to press a glowing hand forward in haste, a wounded being recoiling and lashing out"
+  9:  "A healer kneeling at a respectful distance from a wounded being, hands resting open, soft golden light enveloping both"
+  10: "A healer sitting beside a calm luminous once-wounded being, both softly glowing in peaceful aftermath"
+  11: "A healer receiving a glowing token from a kind mentor figure in a sunrise meadow"
+  12: "A young person back in modern clothes wearing a small wooden symbol on a cord, in an ordinary contemporary setting"

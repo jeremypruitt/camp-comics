@@ -1,0 +1,6 @@
+# Stage 3 render (HTML+CSS → PDF).
+# WeasyPrint needs native libraries (pango, cairo, fontconfig).
+# On macOS:  brew install pango
+# On Debian: sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0
+jinja2>=3.1
+weasyprint>=60

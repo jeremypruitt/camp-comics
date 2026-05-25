@@ -1,0 +1,114 @@
+# Druid — canonical class arc template.
+# See spec/design.md §3 (value), §4 (beats), §8 (prompt anatomy).
+#
+# Tone (v2): D&D-campaign-narrator voice — punchy, situational, slightly
+# humorous, action-forward. Not mythic-Joseph-Campbell. Dice-table feel.
+# Compositions vary deliberately across the 12 panels (establishing wide /
+# close transformation / low-angle hero / bird's-eye / two-shot / extreme
+# close emotional beat / wide tracking / etc.) so the comic doesn't read as
+# a flat grid of medium shots.
+
+class: druid
+display_name: Druid
+value: "Listening before acting — attunement to others and the world"
+
+palette:
+  lighting: "warm golden-hour light filtering through forest canopy, soft volumetric god-rays, dappled forest shadows"
+  colors: "deep mossy greens, amber, weathered bronze, ochre, hints of bioluminescent teal"
+
+costume: "weathered leather and bark armor stitched with living vines, an antler circlet woven into the hair, gnarled oak quarterstaff with a glowing emerald gem at its tip, gender-neutral silhouette, sturdy travel boots"
+
+hero_card_reference: refs/druid_hero.png
+
+tokens:
+  universal_translated:
+    - hometown_landmark
+    - fear_image
+    - quality_symbol
+  class_specific:
+    - animal_companion
+
+panels:
+  - n: 1
+    scene: "{camper_name} in modern everyday clothes, in an ordinary contemporary kitchen or living room on an unremarkable afternoon, surrounded by Tuesday-ish detail (a mug, sneakers by the door, ordinary light)"
+    composition: "intimate eye-level medium shot, camper centered in a SQUARE frame, ordinary domestic detail visible around them, calm balanced composition"
+    caption: "It was Tuesday. Nothing interesting was happening. Yet."
+
+  - n: 2
+    scene: "a stag made of living moss and starlight steps out from {hometown_landmark}, towering and glowing softly, looking down at {camper_name} with knowing eyes"
+    composition: "TALL PORTRAIT composition, magical stag dominating the upper two-thirds of the vertical frame, {camper_name} small at the bottom looking up, dramatic vertical negative space"
+    caption: "A stag made of stars stepped out of the everyday."
+
+  - n: 3
+    scene: "extreme close-up of {camper_name}'s hand at the moment of transformation — living vines wrapping the wrist, bark beginning to form across the knuckles, an emerald spark catching at the fingertips"
+    composition: "tight macro shot of one hand and forearm, shallow depth of field, magical particles in focus"
+    caption: "Through the door, of course. That's how doors work."
+
+  - n: 4
+    scene: "{camper_name} in full druid regalia, standing atop a moss-covered ancient stone in the middle of a vast forest clearing, oak quarterstaff raised, sunlight breaking through the canopy in sweeping rays, woodland creatures emerging on either side, the wider forest stretching out behind"
+    composition: "WIDE CINEMATIC HERO SPLASH, full body but framed wide like a movie poster, low angle from below, sweeping landscape composition with dramatic sky on either side of the figure, hero centered with epic environment"
+    caption: "Class: Druid. Stats: locked. The forest got a new friend."
+
+  - n: 5
+    scene: "a vast ancient forest realm with towering trees and shafts of golden light, {camper_name} a tiny silhouette on a winding root-path far below, floating spores and glowing mushrooms in the distance"
+    composition: "bird's-eye / high-angle aerial shot looking down at the forest canopy, camper a small figure, world overwhelmingly dominant"
+    caption: "The map was big. The map is always big."
+
+  - n: 6
+    scene: "an ancient tree-spirit guide with a weathered bark face and moss-covered shoulders sits across from {camper_name}, their {animal_companion} companion curled between them, warm reverent firelight"
+    composition: "intimate two-shot close, both faces in frame at eye-level, warm soft-focus forest background, sense of conversation"
+    caption: "An old tree-spirit had thoughts. Listening seemed wise."
+
+  - n: 7
+    scene: "{fear_image} — massive and impassable across a forest clearing, blocking the path entirely; {camper_name} stands small in the foreground with {animal_companion}, looking up at the obstacle"
+    composition: "dramatic low angle from behind and below the camper, obstacle towering and filling most of the frame, camper small in lower-third"
+    caption: "Something massive sat in the road. Of course it did."
+
+  - n: 8
+    scene: "{camper_name}'s hands gripping the quarterstaff white-knuckled, magical emerald sparks fizzling weakly at the staff's tip, sweat on the brow, strain visible"
+    composition: "tight action mid-shot focused on hands, staff, and lower face — close enough to see the strain, side-lit"
+    caption: "Plan A was to push it. Plan A was wrong."
+
+  - n: 9
+    scene: "cinematic close-up of {camper_name}'s face, eyes closed, serene, kneeling — leaves falling slowly past on both sides, soft glowing emerald leylines reflected on the cheekbones, ambient forest details blurred at the edges of the wide frame"
+    composition: "WIDE CINEMATIC extreme close-up on the face, eyes closed centered in a horizontal letterbox frame, very shallow focus, intimate but cinematic — the kind of close-up a film would hold on"
+    caption: "Knelt down. The forest told the druid where to go."
+
+  - n: 10
+    scene: "{camper_name} walking calmly along the now-open path, the former obstacle dissolved or grown around with vines in the background, a casual confident gait"
+    composition: "wide tracking shot from the side, camper walking left-to-right, sense of motion, the dissolved obstacle small and harmless in the background"
+    caption: "Critical success on a listening check."
+
+  - n: 11
+    scene: "the tree-spirit's hands and {camper_name}'s hands meeting, a glowing {quality_symbol} resting in the cradle of palms between them, gold light spilling outward"
+    composition: "tight close-up on the meeting of hands and the glowing object, both faces partially in frame above, ceremonial intimacy"
+    caption: "Tree-spirit handed over a parting gift. Probably important."
+
+  - n: 12
+    scene: "{camper_name} back in their modern everyday clothes, in the same ordinary kitchen as panel 1 — same mug on the counter, same window — but now holding a single small sprig of green leaves, wearing a small carved-wood pendant at their throat, the kitchen extending out wide on either side, faint knowing smile"
+    composition: "WIDE CINEMATIC mirror of panel 1's framing but in a horizontal letterbox, eye-level, camper centered with the everyday environment extending on both sides — same kitchen, wider lens, balanced quiet composition"
+    caption: "Same Tuesday kitchen. Smaller world. Bigger druid."
+    # Mirror beat — return to everyday life. Chain off panel 01 (everyday
+    # clothes) instead of the default most-recent (panel 11, druid regalia)
+    # and override the "match previous costume" instruction so the model
+    # doesn't carry the bark-and-vines armor into the return-home scene.
+    reference_panel: "01"
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT druid regalia. They may carry one small souvenir from the quest as a callback: a single sprig of green leaves in hand and a small carved-wood pendant at the neck."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). Do NOT include fantasy armor, vines, antler circlet, or quarterstaff. Only the small sprig of leaves and the small carved-wood pendant as callbacks from the quest."
+
+cover:
+  pose_directive: "heroic full-body portrait in full druid regalia, dramatic action stance, quarterstaff held diagonally across body, dappled forest light from above and behind, leaves swirling, generous empty sky and canopy at the top of the frame for title text overlay"
+
+fallbacks:
+  1:  "A young person in modern everyday clothes in an ordinary contemporary kitchen, soft natural light"
+  2:  "A glowing magical stag of moss and starlight on a hillside at dusk, ethereal and serene"
+  3:  "Extreme close-up of a hand with vines and bark beginning to form, emerald magical sparks"
+  4:  "A druid in full regalia standing heroically on a moss-covered stone, low-angle, sun breaking through canopy"
+  5:  "Bird's-eye view of a vast forest with a tiny figure on a winding root-path far below"
+  6:  "Intimate two-shot of a druid and an old tree-spirit in conversation in a sunlit grove"
+  7:  "Low angle of a small druid figure looking up at a towering magical obstacle blocking a forest clearing"
+  8:  "Tight close-up of hands gripping a quarterstaff with sparks fizzling, sweat and strain visible"
+  9:  "Extreme close-up of a serene face with eyes closed, leaf falling past, emerald glow on cheekbones"
+  10: "Wide tracking shot of a druid walking calmly along an open path, dissolved obstacle small behind"
+  11: "Close-up on two pairs of hands meeting, a glowing magical object cradled between them"
+  12: "A young person back in modern clothes in the same kitchen, holding a small sprig of leaves, faint smile"

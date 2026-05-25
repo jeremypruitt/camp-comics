@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Finalize class — {{ camper_id }}{% endblock %}
+{% block content %}
+<h1>Finalize class</h1>
+<p class="subtitle"><code>{{ camper_id }}</code> — {{ tokens.camper_name }}</p>
+
+<p>Picked top 3: <strong>{{ tokens.class_top_3|join(' / ') }}</strong></p>
+
+<form method="POST">
+  <label>
+    Assigned class
+    <select name="class" id="class-select" onchange="updateTokenLabel()">
+      {% for c in classes %}
+        <option value="{{ c }}" {% if c == default_class %}selected{% endif %}>{{ c|capitalize }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>
+    <span id="class-token-prompt">Loading...</span>
+    <input type="text" name="class_token" id="class-token-input" required>
+  </label>
+
+  <p style="margin-top:1.5rem"><button type="submit" class="button">Save class assignment</button></p>
+</form>
+
+<script>
+  const PROMPTS = {{ class_prompts|tojson }};
+  function updateTokenLabel() {
+    const cls = document.getElementById('class-select').value;
+    const [key, prompt] = PROMPTS[cls];
+    document.getElementById('class-token-prompt').innerText = prompt + " (saved as " + key + ")";
+  }
+  updateTokenLabel();
+</script>
+{% endblock %}

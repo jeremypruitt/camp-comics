@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Generate — {{ camper_id }}{% endblock %}
+{% block content %}
+
+<h1>Generate panels — {{ tokens.camper_name }}</h1>
+<p class="subtitle">
+  <code>{{ camper_id }}</code> · {{ tokens.class|capitalize }} · {{ done_count }}/13 done
+</p>
+
+<div style="margin: 0.5rem 0 1.5rem">
+  <progress value="{{ done_count }}" max="13" style="width:60%; height:18px"></progress>
+</div>
+
+{# ------------ Status row of mini-pills, one per panel ------------ #}
+<div style="margin-bottom:1.5rem">
+  {% for row in summary %}
+    {% if row.status == 'ok' %}
+      <span class="pill done" title="approved">{{ row.id }}</span>
+    {% elif row.status == 'skipped' %}
+      <span class="pill" style="background:#a89568;color:#fffaf0" title="skipped (fallback at render time)">{{ row.id }}</span>
+    {% else %}
+      <span class="pill missing" title="pending">{{ row.id }}</span>
+    {% endif %}
+  {% endfor %}
+</div>
+
+{% if all_done %}
+
+  <h2>All panels done</h2>
+  <p>Render the comic to a print-ready PDF, or redo any panel before rendering.</p>
+
+  <form method="POST" action="{{ url_for('do_render', camper_id=camper_id) }}" style="margin: 1rem 0">
+    <button type="submit" class="button">Render comic PDF →</button>
+  </form>
+
+  <h3>Approved panels</h3>
+  <div class="thumb-grid">
+    {% for row in summary %}
+      <figure class="thumb">
+        {% if row.status == 'ok' %}
+          <img src="{{ url_for('output_file', camper_id=camper_id, filename=row.filename) }}" alt="">
+        {% else %}
+          <div class="thumb-placeholder">{{ row.status }}</div>
+        {% endif %}
+        <figcaption>
+          <strong>{{ row.id }}</strong>
+          <form method="POST" action="{{ url_for('do_redo', camper_id=camper_id, panel=row.id) }}" style="display:inline">
+            <button type="submit" class="button secondary" style="font-size:0.75rem; padding:0.15rem 0.4rem">Redo</button>
+          </form>
+        </figcaption>
+      </figure>
+    {% endfor %}
+  </div>
+
+{% elif error %}
+
+  <div class="error">
+    <strong>Generation failed:</strong> {{ error }}
+    <form method="POST" action="{{ url_for('do_reroll', camper_id=camper_id) }}" style="margin-top:0.5rem">
+      <button type="submit" class="button">Retry</button>
+    </form>
+  </div>
+
+{% else %}
+
+  <h2>{% if panel == 'cover' %}Cover{% else %}Panel {{ panel }}{% endif %}</h2>
+  <p style="font-style:italic; opacity:0.8">{{ caption }}</p>
+
+  <img class="qa-image" src="{{ pending_url }}?attempt={{ attempts }}" alt="">
+
+  <p style="font-size:0.9rem; opacity:0.7">
+    Attempt {{ attempts }}.
+    Pass criteria: <em>likeness · hands/weapons · tone-appropriate</em>.
+    Composition and exact pose are bonus, not pass/fail.
+  </p>
+
+  <form method="POST" action="{{ url_for('do_accept', camper_id=camper_id) }}" style="display:inline">
+    <button type="submit" class="button">✓ Accept</button>
+  </form>
+  <form method="POST" action="{{ url_for('do_reroll', camper_id=camper_id) }}" style="display:inline">
+    <button type="submit" class="button secondary">↻ Re-roll (same prompt)</button>
+  </form>
+  <form method="POST" action="{{ url_for('do_skip', camper_id=camper_id) }}" style="display:inline">
+    <button type="submit" class="button danger">Skip (use fallback)</button>
+  </form>
+
+  <details style="margin-top:1.5rem" {% if attempts >= 3 %}open{% endif %}>
+    <summary style="cursor:pointer; font-family:'Cinzel',serif; font-weight:600">Tweak the prompt and re-roll</summary>
+    <form method="POST" action="{{ url_for('do_reroll', camper_id=camper_id) }}" style="margin-top:0.5rem">
+      <textarea name="custom_prompt" style="min-height:9rem; font-family:ui-monospace,Menlo,monospace; font-size:0.85rem">{{ current_prompt }}</textarea>
+      <p><button type="submit" class="button">↻ Re-roll with this prompt</button></p>
+    </form>
+    {% if attempts >= 4 %}
+      <div class="raw-note">
+        4 attempts on this panel. If it's still not landing, either tweak the prompt above (often the scene description is asking for something the model can't render — try simplifying) or skip and let the fallback take over at render time.
+      </div>
+    {% endif %}
+  </details>
+
+{% endif %}
+
+<style>
+  .thumb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.6rem;
+  }
+  .thumb { margin: 0; }
+  .thumb img {
+    width: 100%; aspect-ratio: 4/3; object-fit: cover;
+    border: 1px solid #6b3a16; display: block;
+  }
+  .thumb-placeholder {
+    width: 100%; aspect-ratio: 4/3; background: #d4c098;
+    display: flex; align-items: center; justify-content: center;
+    font-style: italic; opacity: 0.6; border: 1px solid #6b3a16;
+  }
+  .thumb figcaption { font-size: 0.85rem; margin-top: 0.2rem; }
+</style>
+
+{% endblock %}
