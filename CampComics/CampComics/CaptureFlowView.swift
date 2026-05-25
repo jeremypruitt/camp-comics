@@ -10,8 +10,9 @@ enum SubmissionState {
 }
 
 struct CaptureFlowView: View {
-    let player: PlayerProfile
+    let player: PlayerRecord
     let template: ClassTemplate
+    let store: PlayerStore
     let generator: any PanelGenerator
 
     @State private var captureState: CaptureState
@@ -20,12 +21,27 @@ struct CaptureFlowView: View {
     @State private var capturing: PanelRequirement?
     @State private var submission: SubmissionState = .idle
 
-    init(player: PlayerProfile, template: ClassTemplate, generator: any PanelGenerator = FirebaseAIPanelGenerator()) {
+    init(player: PlayerRecord,
+         template: ClassTemplate,
+         store: PlayerStore,
+         generator: any PanelGenerator = FirebaseAIPanelGenerator()) {
         self.player = player
         self.template = template
+        self.store = store
         self.generator = generator
         let plan = CapturePlanner.plan(for: template)
-        _captureState = State(initialValue: CaptureState(plan: plan))
+        var state = CaptureState(plan: plan)
+        var hydrated: [UUID: UIImage] = [:]
+        for requirement in store.capturedRequirements(playerId: player.id) {
+            guard plan.contains(requirement),
+                  let data = store.loadPhoto(playerId: player.id, requirement: requirement),
+                  let image = UIImage(data: data) else { continue }
+            let photo = CapturedPhoto()
+            hydrated[photo.id] = image
+            state.record(photo, for: requirement)
+        }
+        _captureState = State(initialValue: state)
+        _photoStore = State(initialValue: hydrated)
     }
 
     var body: some View {
@@ -212,12 +228,16 @@ struct CaptureFlowView: View {
         let photo = CapturedPhoto()
         photoStore[photo.id] = image
         captureState.record(photo, for: requirement)
+        if let data = image.jpegData(compressionQuality: 0.9) {
+            try? store.savePhoto(playerId: player.id, requirement: requirement, jpegData: data)
+        }
     }
 
     private func discardPhoto(for requirement: PanelRequirement) {
         if let photo = captureState.capturedPhoto(for: requirement) {
             photoStore[photo.id] = nil
         }
+        try? store.deletePhoto(playerId: player.id, requirement: requirement)
     }
 }
 
@@ -413,10 +433,14 @@ private struct ZoomableImage: UIViewRepresentable {
 }
 
 #Preview {
-    NavigationStack {
+    let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("camp-comics-preview", isDirectory: true)
+    let store = try! PlayerStore(root: tmp)
+    let player = try! store.create(playerName: "Alex", characterName: "", classKey: "druid")
+    return NavigationStack {
         CaptureFlowView(
-            player: PlayerProfile(playerName: "Alex", characterName: "", classKey: "druid"),
-            template: BundledTemplates.druid
+            player: player,
+            template: BundledTemplates.druid,
+            store: store
         )
     }
 }

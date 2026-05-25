@@ -5,7 +5,7 @@ struct IntakeFormView: View {
     @State private var characterName: String = ""
     @State private var classKey: String = "druid"
 
-    let onSubmit: (PlayerProfile) -> Void
+    let onSubmit: (_ playerName: String, _ characterName: String, _ classKey: String) -> Void
 
     private var isReady: Bool {
         !playerName.trimmingCharacters(in: .whitespaces).isEmpty
@@ -31,9 +31,9 @@ struct IntakeFormView: View {
 
             Section {
                 Button {
-                    onSubmit(PlayerProfile(playerName: playerName.trimmingCharacters(in: .whitespaces),
-                                           characterName: characterName.trimmingCharacters(in: .whitespaces),
-                                           classKey: classKey))
+                    onSubmit(playerName.trimmingCharacters(in: .whitespaces),
+                             characterName.trimmingCharacters(in: .whitespaces),
+                             classKey)
                 } label: {
                     Text("Start capture")
                         .frame(maxWidth: .infinity)
@@ -74,6 +74,6 @@ private struct ClassPickerRow: View {
 
 #Preview {
     NavigationStack {
-        IntakeFormView(onSubmit: { _ in })
+        IntakeFormView(onSubmit: { _, _, _ in })
     }
 }

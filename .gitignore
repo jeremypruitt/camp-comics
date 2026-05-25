@@ -40,6 +40,7 @@ __pycache__/
 DerivedData/
 build/
 build-device/
+build-sim/
 
 # SwiftPM build artifacts (from `swift build` / `swift test`)
 .build/
