@@ -23,66 +23,92 @@ tokens:
 
 panels:
   - n: 1
+    emotion: neutral
+    position: front
     scene: "{camper_name} in modern everyday clothes, standing in an ordinary contemporary setting, looking thoughtful with a hint of mischief, soft natural daylight"
     composition: "medium shot, eye-level, sly knowing expression"
     caption: "Before the call, there was only the ordinary world."
 
   - n: 2
+    emotion: surprise
+    position: front
     scene: "{camper_name} sees an impossible thing — a small mechanical bird made of brass and starlight perched on {hometown_landmark}, watching them, then leaping into the air leaving a glowing trail of clockwork sparks"
     composition: "wide shot, camper small in frame, mechanical bird and trail dominant"
     caption: "But something cleverer was already watching, already inviting."
 
   - n: 3
+    emotion: neutral
+    position: front
     scene: "{camper_name} reaching toward the bird as dark leathers and hooded cloak materialize around them, half ordinary clothes and half trickster regalia, mid-transformation, silver and brass motes orbiting them"
     composition: "three-quarter shot, light agile motion into frame"
     caption: "The first leap was off the map. They took it."
 
   - n: 4
+    emotion: joy
+    position: front
     scene: "{camper_name} in full trickster regalia, heroic balanced stance crouched on a moonlit rooftop, hood up, brass lockpicks held in one hand, the mechanical bird perched on the other arm, city below, full transformation reveal"
     composition: "full body hero shot, slight low angle, cinematic moonlight"
     caption: "And the city below sleep-talked all its secrets."
 
   - n: 5
+    emotion: neutral
+    position: profile
     scene: "vast clever realm of moonlit rooftops and twisting alleys, distant clock towers glowing softly, hidden bridges between spires, {camper_name} crouched on a high ledge, small in frame, world dominant"
     composition: "extreme wide establishing shot, camper as small silhouette"
     caption: "The world was full of locked doors and unwatched windows."
 
   - n: 6
+    emotion: neutral
+    position: front
     scene: "{camper_name} meeting an old retired trickster mentor — a weathered figure with sharp eyes and ink-stained fingers — sliding a small mysterious key across a tavern table"
     composition: "medium shot, two-figure framing, warm lantern light"
     caption: "The mentor said: every problem has a door you haven't tried."
 
   - n: 7
+    emotion: fear
+    position: front
     scene: "{camper_name} faces the challenge — {fear_image} — an enormous obstacle representing {world_problem}, perhaps an impossibly tall locked gate or a vast wall, blocking a winding alley, the trickster small before it"
     composition: "wide shot, towering obstacle dominating background, trickster small in foreground"
     caption: "The front door was a trap. It always had been."
 
   - n: 8
+    emotion: fear
+    position: front
     scene: "{camper_name} attempting to pick the massive lock head-on — perched on the obstacle with lockpicks, magical wards sparking against them — and being thrown back, breathless, tools clattering"
     composition: "dynamic action shot, magical sparks repelling, recoil"
     caption: "The obvious cleverness was already a trick someone played."
 
   - n: 9
+    emotion: neutral
+    position: front
     scene: "{camper_name} crouched in a side alley having found a small overlooked side window or hidden crawlspace, illuminated by moonlight, slipping through with a knowing smile, the great locked gate ignored entirely behind them"
     composition: "intimate medium shot, clever discovery, side passage"
     caption: "The trickster looked sideways. The world made a way."
 
   - n: 10
+    emotion: joy
+    position: profile
     scene: "{camper_name} emerging calmly on the other side of the great obstacle, lockpicks tucked away, no triumph on their face — only quiet satisfaction, the obstacle still standing useless behind them"
     composition: "medium shot, sideways walking motion, sly serenity"
     caption: "Triumph wore the quiet shape of an unlocked window."
 
   - n: 11
+    emotion: neutral
+    position: front
     scene: "{camper_name} on a moonlit rooftop receiving a glowing {quality_symbol} from the old trickster mentor, both figures haloed in silver-blue light, ceremonial stillness, the mechanical bird perched between them"
     composition: "medium two-shot, ceremonial composition, vertical light"
     caption: "The best lock the trickster ever picked was their own assumptions."
 
   - n: 12
+    emotion: joy
+    position: front
     scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but with a small brass key on a thin cord around their neck, eyes bright with quiet mischief"
     composition: "medium shot, eye-level, mirror of panel 1, slight clever smile"
     caption: "Home was the same. Only they had changed."
 
 cover:
+  emotion: neutral
+  position: profile
   pose_directive: "heroic full-body portrait in full trickster regalia crouched balanced on a moonlit rooftop ledge, hood up, lockpicks in one hand, the small brass mechanical bird perched on the other arm, city sleeping below, generous empty sky at the top of the frame for title text overlay"
 
 fallbacks:

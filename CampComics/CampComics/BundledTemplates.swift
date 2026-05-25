@@ -1,30 +1,42 @@
 import CampComicsCore
+import Foundation
 
-// For the first vertical slice the app drives off a hand-built druid template.
-// The YAML loader exists in CampComicsCore; wiring it to Bundle.main and shipping
-// templates/*.yaml as bundle resources lands in a later slice.
+/// Loads class templates from the YAML files bundled under Templates/ in the
+/// app resources. Templates/ is a symlink at the project source level pointing
+/// at the repo-root templates/ folder so the iOS app and the legacy Python
+/// pipeline share one canonical source of truth.
 enum BundledTemplates {
-    static let druid = ClassTemplate(
-        classKey: "druid",
-        name: "Druid",
-        panels: [
-            PanelSpec(n: 1,  beat: "Everyday self",          emotion: .neutral,  position: .front),
-            PanelSpec(n: 2,  beat: "Stag of stars appears",  emotion: .surprise, position: .front),
-            PanelSpec(n: 3,  beat: "Hand transforming",      emotion: .neutral,  position: .front),
-            PanelSpec(n: 4,  beat: "Hero reveal",            emotion: .joy,      position: .front),
-            PanelSpec(n: 5,  beat: "Vast forest realm",      emotion: .neutral,  position: .profile),
-            PanelSpec(n: 6,  beat: "Tree spirit guide",      emotion: .neutral,  position: .front),
-            PanelSpec(n: 7,  beat: "Fear made manifest",     emotion: .fear,     position: .front),
-            PanelSpec(n: 8,  beat: "First attempt fails",    emotion: .fear,     position: .front),
-            PanelSpec(n: 9,  beat: "Kneel, listen",          emotion: .neutral,  position: .front),
-            PanelSpec(n: 10, beat: "Walking past obstacle",  emotion: .joy,      position: .profile),
-            PanelSpec(n: 11, beat: "Receiving the reward",   emotion: .neutral,  position: .front),
-            PanelSpec(n: 12, beat: "Return home",            emotion: .joy,      position: .front),
-        ],
-        cover: PanelRequirement(emotion: .neutral, position: .profile)
-    )
+    static let allClassKeys: [String] =
+        ["druid", "warrior", "wizard", "bard", "healer", "trickster"]
 
     static func template(forClassKey key: String) -> ClassTemplate {
-        druid
+        if let cached = cache[key] { return cached }
+
+        guard let url = Bundle.main.url(forResource: key,
+                                        withExtension: "yaml",
+                                        subdirectory: "Templates")
+                ?? Bundle.main.url(forResource: key, withExtension: "yaml")
+        else {
+            fatalError("Missing bundled YAML for class '\(key)'.")
+        }
+
+        let yaml: String
+        do {
+            yaml = try String(contentsOf: url, encoding: .utf8)
+        } catch {
+            fatalError("Failed reading \(url.lastPathComponent): \(error)")
+        }
+
+        let template: ClassTemplate
+        do {
+            template = try TemplateLoader.load(yaml: yaml)
+        } catch {
+            fatalError("Failed parsing \(url.lastPathComponent): \(error)")
+        }
+
+        cache[key] = template
+        return template
     }
+
+    private static var cache: [String: ClassTemplate] = [:]
 }

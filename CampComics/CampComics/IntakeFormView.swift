@@ -21,12 +21,15 @@ struct IntakeFormView: View {
             }
 
             Section("Class") {
-                ClassPickerRow(name: "Druid", subtitle: "Listening before acting", isSelected: classKey == "druid") {
-                    classKey = "druid"
+                ForEach(ClassChoice.all, id: \.key) { choice in
+                    ClassPickerRow(
+                        name: choice.name,
+                        subtitle: choice.subtitle,
+                        isSelected: classKey == choice.key
+                    ) {
+                        classKey = choice.key
+                    }
                 }
-                Text("More classes land in a later slice — only Druid is wired up for now.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
 
             Section {
@@ -45,6 +48,21 @@ struct IntakeFormView: View {
         }
         .navigationTitle("New player")
     }
+}
+
+private struct ClassChoice {
+    let key: String
+    let name: String
+    let subtitle: String
+
+    static let all: [ClassChoice] = [
+        .init(key: "druid",     name: "Druid",     subtitle: "Listening before acting"),
+        .init(key: "warrior",   name: "Warrior",   subtitle: "Courage in protecting others"),
+        .init(key: "wizard",    name: "Wizard",    subtitle: "Curiosity and the patience to learn"),
+        .init(key: "bard",      name: "Bard",      subtitle: "Telling your own story"),
+        .init(key: "healer",    name: "Healer",    subtitle: "Empathy as strength"),
+        .init(key: "trickster", name: "Trickster", subtitle: "The non-obvious path"),
+    ]
 }
 
 private struct ClassPickerRow: View {

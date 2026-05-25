@@ -500,7 +500,7 @@ private struct ZoomableImage: UIViewRepresentable {
     return NavigationStack {
         CaptureFlowView(
             player: player,
-            template: BundledTemplates.druid,
+            template: BundledTemplates.template(forClassKey: "druid"),
             store: store
         )
     }

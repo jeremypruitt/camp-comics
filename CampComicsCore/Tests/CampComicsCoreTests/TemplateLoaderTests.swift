@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import CampComicsCore
 
@@ -137,5 +138,90 @@ struct TemplateLoaderTests {
         #expect(throws: TemplateLoaderError.self) {
             try TemplateLoader.load(yaml: bogus)
         }
+    }
+
+    // MARK: - On-disk class YAMLs
+    //
+    // The five non-druid templates were retrofitted with (emotion, position) per
+    // panel + cover in this slice. These tests load the real files from
+    // templates/ at the repo root (resolved relative to this test source file)
+    // and verify the structural shape — count, cover, and the two profile-shot
+    // anchor panels (5 and 10) that drive the capture plan's "front + profile"
+    // photo set.
+
+    @Test func loadsWarriorYAML() throws {
+        try assertCanonicalArc(classKey: "warrior", displayName: "Warrior")
+    }
+
+    @Test func loadsWizardYAML() throws {
+        try assertCanonicalArc(classKey: "wizard", displayName: "Wizard")
+    }
+
+    @Test func loadsBardYAML() throws {
+        try assertCanonicalArc(classKey: "bard", displayName: "Bard")
+    }
+
+    @Test func loadsHealerYAML() throws {
+        try assertCanonicalArc(classKey: "healer", displayName: "Healer")
+    }
+
+    @Test func loadsTricksterYAML() throws {
+        try assertCanonicalArc(classKey: "trickster", displayName: "Trickster")
+    }
+
+    @Test func loadsDruidYAMLFromDisk() throws {
+        try assertCanonicalArc(classKey: "druid", displayName: "Druid")
+    }
+
+    /// All six class arcs share the same emotion/position structure (they're
+    /// clones of druid.yaml). A failure here means a YAML drifted off-pattern
+    /// or didn't get its emotion/position fields.
+    private func assertCanonicalArc(classKey: String, displayName: String) throws {
+        let yaml = try loadTemplateYAML(classKey: classKey)
+        let template = try TemplateLoader.load(yaml: yaml)
+
+        #expect(template.classKey == classKey)
+        #expect(template.name == displayName)
+        #expect(template.panels.count == 12)
+
+        let expected: [(Int, Emotion, Position)] = [
+            (1,  .neutral,  .front),
+            (2,  .surprise, .front),
+            (3,  .neutral,  .front),
+            (4,  .joy,      .front),
+            (5,  .neutral,  .profile),
+            (6,  .neutral,  .front),
+            (7,  .fear,     .front),
+            (8,  .fear,     .front),
+            (9,  .neutral,  .front),
+            (10, .joy,      .profile),
+            (11, .neutral,  .front),
+            (12, .joy,      .front),
+        ]
+        for (i, spec) in template.panels.enumerated() {
+            let (n, emotion, position) = expected[i]
+            #expect(spec.n == n)
+            #expect(spec.emotion == emotion)
+            #expect(spec.position == position)
+        }
+
+        #expect(template.cover.emotion == .neutral)
+        #expect(template.cover.position == .profile)
+    }
+
+    private func loadTemplateYAML(classKey: String,
+                                  file: StaticString = #filePath) throws -> String {
+        // #filePath points at this test source file. Walk up to the repo root
+        // and read templates/{class}.yaml from there.
+        let testFile = URL(fileURLWithPath: String(describing: file))
+        let repoRoot = testFile
+            .deletingLastPathComponent()  // CampComicsCoreTests/
+            .deletingLastPathComponent()  // Tests/
+            .deletingLastPathComponent()  // CampComicsCore/
+            .deletingLastPathComponent()  // repo root
+        let yamlURL = repoRoot
+            .appendingPathComponent("templates", isDirectory: true)
+            .appendingPathComponent("\(classKey).yaml")
+        return try String(contentsOf: yamlURL, encoding: .utf8)
     }
 }
