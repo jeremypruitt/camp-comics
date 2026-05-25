@@ -39,6 +39,7 @@ __pycache__/
 **/*.xcuserstate
 DerivedData/
 build/
+build-device/
 
 # SwiftPM build artifacts (from `swift build` / `swift test`)
 .build/
