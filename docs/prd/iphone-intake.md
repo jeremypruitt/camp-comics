@@ -15,7 +15,8 @@ Gemini API directly from the phone.
 - **Class** — one of six character classes (druid, warrior, wizard, bard, healer, trickster). Each class has a template.
 - **Template** — the class YAML file (`templates/{class}.yaml`) that declares the 12 panels of the story arc, their captions, scenes, and now their **photo requirements** (an `(emotion, position)` pair per panel — see Implementation Decisions §4).
 - **Capture plan** — the deduplicated set of `(emotion, position)` pairs the chosen class's template requires. The capture plan is *derived* from the template, not fixed.
-- **Cohort balance** — the act of redistributing players across classes after intake to keep no single class over-represented. Not done at the photo station; a separate later screen.
+- **Cohort** — a group of players who play together as a party. Replaces the older `cabin` (where they sleep) and the never-introduced `table` (D&D group) concepts with one abstract term. A player belongs to exactly one cohort.
+- **Cohort assignment** — distributing players across cohorts to give each cohort a healthy class mix. Classes are not changed during cohort assignment; if 30 of 60 players picked wizard, some cohorts will simply have multiple wizards. Done in a dedicated screen, not at intake.
 
 ## Problem Statement
 
@@ -75,7 +76,7 @@ experimentation; it is not part of the production path.
 ### Day 1 — Player intake at the photo station
 
 6. As a camp staffer, I want to tap "New player" on the main screen, so that I can start a fresh intake without seeing other players' data on the form.
-7. As a camp staffer, I want to enter the player's name, character name (optional), and cabin in a single short form, so that intake is fast.
+7. As a camp staffer, I want to enter the player's name and character name (optional) in a single short form, so that intake is fast. (Cohort is assigned later in a dedicated screen, not at intake.)
 8. As a camp staffer, I want to **pick the class at intake** (defaulting to a list of all six, no top-3 ranking), so that the capture plan is determined before the camera opens.
 9. As a camp staffer, I want to capture the player's three raw tokens (hometown landmark, fear, quality) and the class-specific token in a single intake form, so that translation can happen mid-week without a separate "finalize" step.
 10. As a camp staffer, I want the form to validate that all required fields are filled before advancing to capture, so that I don't lose a player because a field was missed.
@@ -90,39 +91,46 @@ experimentation; it is not part of the production path.
 16. As a camp staffer, I want each shot to use the front-facing OR rear camera (configurable, default rear), so that the player can see what they look like during the shot if I want them to.
 17. As a camp staffer, I want a single test generation (the existing QA gate, run against the neutral-front shot) before the player leaves the station, so that I catch unusable photo sets at the source.
 
-### Cohort balance (separate later screen)
+### Cohort assignment (separate later screen)
 
-18. As a camp staffer, I want a "balance cohorts" screen accessible from the dashboard that shows class distribution across all submitted players, so that I can see imbalance at a glance.
-19. As a camp staffer, I want the balance screen to let me reassign a player's class with a confirmation step, so that I can rebalance without leaving the app.
-20. As a camp staffer, I want the balance screen to warn me when a reassignment would leave a player missing photos the new class needs (because the new class's template requires `(emotion, position)` pairs that weren't in the original capture), so that I can decide whether to re-shoot or accept a substitution.
-21. As a camp staffer, I want to flag a player for re-shoot from the balance screen, so that I have a worklist of who needs to come back to the photo station.
+18. As a camp staffer, I want a "cohort assignment" screen accessible from the dashboard that shows all submitted players and lets me drag them into named cohorts, so that I can group players into parties.
+19. As a camp staffer, I want each cohort row to show its current class composition (e.g. "Cohort A: 2× wizard, 1× druid, 1× bard"), so that I can see imbalance at a glance and try to mix classes within each cohort.
+20. As a camp staffer, I want the screen to suggest a starting cohort assignment (round-robin by class, balancing cohort sizes), so that I don't start from a blank slate.
+21. As a camp staffer, I want the screen to *not* force class changes — if 30 players pick wizard, the screen just shows me that several cohorts will have multiple wizards, and accepts that as a fact rather than blocking save.
+22. As a camp staffer, I want to rename cohorts ("Party of the Sun", "Party of the Tides", etc.) so that the printed output and dashboard use meaningful labels.
+
+### Manual class change (rare, separate from cohort assignment)
+
+23. As a camp staffer, I want to change a player's assigned class from their detail screen (not from the cohort assignment screen), so that the rare case of a player changing their mind has a clear path.
+24. As a camp staffer, I want a class change to warn me if it requires capturing photos the player doesn't have (because the new class's template uses `(emotion, position)` pairs that weren't in the original capture), so that I know whether the player needs to come back to the photo station.
+25. As a camp staffer, I want a "needs re-shoot" worklist on the dashboard listing any players whose class change left their photo set incomplete, so that I don't lose track of who to pull aside.
 
 ### Mid-week — Token translation
 
-22. As a camp staffer, I want a "translate" action per player that shows each raw token alongside a textarea for the fantasy-fragment translation, so that the highest-skill step has a focused screen.
-23. As a camp staffer, I want a "suggest" button per token that asks Gemini for 3 candidate fantasy fragments based on the player's class palette, so that I have a starting point instead of a blank textarea.
-24. As a camp staffer, I want to edit any suggested fragment before accepting it, so that the player's own voice doesn't get washed out by AI suggestions.
+26. As a camp staffer, I want a "translate" action per player that shows each raw token alongside a textarea for the fantasy-fragment translation, so that the highest-skill step has a focused screen.
+27. As a camp staffer, I want a "suggest" button per token that asks Gemini for 3 candidate fantasy fragments based on the player's class palette, so that I have a starting point instead of a blank textarea.
+28. As a camp staffer, I want to edit any suggested fragment before accepting it, so that the player's own voice doesn't get washed out by AI suggestions.
 
 ### Days 3–4 evenings — Panel generation
 
-25. As a camp staffer, I want to tap "generate" on a player to enter a per-panel review loop, so that I can drive 13 generations (12 panels + cover) with minimum friction.
-26. As a camp staffer, I want each panel to auto-generate when I land on its screen (using the resolved reference photo(s) for that panel's `(emotion, position)` requirement), so that I'm not tapping "generate" twice per panel.
-27. As a camp staffer, I want accept / re-roll / re-prompt / skip buttons on each panel, so that I can match the existing 4-attempt re-roll budget.
-28. As a camp staffer, I want the per-panel screen to show the attempt count, so that I know when I'm approaching the budget cap.
-29. As a camp staffer, I want generation failures (network, API errors, content policy) to show a clear error with a retry button, so that I can recover without losing the player's place.
-30. As a camp staffer, I want a per-player progress indicator (X of 13 panels done), so that I know how far I am.
+29. As a camp staffer, I want to tap "generate" on a player to enter a per-panel review loop, so that I can drive 13 generations (12 panels + cover) with minimum friction.
+30. As a camp staffer, I want each panel to auto-generate when I land on its screen (using the resolved reference photo(s) for that panel's `(emotion, position)` requirement), so that I'm not tapping "generate" twice per panel.
+31. As a camp staffer, I want accept / re-roll / re-prompt / skip buttons on each panel, so that I can match the existing 4-attempt re-roll budget.
+32. As a camp staffer, I want the per-panel screen to show the attempt count, so that I know when I'm approaching the budget cap.
+33. As a camp staffer, I want generation failures (network, API errors, content policy) to show a clear error with a retry button, so that I can recover without losing the player's place.
+34. As a camp staffer, I want a per-player progress indicator (X of 13 panels done), so that I know how far I am.
 
 ### Day 5 — Render and print
 
-31. As a camp staffer, I want a "render PDF" action per player that produces a final comic.pdf on-device, so that I don't need a Mac running WeasyPrint.
-32. As a camp staffer, I want the rendered PDF to match the visual fidelity of the current WeasyPrint output (same layout, same typography, same captions), so that prior layout work is preserved.
-33. As a camp staffer, I want to share the rendered PDF via the iOS share sheet (AirDrop, email, save to Files, print via AirPrint), so that I can route it to whatever print path the camp uses.
+35. As a camp staffer, I want a "render PDF" action per player that produces a final comic.pdf on-device, so that I don't need a Mac running WeasyPrint.
+36. As a camp staffer, I want the rendered PDF to match the visual fidelity of the current WeasyPrint output (same layout, same typography, same captions), so that prior layout work is preserved.
+37. As a camp staffer, I want to share the rendered PDF via the iOS share sheet (AirDrop, email, save to Files, print via AirPrint), so that I can route it to whatever print path the camp uses.
 
 ### Cross-cutting
 
-34. As a camp staffer, I want all player data (photos, tokens, generated panels) to persist locally on the device, so that the app survives crashes and backgrounding.
-35. As a camp staffer, I want a way to export all player data (zip of player folders) to the iOS share sheet, so that I have a manual backup option.
-36. As a camp staffer, I want the app to work fully offline for *non-generation* tasks (form input, viewing already-generated panels, exporting), so that flaky internet doesn't block intake.
+38. As a camp staffer, I want all player data (photos, tokens, generated panels) to persist locally on the device, so that the app survives crashes and backgrounding.
+39. As a camp staffer, I want a way to export all player data (zip of player folders) to the iOS share sheet, so that I have a manual backup option.
+40. As a camp staffer, I want the app to work fully offline for *non-generation* tasks (form input, viewing already-generated panels, exporting), so that flaky internet doesn't block intake.
 
 ## Implementation Decisions
 
@@ -156,7 +164,7 @@ Modules are organized in two groups: the new iOS app, and the pipeline-contract 
 
 1. **CaptureStateMachine** (deep, pure Swift, no AVFoundation) — drives the guided capture flow. Initialized from a capture plan (a list of `(emotion, position)` shots in display order). States are "awaiting shot N", events are `shotAccepted`, `shotRetake`, `flowAbandoned`. Testable in isolation.
 2. **CameraAdapter** (AVFoundation wrapper) — capture session, photo output, orientation. Driven by the state machine.
-3. **IntakeFormView** (shallow) — SwiftUI form: name, character name, cabin, **class pick**, three raw tokens, class-specific token. Validates required fields. Produces an `IntakeRecord` that feeds the capture plan.
+3. **IntakeFormView** (shallow) — SwiftUI form: name, character name (optional), **class pick**, three raw tokens, class-specific token. Validates required fields. Produces an `IntakeRecord` that feeds the capture plan. (Cohort is *not* on this form — assigned later via the dedicated screen.)
 4. **CapturePlanner** (deep, pure) — `plan(class: ClassTemplate) -> [CaptureShot]`. Computes the deduplicated, display-ordered list of shots from a class template. Testable.
 5. **PlayerStore** (deep) — single source of truth for all player data on-device. Encapsulates persistence (file-system layout: `Documents/players/player_NNN/` with `tokens.json` + `photos/{emotion}_{position}.jpg` + `panels/panel_NN.png` + `comic.pdf`). Interface: `create(intake) -> PlayerID`, `load(id)`, `update(id, mutation)`, `delete(id)`, `list()`.
 6. **PhotoReferenceResolver** (deep, pure) — `resolve(panel, player) -> Photo`. Direct lookup, no fallback. Raises if photo is missing (only happens after a class reassignment that the balance screen didn't reconcile).
@@ -165,15 +173,16 @@ Modules are organized in two groups: the new iOS app, and the pipeline-contract 
 9. **TranslationClient** (deep) — wraps a text-only Gemini call to suggest 3 fantasy fragments per raw token. Mirrors `suggest_translations()` in legacy `intake_server.py`.
 10. **PanelReviewView** (shallow) — per-panel screen: shows pending generation, accept / re-roll / re-prompt / skip buttons, attempt count, error states.
 11. **PDFRenderer** (deep) — takes a complete player bundle (12 panels + cover + captions + cover metadata) and produces a `comic.pdf`. Implementation: a `WKWebView` loads an HTML template (ported from `layout/comic.html.j2`), then `viewPrintFormatter` + `UIPrintPageRenderer` → PDFData. Preserves the existing `comic.css` and Jinja-like template structure (Swift will use a minimal mustache-style substitution).
-12. **CohortBalanceView** (shallow) — class-distribution histogram across all submitted players; per-player reassign action; "needs re-shoot" worklist when reassignment makes the player's photo set incomplete.
-13. **SettingsView** (shallow) — Firebase config status, public-Gemini API key entry, generation-path toggle, app version, export/import.
-14. **AppCoordinator** (shallow) — navigation between Dashboard → Intake → Capture → QA → (Dashboard) → Balance → Translate → Generate → Render. Each screen pushes/pops; no deep linking for v1.
+12. **CohortAssignmentView** (shallow) — list of players + named cohorts; drag/drop players into cohorts; round-robin-by-class auto-suggest button; per-cohort class-composition summary. Does **not** change classes. Renaming cohorts ("Party of the Sun") supported.
+13. **ClassChangeAction** (in `PlayerStore`, exposed via the player-detail screen) — rare manual change-of-class; warns if the new class's template needs photos the player didn't capture, and adds the player to the "needs re-shoot" worklist if so. Not in the cohort assignment flow.
+14. **SettingsView** (shallow) — Firebase config status, public-Gemini API key entry, generation-path toggle, app version, export/import.
+15. **AppCoordinator** (shallow) — navigation between Dashboard → Intake → Capture → QA → (Dashboard) → CohortAssignment → Translate → Generate → Render. Each screen pushes/pops; no deep linking for v1.
 
 **Pipeline contract changes (apply to both iOS app and `_legacy/` Python):**
 
 - **Class templates gain photo-requirement fields.** Each panel in `templates/{class}.yaml` gets `emotion: <neutral|joy|fear|surprise>` and `position: <front|3-4-profile>`. The cover entry gets the same.
 - **On-disk player layout** (in the iOS app): `Documents/players/player_NNN/photos/{emotion}_{position}.jpg`. Filenames encode the photo metadata; no separate index file needed.
-- **`tokens.json`** drops the `class_top_3` field (class is picked directly at intake) and the "raw + translated" split stays. Adds a `photos` field listing captured `(emotion, position)` pairs for debug/recovery.
+- **`tokens.json`** drops the `class_top_3` field (class is picked directly at intake) and the `cabin` field (replaced by `cohort`, assigned later). The "raw + translated" split stays. Adds a `photos` field listing captured `(emotion, position)` pairs for debug/recovery and a `cohort` field (string label, nullable until cohort assignment runs).
 - **Finalize step disappears** as a discrete screen — it's collapsed into intake. The class-specific token (druid's `animal_companion`, etc.) is collected in the same form as the universal raw tokens.
 - **`generate.py` reference order changes** (in the legacy sandbox too, for parity): `[resolved_photo_for_panel, class_hero_card, prior_panel_continuity]`. The primary photo is no longer hard-coded.
 - **The QA gate runs against the `neutral_front.jpg` shot only.** That shot is always in the capture plan because the everyday-self panels (1 and 12) need it.
@@ -226,7 +235,7 @@ clear inputs and outputs are the highest-value test targets.
 
 ## Open Risks
 
-- **Post-rebalance photo mismatch.** If cohort balance reassigns a player to a class whose template requires `(emotion, position)` pairs the player didn't capture, panels using those pairs will fail. v1 surfaces this in the balance screen (story 20) and the per-panel review (story 29) — the operator decides whether to re-shoot or accept the failure. Empirically, the overlap across class templates is likely high (most classes use `(neutral, front)` heavily), so this should be rare. If it's not rare in practice, future v2 work: have the balance screen restrict reassignment options to classes the player's photo set covers, or have intake capture the union across all 6 classes (~6–7 photos for everyone, no rebalance risk).
+- **Post-class-change photo mismatch.** Cohort assignment never changes a player's class, so the photo set always matches the player's template by construction. The only path that breaks this invariant is the rare manual class-change action (story 23), which surfaces a "needs re-shoot" warning (stories 24–25) and adds the player to a worklist. Empirically expected to be rare. If frequent in practice, future v2: have intake capture the union across all 6 classes (~6–7 photos for everyone, eliminates the warning).
 - **PDF visual fidelity via WKWebView.** WKWebView's print output may diverge from WeasyPrint in subtle ways (font hinting, page breaks, image scaling). Worth a 30-minute spike *before* committing to the full implementation: render one existing player's manifest into a PDF via WKWebView and compare side-by-side with the WeasyPrint output. If divergence is bad, fallback options: Core Graphics layout code (more work, total control) or a thin server-side render endpoint (reintroduces the Mac for one job).
 - **Sideload UX with the 7-day re-sign cycle.** A friend trying the app will lose access after a week. Acceptable for early try-out; will hurt at the actual camp. The fix is paying for an Apple Developer Program ($99/yr) and using TestFlight. Deferred but should be on the radar.
 
