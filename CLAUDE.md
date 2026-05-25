@@ -1,29 +1,39 @@
 # Camp Comics — Claude working notes
 
-Personalized 12-panel D&D-style comic generator for ~60 summer camp participants
-per week. Vertex AI / Gemini 2.5 Flash Image for art, Flask intake UI, WeasyPrint
-for PDF, local-print delivery on Day 5.
+Personalized 12-panel D&D-style comic generator for ~60 summer camp **players**
+per week. Vertex AI / Gemini 2.5 Flash Image for art, Flask intake UI (legacy),
+WeasyPrint for PDF, local-print delivery on Day 5.
 
-**Read first:** `spec/design.md` (canonical design) and `README.md` (how to run).
-This file is just Claude's working context.
+**Read first:** `spec/design.md` (canonical design), `README.md` (how to run),
+and `docs/prd/iphone-intake.md` (the in-progress migration to a native iPhone
+app that replaces the Python pipeline). This file is just Claude's working context.
+
+## Terminology
+
+Use **player** (not "camper") in all new code, docs, and conversation. The legacy
+Python code in `scripts/` still uses "camper" in variables and on-disk paths
+(`intake/camper_NNN/`, `outputs/camper_NNN/`, `--camper` CLI flag); that code is
+moving to `_legacy/` and doesn't need to be sweep-renamed. New iOS code uses
+`players/player_NNN/`.
 
 ## Repo orientation
 
 | Path | What lives there |
 |---|---|
 | `spec/design.md` | Source of truth for product decisions. Do not contradict without flagging. |
-| `templates/{class}.yaml` × 6 | Per-class panel scripts (druid, warrior, wizard, bard, healer, trickster). |
+| `docs/prd/iphone-intake.md` | The active migration plan: iPhone (SwiftUI) app replaces the Python pipeline. |
+| `templates/{class}.yaml` × 6 | Per-class panel scripts (druid, warrior, wizard, bard, healer, trickster). Will gain `emotion:` + `position:` fields per panel as part of the iPhone migration. |
 | `templates/refs/{class}_hero.png` | Pre-generated class hero-card style anchors. |
-| `scripts/intake_server.py` | Flask app — intake, QA gate, finalize, translate, generate, render. Stages 1–3 all drive through here. |
-| `scripts/generate.py` | Vertex AI panel/cover generation. Imported by intake_server. |
-| `scripts/render.py` | Jinja2 + WeasyPrint → comic.pdf. |
+| `scripts/intake_server.py` | Legacy Flask app — intake, QA gate, finalize, translate, generate, render. Stages 1–3 all drive through here today. |
+| `scripts/generate.py` | Legacy Vertex AI panel/cover generation. Imported by intake_server. |
+| `scripts/render.py` | Legacy Jinja2 + WeasyPrint → comic.pdf. |
 | `scripts/make_hero_card.py` | Pre-camp utility to (re)build hero refs. |
-| `intake_ui/templates/` | Flask Jinja templates for the web UI. |
-| `layout/comic.html.j2` + `comic.css` | Print layout (6.625×10.25", D&D book aesthetic). |
-| `intake/camper_NNN/` | Per-camper photo + tokens.json + QA artifacts (auto-assigned IDs). |
-| `outputs/camper_NNN/` | Generated panels, manifest.json, comic.pdf. |
+| `intake_ui/templates/` | Legacy Flask Jinja templates for the web UI. |
+| `layout/comic.html.j2` + `comic.css` | Print layout (6.625×10.25", D&D book aesthetic). Will be ported (mostly as-is) to the iOS app's `WKWebView` PDF renderer. |
+| `intake/camper_NNN/` | Per-player photo + tokens.json + QA artifacts (legacy layout — IDs and dir names keep "camper" prefix). |
+| `outputs/camper_NNN/` | Generated panels, manifest.json, comic.pdf (legacy layout). |
 
-## Running it
+## Running it (legacy Python sandbox)
 
 Always activate the venv first: `source .venv/bin/activate`.
 
@@ -42,14 +52,13 @@ Required env: `GCP_PROJECT`, plus `gcloud auth application-default login`.
 
 ## Things that bite
 
-- **Not a git repo.** No version history → no recovery if a file is clobbered. Initialize git before any risky change.
 - **macOS Python is PEP 668**: must use the `.venv`, don't `pip install` globally.
 - **WeasyPrint native deps**: `brew install pango` before `pip install -r requirements-render.txt`.
 - **Quota**: `gemini-2.5-flash-image` per-minute quota is per-region and non-adjustable. Use `GCP_LOCATIONS` rotation if running a full cohort.
 - **Caption ≤12 words**: hard cap. CSS layout breaks if exceeded.
 - **Panel 12 mirrors Panel 1**: the YAML `reference_panel` override on panel 12 points back at panel 1 so the continuity anchor doesn't drag druid regalia into the "return home" beat. Don't remove without thought.
 
-## State convention
+## State convention (legacy)
 
 - `intake/camper_NNN/qa_passed` (zero-byte marker) = photo QA gate cleared.
 - `outputs/camper_NNN/_pending_{panel}.png` = unaccepted generation; gets renamed to `panel_NN.png` on accept.
@@ -62,3 +71,4 @@ Required env: `GCP_PROJECT`, plus `gcloud auth application-default login`.
 - Edit existing files; this repo is small enough that adding new modules usually means I'm over-engineering.
 - No comments unless a constraint is non-obvious (e.g. the panel-12 reference override above earns a comment; ordinary control flow does not).
 - Match the existing terse-but-pointed docstring style.
+- This is a git repo as of `81ed9bc` (initialized 2026-05-24). Commit small, named, often.
