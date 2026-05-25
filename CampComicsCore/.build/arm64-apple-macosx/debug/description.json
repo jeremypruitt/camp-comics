@@ -1,0 +1,640 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.xctest/Contents/MacOS/CampComicsCorePackageTests",
+      "packagePath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore",
+      "productName" : "CampComicsCorePackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.CampComicsCore-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/sources",
+      "importPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Sources/CampComicsCore/CapturePlanner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Sources/CampComicsCore/CaptureStateMachine.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CampComicsCore",
+      "moduleOutputPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules/CampComicsCore.swiftmodule",
+      "objects" : [
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CapturePlanner.swift.o",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CaptureStateMachine.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/include/CampComicsCore-Swift.h",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "campcomicscore"
+      ],
+      "outputFileMapPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CapturePlanner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CaptureStateMachine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules/CampComicsCore.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Sources/CampComicsCore/CapturePlanner.swift",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Sources/CampComicsCore/CaptureStateMachine.swift"
+      ],
+      "tempsPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CampComicsCorePackageTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/sources",
+      "importPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules/CampComicsCoreTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CampComicsCorePackageTests",
+      "moduleOutputPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules/CampComicsCorePackageTests.swiftmodule",
+      "objects" : [
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/include/CampComicsCorePackageTests-Swift.h",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "campcomicscore"
+      ],
+      "outputFileMapPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules/CampComicsCorePackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.CampComicsCoreTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/sources",
+      "importPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Tests/CampComicsCoreTests/CapturePlannerTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Tests/CampComicsCoreTests/CaptureStateMachineTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules/CampComicsCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "CampComicsCoreTests",
+      "moduleOutputPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules/CampComicsCoreTests.swiftmodule",
+      "objects" : [
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CapturePlannerTests.swift.o",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CaptureStateMachineTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "campcomicscore"
+      ],
+      "outputFileMapPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CapturePlannerTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CaptureStateMachineTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules/CampComicsCoreTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Tests/CampComicsCoreTests/CapturePlannerTests.swift",
+        "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Tests/CampComicsCoreTests/CaptureStateMachineTests.swift"
+      ],
+      "tempsPath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "CampComicsCore" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CampComicsCore",
+      "-package-name",
+      "campcomicscore",
+      "-c",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Sources/CampComicsCore/CapturePlanner.swift",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Sources/CampComicsCore/CaptureStateMachine.swift",
+      "-I",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/include/CampComicsCore-Swift.h",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "campcomicscore",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CampComicsCorePackageTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CampComicsCorePackageTests",
+      "-package-name",
+      "campcomicscore",
+      "-c",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.derived/runner.swift",
+      "-I",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/include/CampComicsCorePackageTests-Swift.h",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "campcomicscore",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "CampComicsCoreTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "CampComicsCoreTests",
+      "-package-name",
+      "campcomicscore",
+      "-c",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Tests/CampComicsCoreTests/CapturePlannerTests.swift",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Tests/CampComicsCoreTests/CaptureStateMachineTests.swift",
+      "-I",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "campcomicscore",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "CampComicsCore" : [
+
+    ],
+    "CampComicsCorePackageTests" : [
+      "CampComicsCoreTests",
+      "CampComicsCore"
+    ],
+    "CampComicsCoreTests" : [
+      "CampComicsCore"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Sources/CampComicsCore/CapturePlanner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Sources/CampComicsCore/CaptureStateMachine.swift"
+        }
+      ],
+      "outputFilePath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/sources"
+    },
+    "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/sources"
+    },
+    "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CapturePlanner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CaptureStateMachine.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CapturePlannerTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CaptureStateMachineTests.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.product/Objects.LinkFileList"
+    },
+    "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Tests/CampComicsCoreTests/CapturePlannerTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Tests/CampComicsCoreTests/CaptureStateMachineTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/sources"
+    },
+    "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

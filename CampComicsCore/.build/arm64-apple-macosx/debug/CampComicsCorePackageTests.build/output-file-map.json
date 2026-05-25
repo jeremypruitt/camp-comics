@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/primary.swiftdeps"
+  },
+  "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.derived/runner.swift": {
+    "dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/runner.d",
+    "object": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/runner.swift.o",
+    "swiftmodule": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/runner.swiftdeps",
+    "diagnostics": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCorePackageTests.build/runner.dia"
+  }
+}

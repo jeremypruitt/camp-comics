@@ -1,0 +1,19 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/primary.swiftdeps"
+  },
+  "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Sources/CampComicsCore/CapturePlanner.swift": {
+    "dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CapturePlanner.d",
+    "object": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CapturePlanner.swift.o",
+    "swiftmodule": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CapturePlanner~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CapturePlanner.swiftdeps",
+    "diagnostics": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CapturePlanner.dia"
+  },
+  "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Sources/CampComicsCore/CaptureStateMachine.swift": {
+    "dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CaptureStateMachine.d",
+    "object": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CaptureStateMachine.swift.o",
+    "swiftmodule": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CaptureStateMachine~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CaptureStateMachine.swiftdeps",
+    "diagnostics": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/CaptureStateMachine.dia"
+  }
+}

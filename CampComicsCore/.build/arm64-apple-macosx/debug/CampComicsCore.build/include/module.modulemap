@@ -1,0 +1,3 @@
+module CampComicsCore {
+    header "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCore.build/include/CampComicsCore-Swift.h"
+}

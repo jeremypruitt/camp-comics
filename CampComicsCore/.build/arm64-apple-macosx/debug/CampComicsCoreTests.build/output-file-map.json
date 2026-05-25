@@ -1,0 +1,19 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/primary.swiftdeps"
+  },
+  "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Tests/CampComicsCoreTests/CapturePlannerTests.swift": {
+    "dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CapturePlannerTests.d",
+    "object": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CapturePlannerTests.swift.o",
+    "swiftmodule": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CapturePlannerTests~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CapturePlannerTests.swiftdeps",
+    "diagnostics": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CapturePlannerTests.dia"
+  },
+  "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/Tests/CampComicsCoreTests/CaptureStateMachineTests.swift": {
+    "dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CaptureStateMachineTests.d",
+    "object": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CaptureStateMachineTests.swift.o",
+    "swiftmodule": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CaptureStateMachineTests~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CaptureStateMachineTests.swiftdeps",
+    "diagnostics": "/Volumes/MacMiniDock/dev/camp-comics/CampComicsCore/.build/arm64-apple-macosx/debug/CampComicsCoreTests.build/CaptureStateMachineTests.dia"
+  }
+}
