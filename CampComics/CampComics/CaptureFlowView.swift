@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import CampComicsCore
 
 struct CaptureFlowView: View {
@@ -6,7 +7,9 @@ struct CaptureFlowView: View {
     let template: ClassTemplate
 
     @State private var captureState: CaptureState
+    @State private var photoStore: [UUID: UIImage] = [:]
     @State private var reviewing: PanelRequirement?
+    @State private var capturing: PanelRequirement?
     @State private var submitted: Bool = false
 
     init(player: PlayerProfile, template: ClassTemplate) {
@@ -25,6 +28,7 @@ struct CaptureFlowView: View {
                         ChecklistRow(
                             requirement: requirement,
                             isCaptured: captureState.isCaptured(requirement),
+                            thumbnail: image(for: requirement),
                             onTap: { handleTap(requirement) }
                         )
                     }
@@ -39,12 +43,24 @@ struct CaptureFlowView: View {
         .sheet(item: $reviewing) { requirement in
             ReviewSheet(
                 requirement: requirement,
+                image: image(for: requirement),
                 onRetake: {
+                    discardPhoto(for: requirement)
                     captureState.retake(requirement)
                     reviewing = nil
+                    capturing = requirement
                 },
                 onConfirm: { reviewing = nil }
             )
+        }
+        .fullScreenCover(item: $capturing) { requirement in
+            ImagePicker(sourceType: ImagePicker.preferredSourceType) { image in
+                if let image {
+                    record(image, for: requirement)
+                }
+                capturing = nil
+            }
+            .ignoresSafeArea()
         }
         .alert("Submitted (mock)", isPresented: $submitted) {
             Button("OK") { submitted = false }
@@ -95,9 +111,24 @@ struct CaptureFlowView: View {
         if captureState.isCaptured(requirement) {
             reviewing = requirement
         } else {
-            // No camera yet — record a mock CapturedPhoto so the state machine
-            // and UI bindings can be exercised end-to-end.
-            captureState.record(CapturedPhoto(), for: requirement)
+            capturing = requirement
+        }
+    }
+
+    private func image(for requirement: PanelRequirement) -> UIImage? {
+        guard let photo = captureState.capturedPhoto(for: requirement) else { return nil }
+        return photoStore[photo.id]
+    }
+
+    private func record(_ image: UIImage, for requirement: PanelRequirement) {
+        let photo = CapturedPhoto()
+        photoStore[photo.id] = image
+        captureState.record(photo, for: requirement)
+    }
+
+    private func discardPhoto(for requirement: PanelRequirement) {
+        if let photo = captureState.capturedPhoto(for: requirement) {
+            photoStore[photo.id] = nil
         }
     }
 }
@@ -105,6 +136,7 @@ struct CaptureFlowView: View {
 private struct ChecklistRow: View {
     let requirement: PanelRequirement
     let isCaptured: Bool
+    let thumbnail: UIImage?
     let onTap: () -> Void
 
     var body: some View {
@@ -114,7 +146,13 @@ private struct ChecklistRow: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(isCaptured ? Color.accentColor.opacity(0.18) : Color(.tertiarySystemFill))
-                    if isCaptured {
+                    if let thumbnail {
+                        Image(uiImage: thumbnail)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 56, height: 56)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    } else if isCaptured {
                         Image(systemName: "checkmark")
                             .font(.title2.weight(.bold))
                             .foregroundStyle(.tint)
@@ -164,20 +202,25 @@ private struct ProgressSegments: View {
 
 private struct ReviewSheet: View {
     let requirement: PanelRequirement
+    let image: UIImage?
     let onRetake: () -> Void
     let onConfirm: () -> Void
 
     var body: some View {
         let copy = PromptCopyBook.copy(for: requirement)
         VStack(spacing: 20) {
-            Text(copy.emoji).font(.system(size: 96))
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 320)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            } else {
+                Text(copy.emoji).font(.system(size: 96))
+            }
             VStack(spacing: 6) {
                 Text(copy.title).font(.title2.weight(.semibold))
                 Text(copy.subtitle).font(.subheadline).foregroundStyle(.secondary)
-                Text("Mock capture — actual photo lives in a later slice.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, 4)
             }
             .multilineTextAlignment(.center)
             HStack(spacing: 12) {
@@ -190,7 +233,7 @@ private struct ReviewSheet: View {
             }
         }
         .padding()
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
     }
 }
 

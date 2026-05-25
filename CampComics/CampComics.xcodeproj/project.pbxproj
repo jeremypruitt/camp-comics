@@ -416,6 +416,8 @@
 				DEVELOPMENT_TEAM = FD7EESNS6U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camp Comics needs the camera so staff can capture player photos for their personalized comic.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Camp Comics uses the photo library as a fallback when the camera isn't available (e.g. simulator).";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -448,6 +450,8 @@
 				DEVELOPMENT_TEAM = FD7EESNS6U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camp Comics needs the camera so staff can capture player photos for their personalized comic.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Camp Comics uses the photo library as a fallback when the camera isn't available (e.g. simulator).";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
