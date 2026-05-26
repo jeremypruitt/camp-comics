@@ -33,7 +33,7 @@ struct PanelReviewView: View {
         self.store = store
         self.generator = generator
         _currentN = State(initialValue: startAt)
-        _review = State(initialValue: Self.hydrate(playerId: player.id, n: startAt, store: store))
+        _review = State(initialValue: PanelReviewState.hydrate(playerId: player.id, n: startAt, store: store))
     }
 
     var body: some View {
@@ -334,6 +334,11 @@ struct PanelReviewView: View {
             review.markMissingPhoto()
             return
         }
+        // Re-generate from a skipped panel: drop the marker before firing so
+        // hydrate doesn't snap back to `.skipped` after navigation (issue #12).
+        if case .skipped = review.phase {
+            try? store.unmarkSkipped(playerId: player.id, n: currentN)
+        }
         let plan = PhotoReferenceResolver.plan(forPanel: currentN,
                                                spec: spec,
                                                playerId: player.id,
@@ -443,7 +448,7 @@ struct PanelReviewView: View {
     }
 
     private func reloadCurrentPanel() {
-        review = Self.hydrate(playerId: player.id, n: currentN, store: store)
+        review = PanelReviewState.hydrate(playerId: player.id, n: currentN, store: store)
         candidates = store.listCandidates(playerId: player.id, n: currentN)
         selectedCandidate = candidates.last
         lastError = nil
@@ -529,16 +534,4 @@ struct PanelReviewView: View {
         }
     }
 
-    private static func hydrate(playerId: String, n: Int, store: PlayerStore) -> PanelReviewState {
-        if store.hasPanel(playerId: playerId, n: n) {
-            return PanelReviewState(phase: .accepted)
-        }
-        if store.isSkipped(playerId: playerId, n: n) {
-            return PanelReviewState(phase: .skipped)
-        }
-        if !store.listCandidates(playerId: playerId, n: n).isEmpty {
-            return PanelReviewState(phase: .reviewing)
-        }
-        return PanelReviewState(phase: .unstarted)
-    }
 }

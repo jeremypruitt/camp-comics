@@ -71,4 +71,22 @@ public struct PanelReviewState: Equatable, Sendable {
     public mutating func markMissingPhoto() {
         phase = .missingPhoto
     }
+
+    /// Disk-derived initial state for a panel slot, used on view entry and
+    /// after navigation. Priority: `hasPanel` (accepted winner exists) →
+    /// candidates present (live review session, even if a stale `_skipped`
+    /// marker lingers from a prior cycle — issue #12) → `isSkipped` marker
+    /// alone → `.unstarted`.
+    public static func hydrate(playerId: String, n: Int, store: PlayerStore) -> PanelReviewState {
+        if store.hasPanel(playerId: playerId, n: n) {
+            return PanelReviewState(phase: .accepted)
+        }
+        if !store.listCandidates(playerId: playerId, n: n).isEmpty {
+            return PanelReviewState(phase: .reviewing)
+        }
+        if store.isSkipped(playerId: playerId, n: n) {
+            return PanelReviewState(phase: .skipped)
+        }
+        return PanelReviewState(phase: .unstarted)
+    }
 }
