@@ -69,13 +69,16 @@ struct PlayerDetailView: View {
     @ViewBuilder
     private func panelPreview(_ image: UIImage) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Panel 1").font(.headline)
+            HStack {
+                Text("Panel 1").font(.headline)
+                Spacer()
+                Text("Pinch to zoom").font(.caption).foregroundStyle(.secondary)
+            }
             if let beat = template.panels.first?.beat, !beat.isEmpty {
                 Text(beat).font(.footnote).foregroundStyle(.secondary).italic()
             }
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
+            ZoomableImage(image: image)
+                .aspectRatio(image.size, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
     }

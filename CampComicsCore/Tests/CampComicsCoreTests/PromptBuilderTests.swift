@@ -80,6 +80,49 @@ struct PromptBuilderTests {
         #expect(prompt == expected)
     }
 
+    @Test func costumeOverrideReplacesClassCostume() {
+        // Panel-1 and panel-12 carry costume_override to peel the class
+        // fantasy costume off pre-quest / return-home beats. Without this
+        // the Costume: line + hero ref would override the scene's "everyday
+        // clothes" cue (legacy generate.py:131).
+        let spec = PanelSpec(
+            n: 1,
+            beat: "Tuesday.",
+            scene: "Alex in a kitchen",
+            composition: "wide",
+            costumeOverride: "ordinary modern everyday clothes from the photo",
+            emotion: .neutral,
+            position: .front
+        )
+        let prompt = PromptBuilder.buildPanelPrompt(
+            spec: spec, template: Self.druidTemplate, tokens: [:]
+        )
+        #expect(prompt.contains("Costume: ordinary modern everyday clothes from the photo."))
+        #expect(!prompt.contains("Costume: weathered leather and bark armor"))
+    }
+
+    @Test func styleOverrideAppendsAfterStyleSuffix() {
+        // style_override piggy-backs after STYLE_SUFFIX so recency lets it
+        // win over the "match second reference" instruction baked into the
+        // suffix (legacy generate.py:133-134). Panel 1 uses this to point
+        // the model at the FIRST reference photo instead of the hero card.
+        let spec = PanelSpec(
+            n: 1,
+            beat: "Tuesday.",
+            scene: "Alex in a kitchen",
+            composition: "wide",
+            styleOverride: "OVERRIDE: match the FIRST reference, not the second.",
+            emotion: .neutral,
+            position: .front
+        )
+        let prompt = PromptBuilder.buildPanelPrompt(
+            spec: spec, template: Self.druidTemplate, tokens: [:]
+        )
+        let expectedStyleBlock =
+            PromptBuilder.styleSuffix + " OVERRIDE: match the FIRST reference, not the second."
+        #expect(prompt.contains("Style: \(expectedStyleBlock)"))
+    }
+
     private static let druidTemplate = ClassTemplate(
         classKey: "druid",
         name: "Druid",

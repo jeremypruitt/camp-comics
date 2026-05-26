@@ -29,6 +29,8 @@ public enum TemplateLoader {
                 beat: panel.caption ?? panel.scene ?? "",
                 scene: panel.scene ?? "",
                 composition: panel.composition ?? "",
+                costumeOverride: panel.costumeOverride,
+                styleOverride: panel.styleOverride,
                 emotion: panel.emotion,
                 position: panel.position
             )
@@ -80,6 +82,14 @@ private struct PanelDTO: Decodable {
     let scene: String?
     let composition: String?
     let caption: String?
+    let costumeOverride: String?
+    let styleOverride: String?
+
+    enum CodingKeys: String, CodingKey {
+        case n, emotion, position, scene, composition, caption
+        case costumeOverride = "costume_override"
+        case styleOverride = "style_override"
+    }
 }
 
 private struct CoverDTO: Decodable {

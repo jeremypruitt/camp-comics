@@ -23,6 +23,8 @@ public struct PanelSpec: Equatable, Codable, Sendable {
     public let beat: String
     public let scene: String
     public let composition: String
+    public let costumeOverride: String?
+    public let styleOverride: String?
     public let emotion: Emotion
     public let position: Position
 
@@ -30,12 +32,16 @@ public struct PanelSpec: Equatable, Codable, Sendable {
                 beat: String,
                 scene: String = "",
                 composition: String = "",
+                costumeOverride: String? = nil,
+                styleOverride: String? = nil,
                 emotion: Emotion,
                 position: Position) {
         self.n = n
         self.beat = beat
         self.scene = scene
         self.composition = composition
+        self.costumeOverride = costumeOverride
+        self.styleOverride = styleOverride
         self.emotion = emotion
         self.position = position
     }

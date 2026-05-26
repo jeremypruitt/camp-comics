@@ -35,6 +35,12 @@ panels:
     scene: "{camper_name} in modern everyday clothes, in an ordinary contemporary kitchen or living room on an unremarkable afternoon, surrounded by Tuesday-ish detail (a mug, sneakers by the door, ordinary light)"
     composition: "intimate eye-level medium shot, camper centered in a SQUARE frame, ordinary domestic detail visible around them, calm balanced composition"
     caption: "It was Tuesday. Nothing interesting was happening. Yet."
+    # Pre-transformation — peel the druid costume + hero ref off this panel
+    # the same way panel 12 does for the return-home beat. Without these
+    # overrides the Costume: line + STYLE_SUFFIX "match the second reference"
+    # cue drag druid regalia into a scene that's supposed to be everyday.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT druid regalia, NOT fantasy armor. The camper has not yet been transformed and is in their normal Tuesday-afternoon clothes."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the druid hero card). Do NOT include any fantasy armor, vines, antler circlet, quarterstaff, or druid attire — the transformation has not happened yet. Plain modern everyday clothing only."
 
   - n: 2
     emotion: surprise

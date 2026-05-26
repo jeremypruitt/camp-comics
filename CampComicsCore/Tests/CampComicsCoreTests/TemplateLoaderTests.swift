@@ -144,6 +144,45 @@ struct TemplateLoaderTests {
         #expect(template.costume == "weathered leather and bark armor")
     }
 
+    @Test func parsesPanelOverrides() throws {
+        // costume_override + style_override are panel-level prompt switches
+        // used for transition-out (panel 12, return-home) and transition-in
+        // (panel 1, pre-quest). Both default to nil. PromptBuilder consumes
+        // them to peel the class costume / hero ref off a specific panel.
+        let yaml = """
+        class: druid
+        display_name: Druid
+        palette:
+          lighting: warm
+          colors: green
+        costume: bark armor
+        panels:
+          - n: 1
+            emotion: neutral
+            position: front
+            scene: "scene"
+            composition: "comp"
+            caption: Tuesday
+            costume_override: "everyday clothes from the photo"
+            style_override: "OVERRIDE: pre-transformation, photo wins."
+          - n: 2
+            emotion: surprise
+            position: front
+            scene: "scene"
+            composition: "comp"
+            caption: Stag
+        cover:
+          emotion: neutral
+          position: profile
+          pose_directive: heroic
+        """
+        let template = try TemplateLoader.load(yaml: yaml)
+        #expect(template.panels[0].costumeOverride == "everyday clothes from the photo")
+        #expect(template.panels[0].styleOverride == "OVERRIDE: pre-transformation, photo wins.")
+        #expect(template.panels[1].costumeOverride == nil)
+        #expect(template.panels[1].styleOverride == nil)
+    }
+
     @Test func parsesSceneAndComposition() throws {
         // Slice 8: PromptBuilder needs scene (with {token} placeholders) and
         // composition on every PanelSpec to assemble the legacy panel prompt.

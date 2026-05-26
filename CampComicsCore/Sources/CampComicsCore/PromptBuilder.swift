@@ -49,15 +49,16 @@ public enum PromptBuilder {
                                         tokens: [String: String]) -> String {
         let scene = interpolate(spec.scene, tokens: tokens)
         let composition = spec.composition
-        let costume = template.costume
+        let costume = spec.costumeOverride ?? template.costume
         let lighting = template.palette.lighting
         let colors = template.palette.colors
         let aspect = panelAspectRatios[spec.n] ?? "4:3"
+        let styleBlock = spec.styleOverride.map { "\(styleSuffix) \($0)" } ?? styleSuffix
 
         return "\(scene). \(composition). "
             + "Costume: \(costume). "
             + "Lighting and color: \(lighting), \(colors). "
-            + "Style: \(styleSuffix) "
+            + "Style: \(styleBlock) "
             + "Image aspect ratio: \(aspect)."
     }
 

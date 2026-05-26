@@ -28,6 +28,8 @@ panels:
     scene: "{camper_name} in modern everyday clothes, standing in an ordinary contemporary setting, looking thoughtful with a hint of mischief, soft natural daylight"
     composition: "medium shot, eye-level, sly knowing expression"
     caption: "Before the call, there was only the ordinary world."
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT fantasy armor or class regalia. The camper has not yet been transformed and is in their normal everyday clothes."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the class hero card). Do NOT include any fantasy armor, weapons, accessories, or class-specific attire — the transformation has not happened yet. Plain modern everyday clothing only."
 
   - n: 2
     emotion: surprise
