@@ -107,6 +107,13 @@ panels:
     scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but holding a slim leather-bound notebook, wearing a small brass pendant shaped like a crescent moon, eyes brighter with curiosity"
     composition: "medium shot, eye-level, mirror of panel 1, faint thoughtful smile"
     caption: "Home was the same. Only they had changed."
+    # Mirror beat — return to everyday life. Chain off panel 01 (everyday
+    # clothes) instead of the default most-recent (panel 11, wizard regalia)
+    # and override the "match previous costume" instruction so the model
+    # doesn't carry the scholar's robes and staff into the return-home scene.
+    reference_panel: "01"
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT wizard regalia. They may carry one small souvenir from the quest as a callback: a slim leather-bound notebook in hand and a small brass crescent-moon pendant at the neck."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include blue scholar's robes, leather-bound spellbook, wooden staff with crystal, silver circlet, or any other wizard's regalia. Only the slim leather-bound notebook and small brass crescent-moon pendant as callbacks from the quest."
 
 cover:
   emotion: neutral

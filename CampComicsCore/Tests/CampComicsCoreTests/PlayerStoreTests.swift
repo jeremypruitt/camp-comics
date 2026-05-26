@@ -293,6 +293,25 @@ struct PlayerStoreTests {
         #expect(store.attemptsState(playerId: player.id).isEmpty)
     }
 
+    @Test func demoteAcceptedToCandidateMovesPanelIntoCandidatesDir() throws {
+        // Re-roll-after-accept demotes the prior winner back to candidate #1 so
+        // the operator doesn't lose the previously-accepted image until they
+        // commit a new winner (design memo decision #3).
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, n: 5, pngData: Data([0xAA]))
+        try store.acceptCandidate(playerId: player.id, n: 5, candidateIndex: 0)
+        #expect(store.hasPanel(playerId: player.id, n: 5))
+
+        try store.demoteAcceptedToCandidate(playerId: player.id, n: 5)
+
+        #expect(store.hasPanel(playerId: player.id, n: 5) == false)
+        let candidates = store.listCandidates(playerId: player.id, n: 5)
+        #expect(candidates.count == 1)
+        let bytes = try Data(contentsOf: candidates[0].url)
+        #expect(bytes == Data([0xAA]))
+    }
+
     @Test func setAttemptsStateRoundTrips() throws {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")

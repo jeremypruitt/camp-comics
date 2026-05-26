@@ -2,6 +2,9 @@ import Foundation
 
 public enum PanelGeneratorError: Error, Equatable, Sendable {
     case noImageReturned
+    /// Vertex 429 / RESOURCE_EXHAUSTED. Lands in `PanelReviewState.throttled`;
+    /// auto-retry-once + countdown UI is slice 13's job.
+    case throttled
     case underlying(String)
 }
 

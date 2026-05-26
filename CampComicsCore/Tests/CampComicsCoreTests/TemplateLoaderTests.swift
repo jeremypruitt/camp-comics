@@ -298,6 +298,14 @@ struct TemplateLoaderTests {
         try assertCanonicalArc(classKey: "druid", displayName: "Druid")
     }
 
+    @Test func druidPanel12LoadsReferencePanelOverrideOne() throws {
+        let yaml = try loadTemplateYAML(classKey: "druid")
+        let template = try TemplateLoader.load(yaml: yaml)
+        let panel12 = template.panels.first(where: { $0.n == 12 })
+
+        #expect(panel12?.referencePanel == 1)
+    }
+
     /// All six class arcs share the same emotion/position structure (they're
     /// clones of druid.yaml). A failure here means a YAML drifted off-pattern
     /// or didn't get its emotion/position fields.

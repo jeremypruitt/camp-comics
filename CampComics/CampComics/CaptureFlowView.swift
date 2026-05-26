@@ -217,6 +217,7 @@ struct CaptureFlowView: View {
     private func message(for error: PanelGeneratorError) -> String {
         switch error {
         case .noImageReturned: return "Gemini returned no image."
+        case .throttled: return "Vertex per-minute quota exceeded. Wait a moment and retry."
         case .underlying(let msg): return msg
         }
     }

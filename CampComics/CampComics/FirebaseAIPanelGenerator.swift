@@ -30,15 +30,15 @@ struct FirebaseAIPanelGenerator: PanelGenerator {
         } catch let err as PanelGeneratorError {
             throw err
         } catch {
-            throw PanelGeneratorError.underlying(humanReadable(error))
+            let raw = String(describing: error)
+            if raw.contains("quota") || raw.contains("RESOURCE_EXHAUSTED") || raw.contains("429") {
+                throw PanelGeneratorError.throttled
+            }
+            throw PanelGeneratorError.underlying(humanReadable(raw))
         }
     }
 
-    private func humanReadable(_ error: Error) -> String {
-        let raw = String(describing: error)
-        if raw.contains("quota") || raw.contains("RESOURCE_EXHAUSTED") {
-            return "Vertex per-minute quota exceeded. Wait a minute and retry."
-        }
+    private func humanReadable(_ raw: String) -> String {
         if raw.contains("PERMISSION_DENIED") {
             return "Firebase AI permission denied — check Firebase project config and GoogleService-Info.plist."
         }

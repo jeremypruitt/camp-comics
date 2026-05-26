@@ -231,6 +231,29 @@ public struct PlayerStore: Sendable {
         }
     }
 
+    /// Re-roll-after-accept (design memo #3). Moves `panel_NN.png` back into
+    /// `_candidates/NN/` as candidate index 0 and removes the accepted file —
+    /// the operator's prior choice stays visible in the gallery until they
+    /// commit a new winner. If a gallery already exists, prepends to it.
+    public func demoteAcceptedToCandidate(playerId: String, n: Int) throws {
+        let panelFile = panelURL(playerId: playerId, n: n)
+        guard FileManager.default.fileExists(atPath: panelFile.path) else { return }
+        let bytes = try Data(contentsOf: panelFile)
+        let dir = candidatesDir(for: playerId, n: n)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        // Renumber any existing candidates upward so the demoted prior winner
+        // takes index 0 (operators expect it first in the filmstrip).
+        let existing = listCandidates(playerId: playerId, n: n)
+            .sorted { $0.index > $1.index }
+        for candidate in existing {
+            let bumped = candidateURL(playerId: playerId, n: n, index: candidate.index + 1)
+            try FileManager.default.moveItem(at: candidate.url, to: bumped)
+        }
+        let target = candidateURL(playerId: playerId, n: n, index: 0)
+        try bytes.write(to: target, options: .atomic)
+        try FileManager.default.removeItem(at: panelFile)
+    }
+
     public func attemptsState(playerId: String) -> [PanelAttempt] {
         let url = attemptsURL(playerId: playerId)
         guard let data = try? Data(contentsOf: url) else { return [] }

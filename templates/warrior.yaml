@@ -107,6 +107,13 @@ panels:
     scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but standing a little taller, wearing a small pewter pin shaped like a shield on their chest, gaze level and steady"
     composition: "medium shot, eye-level, mirror of panel 1, calm strength"
     caption: "Home was the same. Only they had changed."
+    # Mirror beat — return to everyday life. Chain off panel 01 (everyday
+    # clothes) instead of the default most-recent (panel 11, warrior regalia)
+    # and override the "match previous costume" instruction so the model
+    # doesn't carry the chainmail and tabard into the return-home scene.
+    reference_panel: "01"
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT warrior regalia. They may carry one small souvenir from the quest as a callback: a small pewter shield-shaped pin on the chest."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include polished chainmail, sleeveless tabard, leather pauldrons, broadsword, round shield, traveling boots, or any other warrior's regalia. Only the small pewter shield-shaped pin on the chest as a callback from the quest."
 
 cover:
   emotion: neutral

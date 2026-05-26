@@ -107,6 +107,13 @@ panels:
     scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but with a small brass key on a thin cord around their neck, eyes bright with quiet mischief"
     composition: "medium shot, eye-level, mirror of panel 1, slight clever smile"
     caption: "Home was the same. Only they had changed."
+    # Mirror beat — return to everyday life. Chain off panel 01 (everyday
+    # clothes) instead of the default most-recent (panel 11, trickster regalia)
+    # and override the "match previous costume" instruction so the model
+    # doesn't carry the dark leathers and indigo hood into the return-home scene.
+    reference_panel: "01"
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT trickster regalia. They may carry one small souvenir from the quest as a callback: a small brass key on a thin cord at the neck."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include dark traveling leathers, hooded indigo cloak, lockpicks, grappling hook, fingerless gloves, soft-soled climbing boots, or any other trickster's regalia. Only the small brass key on a thin cord as a callback from the quest."
 
 cover:
   emotion: neutral
