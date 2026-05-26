@@ -6,11 +6,23 @@ struct FirebaseAIPanelGenerator: PanelGenerator {
     static let modelName = "gemini-2.5-flash-image"
 
     func generateQAPanel(prompt: String, photo: Data) async throws -> Data {
+        try await callVertex(prompt: prompt,
+                             references: [ImageReference(data: photo, mimeType: "image/jpeg")])
+    }
+
+    func generatePanel(prompt: String, references: [ImageReference]) async throws -> Data {
+        try await callVertex(prompt: prompt, references: references)
+    }
+
+    private func callVertex(prompt: String, references: [ImageReference]) async throws -> Data {
         let ai = FirebaseAI.firebaseAI(backend: .vertexAI())
         let model = ai.generativeModel(modelName: Self.modelName)
-        let imagePart = InlineDataPart(data: photo, mimeType: "image/jpeg")
+        var parts: [any Part] = references.map {
+            InlineDataPart(data: $0.data, mimeType: $0.mimeType)
+        }
+        parts.append(TextPart(prompt))
         do {
-            let response = try await model.generateContent(imagePart, prompt)
+            let response = try await model.generateContent([ModelContent(parts: parts)])
             guard let firstImage = response.inlineDataParts.first else {
                 throw PanelGeneratorError.noImageReturned
             }

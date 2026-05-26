@@ -40,11 +40,12 @@ struct ContentView: View {
                     }
                 }
                 .navigationDestination(item: $activePlayer) { player in
-                    CaptureFlowView(
-                        player: player,
-                        template: BundledTemplates.template(forClassKey: player.classKey),
-                        store: store
-                    )
+                    let template = BundledTemplates.template(forClassKey: player.classKey)
+                    if store.hasQAPanel(playerId: player.id) {
+                        PlayerDetailView(player: player, template: template, store: store)
+                    } else {
+                        CaptureFlowView(player: player, template: template, store: store)
+                    }
                 }
                 .onAppear { refresh() }
                 .onChange(of: activePlayer) { _, new in

@@ -126,6 +126,22 @@ public struct PlayerStore: Sendable {
         FileManager.default.fileExists(atPath: qaPanelURL(playerId: playerId).path)
     }
 
+    // MARK: - Narrative panels (panel_NN.png — slice 8+)
+
+    public func savePanel(playerId: String, n: Int, pngData: Data) throws {
+        try FileManager.default.createDirectory(at: panelsDir(for: playerId),
+                                                withIntermediateDirectories: true)
+        try pngData.write(to: panelURL(playerId: playerId, n: n), options: .atomic)
+    }
+
+    public func loadPanel(playerId: String, n: Int) -> Data? {
+        try? Data(contentsOf: panelURL(playerId: playerId, n: n))
+    }
+
+    public func hasPanel(playerId: String, n: Int) -> Bool {
+        FileManager.default.fileExists(atPath: panelURL(playerId: playerId, n: n).path)
+    }
+
     public func capturedRequirements(playerId: String) -> Set<PanelRequirement> {
         let dir = photosDir(for: playerId)
         let entries = (try? FileManager.default.contentsOfDirectory(
@@ -176,6 +192,10 @@ public struct PlayerStore: Sendable {
 
     private func qaPanelURL(playerId: String) -> URL {
         panelsDir(for: playerId).appendingPathComponent("qa_avatar.png")
+    }
+
+    private func panelURL(playerId: String, n: Int) -> URL {
+        panelsDir(for: playerId).appendingPathComponent(String(format: "panel_%02d.png", n))
     }
 
     // MARK: - tokens.json

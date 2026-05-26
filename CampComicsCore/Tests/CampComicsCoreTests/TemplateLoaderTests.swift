@@ -117,6 +117,60 @@ struct TemplateLoaderTests {
         #expect(template.cover.position == .profile)
     }
 
+    @Test func parsesPaletteAndCostume() throws {
+        // Slice 8: PromptBuilder folds palette.lighting, palette.colors, and
+        // the class-level costume into the assembled panel prompt. They have
+        // to survive the YAML round-trip onto ClassTemplate.
+        let yaml = """
+        class: druid
+        display_name: Druid
+        palette:
+          lighting: warm golden-hour light
+          colors: deep mossy greens
+        costume: weathered leather and bark armor
+        panels:
+          - n: 1
+            emotion: neutral
+            position: front
+            caption: Tuesday
+        cover:
+          emotion: neutral
+          position: profile
+          pose_directive: heroic
+        """
+        let template = try TemplateLoader.load(yaml: yaml)
+        #expect(template.palette.lighting == "warm golden-hour light")
+        #expect(template.palette.colors == "deep mossy greens")
+        #expect(template.costume == "weathered leather and bark armor")
+    }
+
+    @Test func parsesSceneAndComposition() throws {
+        // Slice 8: PromptBuilder needs scene (with {token} placeholders) and
+        // composition on every PanelSpec to assemble the legacy panel prompt.
+        let yaml = """
+        class: druid
+        display_name: Druid
+        palette:
+          lighting: warm
+          colors: green
+        costume: bark armor
+        panels:
+          - n: 1
+            emotion: neutral
+            position: front
+            scene: "{camper_name} stands in a kitchen on Tuesday"
+            composition: "intimate eye-level medium shot, centered"
+            caption: Tuesday
+        cover:
+          emotion: neutral
+          position: profile
+          pose_directive: heroic
+        """
+        let template = try TemplateLoader.load(yaml: yaml)
+        #expect(template.panels[0].scene == "{camper_name} stands in a kitchen on Tuesday")
+        #expect(template.panels[0].composition == "intimate eye-level medium shot, centered")
+    }
+
     @Test func loadedTemplateFeedsCapturePlannerCleanly() throws {
         let template = try TemplateLoader.load(yaml: Self.druidYAML)
         let plan = CapturePlanner.plan(for: template)

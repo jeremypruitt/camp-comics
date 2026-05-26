@@ -21,12 +21,21 @@ public struct PanelRequirement: Hashable, Codable, Sendable {
 public struct PanelSpec: Equatable, Codable, Sendable {
     public let n: Int
     public let beat: String
+    public let scene: String
+    public let composition: String
     public let emotion: Emotion
     public let position: Position
 
-    public init(n: Int, beat: String, emotion: Emotion, position: Position) {
+    public init(n: Int,
+                beat: String,
+                scene: String = "",
+                composition: String = "",
+                emotion: Emotion,
+                position: Position) {
         self.n = n
         self.beat = beat
+        self.scene = scene
+        self.composition = composition
         self.emotion = emotion
         self.position = position
     }
@@ -36,15 +45,34 @@ public struct PanelSpec: Equatable, Codable, Sendable {
     }
 }
 
+public struct Palette: Equatable, Codable, Sendable {
+    public let lighting: String
+    public let colors: String
+
+    public init(lighting: String, colors: String) {
+        self.lighting = lighting
+        self.colors = colors
+    }
+}
+
 public struct ClassTemplate: Equatable, Codable, Sendable {
     public let classKey: String
     public let name: String
+    public let costume: String
+    public let palette: Palette
     public let panels: [PanelSpec]
     public let cover: PanelRequirement
 
-    public init(classKey: String, name: String, panels: [PanelSpec], cover: PanelRequirement) {
+    public init(classKey: String,
+                name: String,
+                costume: String = "",
+                palette: Palette = Palette(lighting: "", colors: ""),
+                panels: [PanelSpec],
+                cover: PanelRequirement) {
         self.classKey = classKey
         self.name = name
+        self.costume = costume
+        self.palette = palette
         self.panels = panels
         self.cover = cover
     }

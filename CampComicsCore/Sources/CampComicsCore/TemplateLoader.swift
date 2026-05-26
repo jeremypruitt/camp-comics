@@ -27,15 +27,23 @@ public enum TemplateLoader {
             PanelSpec(
                 n: panel.n,
                 beat: panel.caption ?? panel.scene ?? "",
+                scene: panel.scene ?? "",
+                composition: panel.composition ?? "",
                 emotion: panel.emotion,
                 position: panel.position
             )
         }
         let cover = PanelRequirement(emotion: dto.cover.emotion, position: dto.cover.position)
+        let palette = Palette(
+            lighting: dto.palette?.lighting ?? "",
+            colors: dto.palette?.colors ?? ""
+        )
 
         return ClassTemplate(
             classKey: dto.classKey,
             name: dto.displayName ?? dto.classKey.capitalized,
+            costume: dto.costume ?? "",
+            palette: palette,
             panels: panels,
             cover: cover
         )
@@ -45,15 +53,24 @@ public enum TemplateLoader {
 private struct TemplateDTO: Decodable {
     let classKey: String
     let displayName: String?
+    let costume: String?
+    let palette: PaletteDTO?
     let panels: [PanelDTO]
     let cover: CoverDTO
 
     enum CodingKeys: String, CodingKey {
         case classKey = "class"
         case displayName = "display_name"
+        case costume
+        case palette
         case panels
         case cover
     }
+}
+
+private struct PaletteDTO: Decodable {
+    let lighting: String
+    let colors: String
 }
 
 private struct PanelDTO: Decodable {
@@ -61,6 +78,7 @@ private struct PanelDTO: Decodable {
     let emotion: Emotion
     let position: Position
     let scene: String?
+    let composition: String?
     let caption: String?
 }
 

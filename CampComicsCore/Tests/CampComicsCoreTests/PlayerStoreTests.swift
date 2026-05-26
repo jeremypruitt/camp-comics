@@ -165,6 +165,40 @@ struct PlayerStoreTests {
         try store.deleteQAPanel(playerId: player.id)
     }
 
+    // MARK: - Narrative panel persistence (slice 8+)
+
+    @Test func savePanelRoundTripsBytes() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        let bytes = Data((0..<8192).map { _ in UInt8.random(in: 0...255) })
+        try store.savePanel(playerId: player.id, n: 1, pngData: bytes)
+        #expect(store.loadPanel(playerId: player.id, n: 1) == bytes)
+    }
+
+    @Test func savePanelWritesPaddedFilename() throws {
+        // panel_01.png, not panel_1.png — matches the legacy layout and the
+        // on-disk grammar in CONTEXT.md / project_panel_loop_design.md #15.
+        let (store, root) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.savePanel(playerId: player.id, n: 7, pngData: Data([0x01]))
+        let url = root.appendingPathComponent("players/\(player.id)/panels/panel_07.png")
+        #expect(FileManager.default.fileExists(atPath: url.path))
+    }
+
+    @Test func hasPanelReflectsDiskState() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        #expect(store.hasPanel(playerId: player.id, n: 1) == false)
+        try store.savePanel(playerId: player.id, n: 1, pngData: Data([0x09]))
+        #expect(store.hasPanel(playerId: player.id, n: 1) == true)
+    }
+
+    @Test func loadPanelReturnsNilWhenAbsent() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        #expect(store.loadPanel(playerId: player.id, n: 1) == nil)
+    }
+
     @Test func hasQAPanelReflectsDiskState() throws {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
