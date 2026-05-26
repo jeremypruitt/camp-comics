@@ -183,6 +183,38 @@ struct TemplateLoaderTests {
         #expect(template.panels[1].styleOverride == nil)
     }
 
+    @Test func parsesReferencePanelOverrideFromQuotedString() throws {
+        // Legacy YAML stores reference_panel as a zero-padded quoted string
+        // (e.g. "01") so the legacy generate.py can pattern-match the
+        // `panel_NN.png` filename. The iOS app's PhotoReferenceResolver wants
+        // it as an Int. Loader normalizes the form.
+        let yaml = """
+        class: druid
+        display_name: Druid
+        palette:
+          lighting: warm
+          colors: green
+        costume: bark armor
+        panels:
+          - n: 1
+            emotion: neutral
+            position: front
+            caption: Tuesday
+          - n: 12
+            emotion: joy
+            position: front
+            caption: Return home
+            reference_panel: "01"
+        cover:
+          emotion: neutral
+          position: profile
+          pose_directive: heroic
+        """
+        let template = try TemplateLoader.load(yaml: yaml)
+        #expect(template.panels[0].referencePanel == nil)
+        #expect(template.panels[1].referencePanel == 1)
+    }
+
     @Test func parsesSceneAndComposition() throws {
         // Slice 8: PromptBuilder needs scene (with {token} placeholders) and
         // composition on every PanelSpec to assemble the legacy panel prompt.

@@ -25,6 +25,7 @@ public struct PanelSpec: Equatable, Codable, Sendable {
     public let composition: String
     public let costumeOverride: String?
     public let styleOverride: String?
+    public let referencePanel: Int?
     public let emotion: Emotion
     public let position: Position
 
@@ -34,6 +35,7 @@ public struct PanelSpec: Equatable, Codable, Sendable {
                 composition: String = "",
                 costumeOverride: String? = nil,
                 styleOverride: String? = nil,
+                referencePanel: Int? = nil,
                 emotion: Emotion,
                 position: Position) {
         self.n = n
@@ -42,6 +44,7 @@ public struct PanelSpec: Equatable, Codable, Sendable {
         self.composition = composition
         self.costumeOverride = costumeOverride
         self.styleOverride = styleOverride
+        self.referencePanel = referencePanel
         self.emotion = emotion
         self.position = position
     }

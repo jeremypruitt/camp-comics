@@ -208,4 +208,104 @@ struct PlayerStoreTests {
         try store.deleteQAPanel(playerId: player.id)
         #expect(store.hasQAPanel(playerId: player.id) == false)
     }
+
+    // MARK: - Candidate gallery (slice 9)
+
+    @Test func savePendingCandidateAssignsZeroForFirstAndOneForSecond() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+
+        let first = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xAA]))
+        let second = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xBB]))
+
+        #expect(first.index == 0)
+        #expect(second.index == 1)
+    }
+
+    @Test func listCandidatesReturnsAllSavedInIndexOrder() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xAA]))
+        _ = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xBB]))
+        _ = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xCC]))
+
+        let candidates = store.listCandidates(playerId: player.id, n: 3)
+
+        #expect(candidates.map(\.index) == [0, 1, 2])
+    }
+
+    @Test func listCandidatesIsEmptyForUntouchedPanel() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        #expect(store.listCandidates(playerId: player.id, n: 7).isEmpty)
+    }
+
+    @Test func acceptCandidatePromotesChosenAndDeletesTheRest() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, n: 4, pngData: Data([0xAA]))
+        _ = try store.savePendingCandidate(playerId: player.id, n: 4, pngData: Data([0xBB]))
+        _ = try store.savePendingCandidate(playerId: player.id, n: 4, pngData: Data([0xCC]))
+
+        try store.acceptCandidate(playerId: player.id, n: 4, candidateIndex: 1)
+
+        #expect(store.loadPanel(playerId: player.id, n: 4) == Data([0xBB]))
+        #expect(store.listCandidates(playerId: player.id, n: 4).isEmpty)
+    }
+
+    @Test func markSkippedWritesMarkerVisibleToIsSkipped() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+
+        #expect(store.isSkipped(playerId: player.id, n: 5) == false)
+        try store.markSkipped(playerId: player.id, n: 5)
+        #expect(store.isSkipped(playerId: player.id, n: 5) == true)
+    }
+
+    @Test func markSkippedAlsoClearsAnyPendingCandidates() throws {
+        // Skipping after staging candidates discards the gallery — the slot is
+        // intentionally empty going forward.
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, n: 5, pngData: Data([0xAA]))
+        _ = try store.savePendingCandidate(playerId: player.id, n: 5, pngData: Data([0xBB]))
+
+        try store.markSkipped(playerId: player.id, n: 5)
+
+        #expect(store.listCandidates(playerId: player.id, n: 5).isEmpty)
+    }
+
+    @Test func deletePanelRemovesTheAcceptedImage() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, n: 2, pngData: Data([0x09]))
+        try store.acceptCandidate(playerId: player.id, n: 2, candidateIndex: 0)
+        #expect(store.hasPanel(playerId: player.id, n: 2))
+
+        try store.deletePanel(playerId: player.id, n: 2)
+
+        #expect(store.hasPanel(playerId: player.id, n: 2) == false)
+    }
+
+    @Test func attemptsStateIsEmptyBeforeAnyWrites() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        #expect(store.attemptsState(playerId: player.id).isEmpty)
+    }
+
+    @Test func setAttemptsStateRoundTrips() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        let when = Date(timeIntervalSince1970: 1_750_000_000)
+        let records: [PanelAttempt] = [
+            PanelAttempt(n: 1, attempt: 0, prompt: "first prompt",
+                         candidateFile: "_candidates/01/000.png", generatedAt: when),
+            PanelAttempt(n: 1, attempt: 1, prompt: "tweaked prompt",
+                         candidateFile: "_candidates/01/001.png", generatedAt: when),
+        ]
+
+        try store.setAttemptsState(playerId: player.id, attempts: records)
+
+        #expect(store.attemptsState(playerId: player.id) == records)
+    }
 }

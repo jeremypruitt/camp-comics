@@ -2,21 +2,17 @@ import SwiftUI
 import UIKit
 import CampComicsCore
 
-private enum GenerationState {
-    case idle
-    case generating
-    case succeeded(UIImage)
-    case failed(String)
-}
-
+/// Minimal intermediate screen (project_panel_loop_design.md #11): summary +
+/// a single Start / Continue generation button that pushes into
+/// `PanelReviewView`. Auto-start from the player list is deliberately gated so
+/// the operator opts in to Vertex spend.
 struct PlayerDetailView: View {
     let player: PlayerRecord
     let template: ClassTemplate
     let store: PlayerStore
     let generator: any PanelGenerator
 
-    @State private var state: GenerationState = .idle
-    @State private var savedPanel1: UIImage?
+    @State private var showingReview = false
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -26,32 +22,30 @@ struct PlayerDetailView: View {
         self.template = template
         self.store = store
         self.generator = generator
-        let existing = store.loadPanel(playerId: player.id, n: 1).flatMap(UIImage.init(data:))
-        _savedPanel1 = State(initialValue: existing)
-        if let existing { _state = State(initialValue: .succeeded(existing)) }
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 summary
-                if let image = currentPanelImage {
-                    panelPreview(image)
-                }
-                generateButton
-                if case .failed(let msg) = state {
-                    Text(msg)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .padding(.top, 4)
-                }
+                progressCard
+                continueButton
             }
             .padding()
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle(player.playerName)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: $showingReview) {
+            PanelReviewView(player: player,
+                            template: template,
+                            store: store,
+                            generator: generator,
+                            startAt: startPanel)
+        }
     }
+
+    // MARK: - Subviews
 
     private var summary: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -66,54 +60,56 @@ struct PlayerDetailView: View {
                     in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    @ViewBuilder
-    private func panelPreview(_ image: UIImage) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Panel 1").font(.headline)
-                Spacer()
-                Text("Pinch to zoom").font(.caption).foregroundStyle(.secondary)
-            }
-            if let beat = template.panels.first?.beat, !beat.isEmpty {
-                Text(beat).font(.footnote).foregroundStyle(.secondary).italic()
-            }
-            ZoomableImage(image: image)
-                .aspectRatio(image.size, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    private var progressCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Progress").font(.headline)
+            Text("\(finalizedCount) of 12 panels finalized")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            ProgressView(value: Double(finalizedCount), total: 12)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    private var generateButton: some View {
+    private var continueButton: some View {
         Button {
-            Task { await generate() }
+            showingReview = true
         } label: {
-            Group {
-                if isGenerating {
-                    HStack(spacing: 8) {
-                        ProgressView().tint(.white)
-                        Text("Generating panel 1…")
-                    }
-                } else {
-                    Text(savedPanel1 == nil ? "Generate panel 1" : "Regenerate panel 1")
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .fontWeight(.semibold)
-            .padding(.vertical, 6)
+            Text(continueLabel)
+                .frame(maxWidth: .infinity)
+                .fontWeight(.semibold)
+                .padding(.vertical, 6)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .disabled(isGenerating)
     }
 
-    private var isGenerating: Bool {
-        if case .generating = state { return true }
-        return false
+    // MARK: - Derived
+
+    private var finalizedCount: Int {
+        (1...12).filter {
+            store.hasPanel(playerId: player.id, n: $0)
+                || store.isSkipped(playerId: player.id, n: $0)
+        }.count
     }
 
-    private var currentPanelImage: UIImage? {
-        if case .succeeded(let image) = state { return image }
-        return savedPanel1
+    private var startPanel: Int {
+        for n in 1...12 {
+            if !store.hasPanel(playerId: player.id, n: n)
+                && !store.isSkipped(playerId: player.id, n: n) {
+                return n
+            }
+        }
+        return 1
+    }
+
+    private var continueLabel: String {
+        if finalizedCount == 0 { return "Start generation" }
+        if finalizedCount == 12 { return "Review panels" }
+        return "Continue generation — panel \(startPanel) of 12"
     }
 
     private var headline: String {
@@ -121,55 +117,6 @@ struct PlayerDetailView: View {
             return player.playerName
         }
         return "\(player.characterName) (\(player.playerName))"
-    }
-
-    private func generate() async {
-        guard let panel1 = template.panels.first else {
-            state = .failed("Class template has no panel 1.")
-            return
-        }
-        let gate = PanelRequirement(emotion: .neutral, position: .front)
-        guard let photoData = store.loadPhoto(playerId: player.id, requirement: gate) else {
-            state = .failed("Missing neutral|front photo — capture it first.")
-            return
-        }
-        let heroData = BundledTemplates.heroCardData(forClassKey: template.classKey)
-
-        // YAML scenes use {camper_name} (legacy token name). Until shared
-        // templates rename to {player_name}, both legacy + iOS substitute
-        // through this key.
-        let prompt = PromptBuilder.buildPanelPrompt(
-            spec: panel1,
-            template: template,
-            tokens: ["camper_name": player.playerName]
-        )
-        let references: [ImageReference] = [
-            ImageReference(data: photoData, mimeType: "image/jpeg"),
-            ImageReference(data: heroData, mimeType: "image/png"),
-        ]
-
-        state = .generating
-        do {
-            let panelData = try await generator.generatePanel(prompt: prompt, references: references)
-            guard let image = UIImage(data: panelData) else {
-                state = .failed("Generator returned data that wasn't a usable image.")
-                return
-            }
-            try store.savePanel(playerId: player.id, n: 1, pngData: panelData)
-            savedPanel1 = image
-            state = .succeeded(image)
-        } catch let err as PanelGeneratorError {
-            state = .failed(message(for: err))
-        } catch {
-            state = .failed(String(describing: error))
-        }
-    }
-
-    private func message(for error: PanelGeneratorError) -> String {
-        switch error {
-        case .noImageReturned: return "Gemini returned no image."
-        case .underlying(let msg): return msg
-        }
     }
 }
 

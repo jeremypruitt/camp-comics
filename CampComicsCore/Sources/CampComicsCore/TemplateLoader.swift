@@ -31,6 +31,7 @@ public enum TemplateLoader {
                 composition: panel.composition ?? "",
                 costumeOverride: panel.costumeOverride,
                 styleOverride: panel.styleOverride,
+                referencePanel: panel.referencePanel.flatMap(Int.init),
                 emotion: panel.emotion,
                 position: panel.position
             )
@@ -84,11 +85,15 @@ private struct PanelDTO: Decodable {
     let caption: String?
     let costumeOverride: String?
     let styleOverride: String?
+    /// Stored quoted + zero-padded ("01") in legacy YAML so the legacy
+    /// generate.py can pattern-match `panel_NN.png`. iOS converts to Int.
+    let referencePanel: String?
 
     enum CodingKeys: String, CodingKey {
         case n, emotion, position, scene, composition, caption
         case costumeOverride = "costume_override"
         case styleOverride = "style_override"
+        case referencePanel = "reference_panel"
     }
 }
 
