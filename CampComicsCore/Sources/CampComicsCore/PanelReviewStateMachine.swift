@@ -19,7 +19,10 @@ public struct PanelReviewState: Equatable, Sendable {
         case reviewing
         case accepted
         case skipped
-        case throttled
+        /// `autoRetryPending == true` is the first 429 in this generation cycle
+        /// — the view should countdown + auto-retry once. `false` means the
+        /// one-shot budget was already spent; operator must tap Retry.
+        case throttled(autoRetryPending: Bool)
         case failed(message: String)
         case missingPhoto
     }
@@ -31,6 +34,12 @@ public struct PanelReviewState: Equatable, Sendable {
     /// non-cancel exit from `.generating`.
     private var priorToGenerating: Phase?
 
+    /// One-shot auto-retry budget for Throttled. Set when the first 429 in a
+    /// generation cycle fires; the next 429 (after the view auto-retried) sees
+    /// it set and emits `.throttled(autoRetryPending: false)` to wait for the
+    /// operator. Cleared by terminal transitions and `candidateReceived()`.
+    private var autoRetryConsumed: Bool = false
+
     public init(phase: Phase = .unstarted) {
         self.phase = phase
     }
@@ -38,11 +47,23 @@ public struct PanelReviewState: Equatable, Sendable {
     public mutating func startGeneration() {
         priorToGenerating = phase
         phase = .generating
+        autoRetryConsumed = false
+    }
+
+    /// System-initiated retry from `.throttled(autoRetryPending: true)`. Unlike
+    /// `startGeneration`, this preserves the consumed-budget flag so a second
+    /// 429 in the same cycle holds for the operator. Cancel from here drops to
+    /// `.unstarted` (no priorToGenerating set) so we don't re-enter the auto-
+    /// retry loop on cancel.
+    public mutating func autoRetry() {
+        priorToGenerating = nil
+        phase = .generating
     }
 
     public mutating func candidateReceived() {
         phase = .reviewing
         priorToGenerating = nil
+        autoRetryConsumed = false
     }
 
     public mutating func cancelGeneration() {
@@ -59,7 +80,9 @@ public struct PanelReviewState: Equatable, Sendable {
     }
 
     public mutating func markThrottled() {
-        phase = .throttled
+        let pending = !autoRetryConsumed
+        autoRetryConsumed = true
+        phase = .throttled(autoRetryPending: pending)
         priorToGenerating = nil
     }
 
@@ -70,6 +93,14 @@ public struct PanelReviewState: Equatable, Sendable {
 
     public mutating func markMissingPhoto() {
         phase = .missingPhoto
+    }
+
+    /// Recovery transition from `.missingPhoto` after the operator captured the
+    /// missing reference photo via the deep-link sheet. The view layer then
+    /// re-fires generation. Caller-side responsibility to confirm the photo is
+    /// actually on disk before invoking — the SM is pure.
+    public mutating func markUnstarted() {
+        phase = .unstarted
     }
 
     /// Disk-derived initial state for a panel slot, used on view entry and

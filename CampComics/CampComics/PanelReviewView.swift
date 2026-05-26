@@ -22,6 +22,12 @@ struct PanelReviewView: View {
     @State private var lastReferences: [ReferenceSlot] = []
     @State private var lastError: String?
     @State private var showPromptDetail: Bool = false
+    @State private var throttleCountdown: Int = 0
+    @State private var throttleTask: Task<Void, Never>?
+    @State private var showingMissingPhotoCapture: Bool = false
+
+    /// Fallback wait when Vertex 429s without a parseable retry-after.
+    private static let defaultRetryAfterSeconds: TimeInterval = 6
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -61,7 +67,24 @@ struct PanelReviewView: View {
         .navigationTitle("Panel \(currentN) of 12")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: reloadCurrentPanel)
-        .onDisappear { pendingTask?.cancel() }
+        .onDisappear {
+            pendingTask?.cancel()
+            throttleTask?.cancel()
+        }
+        .fullScreenCover(isPresented: $showingMissingPhotoCapture) {
+            MissingPhotoCaptureView(
+                requirement: currentSpec.requirement,
+                onSaved: { jpegData in
+                    try? store.savePhoto(playerId: player.id,
+                                         requirement: currentSpec.requirement,
+                                         jpegData: jpegData)
+                    showingMissingPhotoCapture = false
+                    review.markUnstarted()
+                    startGenerate()
+                },
+                onCancel: { showingMissingPhotoCapture = false }
+            )
+        }
     }
 
     private var allFinalized: Bool {
@@ -144,8 +167,12 @@ struct PanelReviewView: View {
                         Text("Generating candidate…").font(.footnote).foregroundStyle(.secondary)
                     }
                 }
-        } else if case .throttled = review.phase {
-            placeholder("Throttled — Vertex per-minute quota exceeded. Wait a moment and tap Retry.")
+        } else if case .throttled(let autoRetryPending) = review.phase {
+            placeholder(autoRetryPending
+                        ? "Throttled — Vertex per-minute quota hit. Auto-retrying in \(throttleCountdown)s…"
+                        : "Throttled — auto-retry didn't clear it. Tap Retry when ready.")
+        } else if case .missingPhoto = review.phase {
+            placeholder("Missing reference photo: \(PromptCopyBook.copy(for: currentSpec.requirement).title). Tap Capture this photo below.")
         } else {
             placeholder("No candidate yet — tap Generate.")
         }
@@ -206,13 +233,30 @@ struct PanelReviewView: View {
     @ViewBuilder
     private var actionRow: some View {
         switch review.phase {
-        case .unstarted, .missingPhoto:
+        case .unstarted:
             HStack {
                 Button("Generate") { startGenerate() }
                     .buttonStyle(.borderedProminent)
                 Button("Skip") { commitSkip() }
                     .buttonStyle(.bordered)
                     .tint(.secondary)
+            }
+        case .missingPhoto:
+            let copy = PromptCopyBook.copy(for: currentSpec.requirement)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("⚠️ Missing reference photo: \(copy.title)")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.orange)
+                Text(copy.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Button("Capture this photo") { showingMissingPhotoCapture = true }
+                        .buttonStyle(.borderedProminent)
+                    Button("Skip") { commitSkip() }
+                        .buttonStyle(.bordered)
+                        .tint(.secondary)
+                }
             }
         case .generating:
             HStack {
@@ -236,9 +280,30 @@ struct PanelReviewView: View {
         case .skipped:
             Button("Re-generate") { startGenerate() }
                 .buttonStyle(.bordered)
-        case .throttled:
-            Button("Retry") { startGenerate() }
-                .buttonStyle(.borderedProminent)
+        case .throttled(let autoRetryPending):
+            if autoRetryPending {
+                HStack {
+                    Text("Auto-retrying in \(throttleCountdown)s…")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Cancel") {
+                        throttleTask?.cancel()
+                        throttleCountdown = 0
+                        review.cancelGeneration()
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.secondary)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Auto-retry didn't clear the throttle. Tap Retry when ready.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Retry") { startGenerate() }
+                        .buttonStyle(.borderedProminent)
+                }
+            }
         case .failed(let msg):
             VStack(alignment: .leading, spacing: 6) {
                 Text(msg).font(.footnote).foregroundStyle(.red)
@@ -326,8 +391,10 @@ struct PanelReviewView: View {
 
     // MARK: - Actions
 
-    private func startGenerate() {
+    private func startGenerate(autoRetry: Bool = false) {
         lastError = nil
+        throttleTask?.cancel()
+        throttleCountdown = 0
         let spec = currentSpec
         guard let photoData = store.loadPhoto(playerId: player.id,
                                               requirement: spec.requirement) else {
@@ -356,7 +423,11 @@ struct PanelReviewView: View {
         )
         lastPrompt = prompt
         lastReferences = plan.slots
-        review.startGeneration()
+        if autoRetry {
+            review.autoRetry()
+        } else {
+            review.startGeneration()
+        }
 
         pendingTask = Task {
             do {
@@ -374,8 +445,8 @@ struct PanelReviewView: View {
                 }
             } catch is CancellationError {
                 // Cancel path: cancelGenerate() already moved state.
-            } catch PanelGeneratorError.throttled {
-                await MainActor.run { review.markThrottled() }
+            } catch PanelGeneratorError.throttled(let retryAfter) {
+                await MainActor.run { handleThrottled(retryAfter: retryAfter) }
             } catch let err as PanelGeneratorError {
                 await MainActor.run {
                     review.markFailed(message: message(for: err))
@@ -392,7 +463,34 @@ struct PanelReviewView: View {
     private func cancelGenerate() {
         pendingTask?.cancel()
         pendingTask = nil
+        throttleTask?.cancel()
+        throttleCountdown = 0
         review.cancelGeneration()
+    }
+
+    /// Vertex 429 handler. Drives the SM into `.throttled`; if the state machine
+    /// grants the one-shot auto-retry budget (pending=true), schedules a
+    /// countdown task that fires `startGenerate(autoRetry: true)` when it
+    /// elapses. The second 429 in the same cycle holds at pending=false and
+    /// waits for an operator Retry tap (per ADR-0003 / design memo #14).
+    private func handleThrottled(retryAfter: TimeInterval?) {
+        review.markThrottled()
+        guard case .throttled(autoRetryPending: true) = review.phase else {
+            throttleCountdown = 0
+            return
+        }
+        let wait = retryAfter ?? Self.defaultRetryAfterSeconds
+        throttleCountdown = max(Int(wait.rounded(.up)), 1)
+        throttleTask?.cancel()
+        throttleTask = Task { @MainActor in
+            while throttleCountdown > 0 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if Task.isCancelled { return }
+                throttleCountdown -= 1
+            }
+            if Task.isCancelled { return }
+            startGenerate(autoRetry: true)
+        }
     }
 
     private func commitAccept() {
@@ -428,6 +526,8 @@ struct PanelReviewView: View {
 
     private func goTo(_ n: Int) {
         guard (1...12).contains(n) else { return }
+        throttleTask?.cancel()
+        throttleCountdown = 0
         currentN = n
         reloadCurrentPanel()
     }
@@ -478,7 +578,8 @@ struct PanelReviewView: View {
             return "Candidate \(idx) of \(candidates.count) · Reviewing"
         case .accepted: return "Accepted"
         case .skipped: return "Skipped"
-        case .throttled: return "Throttled"
+        case .throttled(let autoRetryPending):
+            return autoRetryPending ? "Throttled — auto-retry in \(throttleCountdown)s" : "Throttled — manual retry needed"
         case .failed: return "Failed"
         case .missingPhoto: return "Missing reference photo"
         }
@@ -534,4 +635,83 @@ struct PanelReviewView: View {
         }
     }
 
+}
+
+/// Scoped deep-link capture surface for a single missing reference photo.
+/// Lighter than `CaptureFlowView`: no checklist, no QA-gate submit, just
+/// camera → review → save for one `(emotion, position)`. Reached from the
+/// `.missingPhoto` action row in `PanelReviewView`; on confirm the parent
+/// hydrates back to `.unstarted` and auto-fires generation.
+private struct MissingPhotoCaptureView: View {
+    let requirement: PanelRequirement
+    let onSaved: (Data) -> Void
+    let onCancel: () -> Void
+
+    @State private var captured: UIImage?
+    @State private var showingPicker: Bool = true
+
+    var body: some View {
+        let copy = PromptCopyBook.copy(for: requirement)
+        NavigationStack {
+            VStack(spacing: 20) {
+                if let captured {
+                    Image(uiImage: captured)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 320)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    VStack(spacing: 4) {
+                        Text(copy.title).font(.title2.weight(.semibold))
+                        Text(copy.subtitle).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    .multilineTextAlignment(.center)
+                    HStack(spacing: 12) {
+                        Button("Retake", role: .destructive) {
+                            self.captured = nil
+                            showingPicker = true
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        Button("Looks good") {
+                            if let data = captured.jpegData(compressionQuality: 0.9) {
+                                onSaved(data)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                    }
+                } else {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Text(copy.emoji).font(.system(size: 96))
+                        Text(copy.title).font(.title2.weight(.semibold))
+                        Text(copy.subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("Open camera") { showingPicker = true }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                            .padding(.top, 8)
+                    }
+                    Spacer()
+                }
+            }
+            .padding()
+            .navigationTitle("Missing reference photo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+            }
+            .fullScreenCover(isPresented: $showingPicker) {
+                ImagePicker(sourceType: ImagePicker.preferredSourceType) { image in
+                    captured = image
+                    showingPicker = false
+                }
+                .ignoresSafeArea()
+            }
+        }
+    }
 }
