@@ -80,15 +80,63 @@ struct PanelReviewStateMachineTests {
         #expect(state.phase == .skipped)
     }
 
-    @Test func markThrottledFromGeneratingHoldsAtThrottled() {
-        // Vertex 429 during generation. Recovery (auto-retry once, then operator
-        // tap) lands in slice 13 — for now the state machine just holds here.
+    @Test func firstThrottleFromGeneratingMarksAutoRetryPending() {
+        // First Vertex 429 in this generation cycle. The state machine grants
+        // the one-shot auto-retry budget; the view layer reads pending=true and
+        // schedules the retry. Distinct from the held-throttled case below.
         var state = PanelReviewState()
         state.startGeneration()
 
         state.markThrottled()
 
-        #expect(state.phase == .throttled)
+        #expect(state.phase == .throttled(autoRetryPending: true))
+    }
+
+    @Test func autoRetryBudgetResetsAfterCandidateReceived() {
+        // First gen throttled → auto-retried → succeeded. The operator now
+        // re-rolls and is throttled again. That's a new generation cycle, so
+        // it should get its own auto-retry budget (pending=true), not inherit
+        // the prior consumed state.
+        var state = PanelReviewState()
+        state.startGeneration()
+        state.markThrottled()
+        state.startGeneration()
+        state.candidateReceived()
+        state.startGeneration()   // re-roll
+
+        state.markThrottled()
+
+        #expect(state.phase == .throttled(autoRetryPending: true))
+    }
+
+    @Test func secondThrottleAfterAutoRetryHoldsForOperator() {
+        // The view auto-retried once after the first throttle (autoRetry()),
+        // and Vertex 429d again. The budget is spent — the SM must now hold
+        // with pending=false so the UI shows Retry.
+        var state = PanelReviewState()
+        state.startGeneration()
+        state.markThrottled()
+        state.autoRetry()           // system-initiated retry; preserves budget
+
+        state.markThrottled()
+
+        #expect(state.phase == .throttled(autoRetryPending: false))
+    }
+
+    @Test func operatorRetryFromHeldThrottledRefreshesBudget() {
+        // Operator tapped Retry on a held-throttled panel. That's a deliberate
+        // new attempt cycle (startGeneration, not autoRetry), so the next 429
+        // should auto-retry again (pending=true), not hold immediately.
+        var state = PanelReviewState()
+        state.startGeneration()
+        state.markThrottled()       // pending true
+        state.autoRetry()
+        state.markThrottled()       // pending false — held
+        state.startGeneration()     // operator Retry refreshes budget
+
+        state.markThrottled()
+
+        #expect(state.phase == .throttled(autoRetryPending: true))
     }
 
     @Test func markFailedFromGeneratingCarriesMessage() {
@@ -106,6 +154,18 @@ struct PanelReviewStateMachineTests {
         state.markMissingPhoto()
 
         #expect(state.phase == .missingPhoto)
+    }
+
+    @Test func markUnstartedFromMissingPhotoMovesToUnstarted() {
+        // After the operator captures the missing reference photo via the
+        // deep-link sheet, the view tells the SM the photo is now on disk so
+        // it can re-fire generation. This is the explicit recovery transition.
+        var state = PanelReviewState()
+        state.markMissingPhoto()
+
+        state.markUnstarted()
+
+        #expect(state.phase == .unstarted)
     }
 
     @Test func hydrateFromDiskPrefersCandidatesOverStaleSkipMarker() throws {

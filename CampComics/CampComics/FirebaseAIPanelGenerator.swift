@@ -32,7 +32,8 @@ struct FirebaseAIPanelGenerator: PanelGenerator {
         } catch {
             let raw = String(describing: error)
             if raw.contains("quota") || raw.contains("RESOURCE_EXHAUSTED") || raw.contains("429") {
-                throw PanelGeneratorError.throttled
+                let retryAfter = PanelGeneratorError.parseRetryAfterSeconds(from: raw)
+                throw PanelGeneratorError.throttled(retryAfterSeconds: retryAfter)
             }
             throw PanelGeneratorError.underlying(humanReadable(raw))
         }
