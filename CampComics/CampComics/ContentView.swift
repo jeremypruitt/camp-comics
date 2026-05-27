@@ -7,6 +7,7 @@ struct ContentView: View {
 
     @State private var players: [PlayerRecord] = []
     @State private var avatars: [String: UIImage] = [:]
+    @State private var statuses: [String: PlayerStatus] = [:]
     @State private var activePlayer: PlayerRecord?
     @State private var showingIntake = false
 
@@ -68,7 +69,9 @@ struct ContentView: View {
                     Button {
                         activePlayer = player
                     } label: {
-                        PlayerRow(player: player, avatar: avatars[player.id])
+                        PlayerRow(player: player,
+                                  avatar: avatars[player.id],
+                                  status: statuses[player.id])
                     }
                     .buttonStyle(.plain)
                 }
@@ -79,20 +82,27 @@ struct ContentView: View {
     private func refresh() {
         let loaded = (try? store.list()) ?? []
         players = loaded
-        var next: [String: UIImage] = [:]
+        var nextAvatars: [String: UIImage] = [:]
+        var nextStatuses: [String: PlayerStatus] = [:]
         for player in loaded {
             if let data = store.loadQAPanel(playerId: player.id),
                let image = UIImage(data: data) {
-                next[player.id] = image
+                nextAvatars[player.id] = image
             }
+            let template = BundledTemplates.template(forClassKey: player.classKey)
+            nextStatuses[player.id] = PlayerStatus.derive(playerId: player.id,
+                                                          template: template,
+                                                          store: store)
         }
-        avatars = next
+        avatars = nextAvatars
+        statuses = nextStatuses
     }
 }
 
 private struct PlayerRow: View {
     let player: PlayerRecord
     let avatar: UIImage?
+    let status: PlayerStatus?
 
     var body: some View {
         HStack(spacing: 14) {
@@ -110,11 +120,16 @@ private struct PlayerRow: View {
             }
             .frame(width: 44, height: 44)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(headline).font(.headline)
-                Text("\(player.classKey.capitalized) · \(player.id)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Text("\(player.classKey.capitalized) · \(player.id)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if let status {
+                        StatusPill(status: status)
+                    }
+                }
             }
             Spacer()
             Image(systemName: "chevron.right").foregroundStyle(.secondary)
@@ -133,6 +148,37 @@ private struct PlayerRow: View {
         let source = player.characterName.isEmpty ? player.playerName : player.characterName
         let first = source.split(separator: " ").first.map(String.init) ?? ""
         return String(first.prefix(1)).uppercased()
+    }
+}
+
+private struct StatusPill: View {
+    let status: PlayerStatus
+
+    var body: some View {
+        Text(label)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(tint.opacity(0.18), in: Capsule())
+            .foregroundStyle(tint)
+    }
+
+    private var label: String {
+        switch status {
+        case .captured: return "captured"
+        case .generating(let done, let total): return "generating \(done)/\(total)"
+        case .done: return "done"
+        case .needsPhoto: return "needs-photo"
+        }
+    }
+
+    private var tint: Color {
+        switch status {
+        case .captured: return .secondary
+        case .generating: return .blue
+        case .done: return .green
+        case .needsPhoto: return .orange
+        }
     }
 }
 
