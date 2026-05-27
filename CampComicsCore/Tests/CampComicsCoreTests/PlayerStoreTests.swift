@@ -253,57 +253,6 @@ struct PlayerStoreTests {
         #expect(store.listCandidates(playerId: player.id, n: 4).isEmpty)
     }
 
-    @Test func markSkippedWritesMarkerVisibleToIsSkipped() throws {
-        let (store, _) = try makeStore()
-        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-
-        #expect(store.isSkipped(playerId: player.id, n: 5) == false)
-        try store.markSkipped(playerId: player.id, n: 5)
-        #expect(store.isSkipped(playerId: player.id, n: 5) == true)
-    }
-
-    @Test func markSkippedAlsoClearsAnyPendingCandidates() throws {
-        // Skipping after staging candidates discards the gallery — the slot is
-        // intentionally empty going forward.
-        let (store, _) = try makeStore()
-        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        _ = try store.savePendingCandidate(playerId: player.id, n: 5, pngData: Data([0xAA]))
-        _ = try store.savePendingCandidate(playerId: player.id, n: 5, pngData: Data([0xBB]))
-
-        try store.markSkipped(playerId: player.id, n: 5)
-
-        #expect(store.listCandidates(playerId: player.id, n: 5).isEmpty)
-    }
-
-    @Test func unmarkSkippedClearsSkipMarker() throws {
-        // Recovery path: operator taps Re-generate from a skipped panel. The
-        // view must call this before firing generation so the next hydrate
-        // doesn't snap back to .skipped.
-        let (store, _) = try makeStore()
-        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        try store.markSkipped(playerId: player.id, n: 7)
-        #expect(store.isSkipped(playerId: player.id, n: 7) == true)
-
-        try store.unmarkSkipped(playerId: player.id, n: 7)
-
-        #expect(store.isSkipped(playerId: player.id, n: 7) == false)
-    }
-
-    @Test func acceptCandidateClearsAnyExistingSkipMarker() throws {
-        // Defensive: an accepted panel must never coexist with a skip marker.
-        // Without this, a panel that was skipped → re-generated → accepted
-        // would still report isSkipped=true on the next hydrate.
-        let (store, _) = try makeStore()
-        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        try store.markSkipped(playerId: player.id, n: 4)
-        _ = try store.savePendingCandidate(playerId: player.id, n: 4, pngData: Data([0xCC]))
-
-        try store.acceptCandidate(playerId: player.id, n: 4, candidateIndex: 0)
-
-        #expect(store.isSkipped(playerId: player.id, n: 4) == false)
-        #expect(store.hasPanel(playerId: player.id, n: 4) == true)
-    }
-
     @Test func deletePanelRemovesTheAcceptedImage() throws {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")

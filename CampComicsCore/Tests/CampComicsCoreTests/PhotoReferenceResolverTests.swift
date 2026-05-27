@@ -46,19 +46,20 @@ struct PhotoReferenceResolverTests {
         #expect(plan.outOfOrder == false)
     }
 
-    @Test func skippedPanelIsSkippedOverInContinuityChain() throws {
-        // Panel 3 is skipped, panel 2 is accepted, panel 4 should chain off 2.
+    @Test func gapInAcceptanceTriggersOutOfOrder() throws {
+        // Slice 11a: with Skip gone, an unfinalized earlier panel is always
+        // genuinely out-of-order. Panel 4 with 1+2 accepted but 3 unfinished
+        // can't chain — the resolver drops to [photo, hero] + flag.
         let (store, playerId) = try makeStore()
         try acceptPanels(playerId: playerId, store: store, ns: [1, 2])
-        try store.markSkipped(playerId: playerId, n: 3)
 
         let plan = PhotoReferenceResolver.plan(forPanel: 4,
                                                spec: spec(n: 4),
                                                playerId: playerId,
                                                store: store)
 
-        #expect(plan.slots == [.photo, .hero, .panel(n: 2)])
-        #expect(plan.outOfOrder == false)
+        #expect(plan.slots == [.photo, .hero])
+        #expect(plan.outOfOrder == true)
     }
 
     @Test func unfinishedEarlierPanelTriggersOutOfOrder() throws {
@@ -91,14 +92,11 @@ struct PhotoReferenceResolverTests {
 
     @Test func referencePanelOverrideMissDropsContinuityWithNoFallback() throws {
         // ADR-0002: if the named override panel doesn't exist on disk, do NOT
-        // fall back to the default-rule panel — preserve YAML intent.
+        // fall back to the default-rule panel — preserve YAML intent. The
+        // override path wins over the out-of-order check, so the resolver
+        // returns the base [photo, hero] with outOfOrder = false.
         let (store, playerId) = try makeStore()
         try acceptPanels(playerId: playerId, store: store, ns: [1, 2])
-        // Operator accepted 1+2, never accepted 3, but is now generating panel 4
-        // which overrides to reference panel 3. Out-of-order check would also
-        // fire here, but we want to assert specifically that the resolver
-        // doesn't substitute panel 2 for the missing panel 3.
-        try store.markSkipped(playerId: playerId, n: 3)
 
         let plan = PhotoReferenceResolver.plan(forPanel: 4,
                                                spec: spec(n: 4, referencePanel: 3),
@@ -109,22 +107,19 @@ struct PhotoReferenceResolverTests {
         #expect(plan.outOfOrder == false)
     }
 
-    @Test func gappedAcceptanceDoesNotTriggerOutOfOrder() throws {
-        // Panel 5 is skipped (a deliberate finalization), not unstarted. Panel
-        // 6 is in-order — continuity chains off the most recent accepted (3),
-        // no chip.
+    @Test func multiGapAcceptanceStillTriggersOutOfOrder() throws {
+        // Slice 11a: without Skip, panels 4 and 5 being unfinished is genuine
+        // out-of-order. The chip fires; no continuity panel is substituted.
         let (store, playerId) = try makeStore()
         try acceptPanels(playerId: playerId, store: store, ns: [1, 2, 3])
-        try store.markSkipped(playerId: playerId, n: 4)
-        try store.markSkipped(playerId: playerId, n: 5)
 
         let plan = PhotoReferenceResolver.plan(forPanel: 6,
                                                spec: spec(n: 6),
                                                playerId: playerId,
                                                store: store)
 
-        #expect(plan.slots == [.photo, .hero, .panel(n: 3)])
-        #expect(plan.outOfOrder == false)
+        #expect(plan.slots == [.photo, .hero])
+        #expect(plan.outOfOrder == true)
     }
 
     private func acceptPanels(playerId: String, store: PlayerStore, ns: [Int]) throws {

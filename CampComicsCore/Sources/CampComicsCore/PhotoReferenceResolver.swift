@@ -28,13 +28,12 @@ public struct ReferencePlan: Equatable, Sendable {
 ///
 /// Rules (CONTEXT.md + ADR-0002 + project_panel_loop_design.md #8):
 /// - Panel 1: `[photo, hero]`.
-/// - Any earlier panel not yet accepted-or-skipped → out-of-order;
-///   slots = `[photo, hero]`.
+/// - Any earlier panel not yet accepted → out-of-order; slots = `[photo, hero]`.
 /// - `spec.referencePanel = M` override hits → `[photo, hero, .panel(M)]`.
 /// - `spec.referencePanel = M` override misses → `[photo, hero]` with no
 ///   substitute (ADR-0002 — preserve YAML intent).
 /// - Otherwise → `[photo, hero, .panel(M)]` for the largest `m < n` with an
-///   accepted image; if all earlier are skipped, no continuity.
+///   accepted image.
 public enum PhotoReferenceResolver {
 
     public static func plan(forPanel n: Int,
@@ -67,9 +66,7 @@ public enum PhotoReferenceResolver {
                                              playerId: String,
                                              store: PlayerStore) -> Bool {
         for m in 1..<n {
-            let finalized = store.hasPanel(playerId: playerId, n: m)
-                || store.isSkipped(playerId: playerId, n: m)
-            if !finalized { return true }
+            if !store.hasPanel(playerId: playerId, n: m) { return true }
         }
         return false
     }

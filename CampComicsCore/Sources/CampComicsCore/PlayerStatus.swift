@@ -19,9 +19,7 @@ public enum PlayerStatus: Equatable, Sendable {
         let captured = store.capturedRequirements(playerId: playerId)
         var needsPhoto = false
         for panel in template.panels {
-            let resolved = store.hasPanel(playerId: playerId, n: panel.n) ||
-                           store.isSkipped(playerId: playerId, n: panel.n)
-            if resolved {
+            if store.hasPanel(playerId: playerId, n: panel.n) {
                 done += 1
             } else if !captured.contains(panel.requirement) {
                 needsPhoto = true
