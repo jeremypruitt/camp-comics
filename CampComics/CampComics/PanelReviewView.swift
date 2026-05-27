@@ -3,10 +3,9 @@ import UIKit
 import CampComicsCore
 
 /// The slice-9 review surface. Drives one panel at a time and auto-advances
-/// the cursor to the next unfinished slot when the operator Accepts or Skips.
-/// Renders the candidate gallery as a filmstrip, exposes Generate / Accept /
-/// Skip / Re-roll / Cancel, and shows the out-of-order chip when an earlier
-/// panel hasn't been finalized yet.
+/// the cursor to the next unfinished slot on Accept. Renders the candidate
+/// gallery as a filmstrip, exposes Generate / Accept / Re-roll / Cancel, and
+/// shows the out-of-order chip when an earlier panel hasn't been accepted.
 struct PanelReviewView: View {
     let player: PlayerRecord
     let template: ClassTemplate
@@ -88,10 +87,7 @@ struct PanelReviewView: View {
     }
 
     private var allFinalized: Bool {
-        (1...12).allSatisfy {
-            store.hasPanel(playerId: player.id, n: $0)
-                || store.isSkipped(playerId: player.id, n: $0)
-        }
+        (1...12).allSatisfy { store.hasPanel(playerId: player.id, n: $0) }
     }
 
     private var allDoneBanner: some View {
@@ -149,8 +145,6 @@ struct PanelReviewView: View {
             ZoomableImage(image: image)
                 .aspectRatio(image.size, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        } else if case .skipped = review.phase {
-            placeholder("Skipped — tap Re-generate below to undo.")
         } else if let candidate = selectedCandidate,
                   let data = try? Data(contentsOf: candidate.url),
                   let image = UIImage(data: data) {
@@ -234,13 +228,8 @@ struct PanelReviewView: View {
     private var actionRow: some View {
         switch review.phase {
         case .unstarted:
-            HStack {
-                Button("Generate") { startGenerate() }
-                    .buttonStyle(.borderedProminent)
-                Button("Skip") { commitSkip() }
-                    .buttonStyle(.bordered)
-                    .tint(.secondary)
-            }
+            Button("Generate") { startGenerate() }
+                .buttonStyle(.borderedProminent)
         case .missingPhoto:
             let copy = PromptCopyBook.copy(for: currentSpec.requirement)
             VStack(alignment: .leading, spacing: 6) {
@@ -250,13 +239,8 @@ struct PanelReviewView: View {
                 Text(copy.subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                HStack {
-                    Button("Capture this photo") { showingMissingPhotoCapture = true }
-                        .buttonStyle(.borderedProminent)
-                    Button("Skip") { commitSkip() }
-                        .buttonStyle(.bordered)
-                        .tint(.secondary)
-                }
+                Button("Capture this photo") { showingMissingPhotoCapture = true }
+                    .buttonStyle(.borderedProminent)
             }
         case .generating:
             HStack {
@@ -270,15 +254,9 @@ struct PanelReviewView: View {
                     .buttonStyle(.borderedProminent)
                 Button("Re-roll") { startGenerate() }
                     .buttonStyle(.bordered)
-                Button("Skip") { commitSkip() }
-                    .buttonStyle(.bordered)
-                    .tint(.secondary)
             }
         case .accepted:
             Button("Re-roll") { rerollAccepted() }
-                .buttonStyle(.bordered)
-        case .skipped:
-            Button("Re-generate") { startGenerate() }
                 .buttonStyle(.bordered)
         case .throttled(let autoRetryPending):
             if autoRetryPending {
@@ -401,11 +379,6 @@ struct PanelReviewView: View {
             review.markMissingPhoto()
             return
         }
-        // Re-generate from a skipped panel: drop the marker before firing so
-        // hydrate doesn't snap back to `.skipped` after navigation (issue #12).
-        if case .skipped = review.phase {
-            try? store.unmarkSkipped(playerId: player.id, n: currentN)
-        }
         let plan = PhotoReferenceResolver.plan(forPanel: currentN,
                                                spec: spec,
                                                playerId: player.id,
@@ -505,17 +478,8 @@ struct PanelReviewView: View {
         }
     }
 
-    private func commitSkip() {
-        do {
-            try store.markSkipped(playerId: player.id, n: currentN)
-            advance()
-        } catch {
-            lastError = String(describing: error)
-        }
-    }
-
-    /// After Accept or Skip, jump to the next unfinished panel (auto-advance
-    /// per design memo #5). If everything is finalized, just refresh in place
+    /// After Accept, jump to the next unfinished panel (auto-advance per
+    /// design memo #5). If everything is finalized, just refresh in place
     /// so the filmstrip clears and the accepted image displays correctly.
     private func advance() {
         if let next = nextUnfinished(after: currentN) {
@@ -577,7 +541,6 @@ struct PanelReviewView: View {
             let idx = (selectedCandidate?.index ?? -1) + 1
             return "Candidate \(idx) of \(candidates.count) · Reviewing"
         case .accepted: return "Accepted"
-        case .skipped: return "Skipped"
         case .throttled(let autoRetryPending):
             return autoRetryPending ? "Throttled — auto-retry in \(throttleCountdown)s" : "Throttled — manual retry needed"
         case .failed: return "Failed"
@@ -590,8 +553,7 @@ struct PanelReviewView: View {
         // if the operator jumped ahead, so out-of-order acceptance still
         // converges on all 12.
         for m in 1...12 where m != n {
-            if !store.hasPanel(playerId: player.id, n: m)
-                && !store.isSkipped(playerId: player.id, n: m) {
+            if !store.hasPanel(playerId: player.id, n: m) {
                 return m
             }
         }

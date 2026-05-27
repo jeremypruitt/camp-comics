@@ -209,31 +209,6 @@ public struct PlayerStore: Sendable {
                                                 withIntermediateDirectories: true)
         try data.write(to: panelURL(playerId: playerId, n: n), options: .atomic)
         try clearCandidates(playerId: playerId, n: n)
-        try unmarkSkipped(playerId: playerId, n: n)
-    }
-
-    /// Zero-byte `_skipped_NN` marker. Also clears any pending candidates so the
-    /// gallery doesn't linger as ambiguous state alongside a skip marker.
-    public func markSkipped(playerId: String, n: Int) throws {
-        try FileManager.default.createDirectory(at: panelsDir(for: playerId),
-                                                withIntermediateDirectories: true)
-        try Data().write(to: skippedURL(playerId: playerId, n: n), options: .atomic)
-        try clearCandidates(playerId: playerId, n: n)
-    }
-
-    public func isSkipped(playerId: String, n: Int) -> Bool {
-        FileManager.default.fileExists(atPath: skippedURL(playerId: playerId, n: n).path)
-    }
-
-    /// Clear the `_skipped_NN` marker. The recovery path: operator taps
-    /// Re-generate on a skipped panel — without this, hydrate snaps the panel
-    /// back to `.skipped` after the next navigation even though a fresh
-    /// candidate has been written. Idempotent.
-    public func unmarkSkipped(playerId: String, n: Int) throws {
-        let url = skippedURL(playerId: playerId, n: n)
-        if FileManager.default.fileExists(atPath: url.path) {
-            try FileManager.default.removeItem(at: url)
-        }
     }
 
     public func deletePanel(playerId: String, n: Int) throws {
@@ -345,10 +320,6 @@ public struct PlayerStore: Sendable {
 
     private func panelURL(playerId: String, n: Int) -> URL {
         panelsDir(for: playerId).appendingPathComponent(String(format: "panel_%02d.png", n))
-    }
-
-    private func skippedURL(playerId: String, n: Int) -> URL {
-        panelsDir(for: playerId).appendingPathComponent(String(format: "_skipped_%02d", n))
     }
 
     private func attemptsURL(playerId: String) -> URL {

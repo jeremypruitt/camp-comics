@@ -74,13 +74,17 @@ struct PlayerStatusTests {
         #expect(status == .generating(done: 1, total: 12))
     }
 
-    @Test func skippedPanelCountsTowardDone() throws {
+    @Test func onlyAcceptedPanelsCountTowardDone() throws {
+        // Slice 11a: Skip is gone. Only `hasPanel` advances `done`; an
+        // unfinalized slot stays unfinalized regardless of any legacy
+        // `_skipped_NN` marker on disk.
         let (store, _) = try makeStore()
         let template = makeTemplate()
         let player = try store.create(playerName: "Alex", characterName: "",
                                       classKey: "druid")
         try captureAllPhotos(for: template, playerId: player.id, store: store)
-        try store.markSkipped(playerId: player.id, n: 3)
+        try store.savePanel(playerId: player.id, n: 1,
+                            pngData: Data([0x89, 0x50, 0x4E, 0x47]))
 
         let status = PlayerStatus.derive(playerId: player.id,
                                          template: template,
@@ -123,25 +127,23 @@ struct PlayerStatusTests {
         #expect(status == .needsPhoto)
     }
 
-    @Test func mixOfAcceptedAndSkippedAlsoReportsDone() throws {
+    @Test func halfAcceptedPlayerStaysGenerating() throws {
+        // Slice 11a: with Skip gone, "done" requires every panel to have an
+        // accepted file on disk. A half-accepted player remains `.generating`.
         let (store, _) = try makeStore()
         let template = makeTemplate()
         let player = try store.create(playerName: "Alex", characterName: "",
                                       classKey: "druid")
         try captureAllPhotos(for: template, playerId: player.id, store: store)
-        for panel in template.panels {
-            if panel.n.isMultiple(of: 2) {
-                try store.markSkipped(playerId: player.id, n: panel.n)
-            } else {
-                try store.savePanel(playerId: player.id, n: panel.n,
-                                    pngData: Data([0x89, 0x50, 0x4E, 0x47]))
-            }
+        for panel in template.panels where !panel.n.isMultiple(of: 2) {
+            try store.savePanel(playerId: player.id, n: panel.n,
+                                pngData: Data([0x89, 0x50, 0x4E, 0x47]))
         }
 
         let status = PlayerStatus.derive(playerId: player.id,
                                          template: template,
                                          store: store)
-        #expect(status == .done)
+        #expect(status == .generating(done: 6, total: 12))
     }
 
     @Test func deletingPanelFileFromDoneDropsBackToGenerating() throws {

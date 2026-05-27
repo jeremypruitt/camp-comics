@@ -1,16 +1,12 @@
 import Foundation
 
-/// Drives one panel's review surface through the 8-state lifecycle from
-/// `project_panel_loop_design.md` decision #7 and ADR-0003:
+/// Drives one panel's review surface through the 7-state lifecycle from
+/// ADR-0003 (amended 2026-05-27 to drop Skipped):
 ///
 ///   Unstarted → Generating → (Reviewing | Throttled | Failed)
-///   Reviewing → (Accepted | Skipped | Generating  /* re-roll */)
-///   Unstarted → (Skipped | MissingPhoto)
+///   Reviewing → (Accepted | Generating  /* re-roll */)
+///   Unstarted → MissingPhoto
 ///   Generating → prior  (cancel)
-///
-/// Slice 9 implements the happy path + cancel-during-generating. Throttled,
-/// Failed, and MissingPhoto are reachable but their recovery affordances
-/// (auto-retry, deep-link to capture flow) land in slice 13.
 public struct PanelReviewState: Equatable, Sendable {
 
     public enum Phase: Equatable, Sendable {
@@ -18,7 +14,6 @@ public struct PanelReviewState: Equatable, Sendable {
         case generating
         case reviewing
         case accepted
-        case skipped
         /// `autoRetryPending == true` is the first 429 in this generation cycle
         /// — the view should countdown + auto-retry once. `false` means the
         /// one-shot budget was already spent; operator must tap Retry.
@@ -75,10 +70,6 @@ public struct PanelReviewState: Equatable, Sendable {
         phase = .accepted
     }
 
-    public mutating func skip() {
-        phase = .skipped
-    }
-
     public mutating func markThrottled() {
         let pending = !autoRetryConsumed
         autoRetryConsumed = true
@@ -105,18 +96,14 @@ public struct PanelReviewState: Equatable, Sendable {
 
     /// Disk-derived initial state for a panel slot, used on view entry and
     /// after navigation. Priority: `hasPanel` (accepted winner exists) →
-    /// candidates present (live review session, even if a stale `_skipped`
-    /// marker lingers from a prior cycle — issue #12) → `isSkipped` marker
-    /// alone → `.unstarted`.
+    /// candidates present (live review session) → `.unstarted`. Legacy
+    /// `_skipped_NN` markers on disk are inert post-slice-11a.
     public static func hydrate(playerId: String, n: Int, store: PlayerStore) -> PanelReviewState {
         if store.hasPanel(playerId: playerId, n: n) {
             return PanelReviewState(phase: .accepted)
         }
         if !store.listCandidates(playerId: playerId, n: n).isEmpty {
             return PanelReviewState(phase: .reviewing)
-        }
-        if store.isSkipped(playerId: playerId, n: n) {
-            return PanelReviewState(phase: .skipped)
         }
         return PanelReviewState(phase: .unstarted)
     }

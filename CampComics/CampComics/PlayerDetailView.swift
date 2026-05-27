@@ -90,16 +90,12 @@ struct PlayerDetailView: View {
     // MARK: - Derived
 
     private var finalizedCount: Int {
-        (1...12).filter {
-            store.hasPanel(playerId: player.id, n: $0)
-                || store.isSkipped(playerId: player.id, n: $0)
-        }.count
+        (1...12).filter { store.hasPanel(playerId: player.id, n: $0) }.count
     }
 
     private var startPanel: Int {
         for n in 1...12 {
-            if !store.hasPanel(playerId: player.id, n: n)
-                && !store.isSkipped(playerId: player.id, n: n) {
+            if !store.hasPanel(playerId: player.id, n: n) {
                 return n
             }
         }
