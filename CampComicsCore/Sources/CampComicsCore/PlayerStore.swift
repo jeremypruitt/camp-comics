@@ -209,6 +209,7 @@ public struct PlayerStore: Sendable {
                                                 withIntermediateDirectories: true)
         try data.write(to: panelURL(playerId: playerId, n: n), options: .atomic)
         try clearCandidates(playerId: playerId, n: n)
+        try unmarkSkipped(playerId: playerId, n: n)
     }
 
     /// Zero-byte `_skipped_NN` marker. Also clears any pending candidates so the
@@ -222,6 +223,17 @@ public struct PlayerStore: Sendable {
 
     public func isSkipped(playerId: String, n: Int) -> Bool {
         FileManager.default.fileExists(atPath: skippedURL(playerId: playerId, n: n).path)
+    }
+
+    /// Clear the `_skipped_NN` marker. The recovery path: operator taps
+    /// Re-generate on a skipped panel — without this, hydrate snaps the panel
+    /// back to `.skipped` after the next navigation even though a fresh
+    /// candidate has been written. Idempotent.
+    public func unmarkSkipped(playerId: String, n: Int) throws {
+        let url = skippedURL(playerId: playerId, n: n)
+        if FileManager.default.fileExists(atPath: url.path) {
+            try FileManager.default.removeItem(at: url)
+        }
     }
 
     public func deletePanel(playerId: String, n: Int) throws {

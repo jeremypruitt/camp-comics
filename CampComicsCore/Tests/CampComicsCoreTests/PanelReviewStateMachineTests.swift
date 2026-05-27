@@ -107,4 +107,33 @@ struct PanelReviewStateMachineTests {
 
         #expect(state.phase == .missingPhoto)
     }
+
+    @Test func hydrateFromDiskPrefersCandidatesOverStaleSkipMarker() throws {
+        // Issue #12: when a skipped panel is Re-generated, the _skipped_NN
+        // marker stays on disk alongside the fresh candidate. Hydrate must
+        // treat the candidate as the more recent intent — without this, the
+        // panel snaps back to .skipped after the operator navigates away.
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("camp-comics-hydrate-\(UUID().uuidString)", isDirectory: true)
+        let store = try PlayerStore(root: tmp)
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.markSkipped(playerId: player.id, n: 3)
+        _ = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xAB]))
+
+        let state = PanelReviewState.hydrate(playerId: player.id, n: 3, store: store)
+
+        #expect(state.phase == .reviewing)
+    }
+
+    @Test func hydrateReturnsSkippedWhenOnlySkipMarkerExists() throws {
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("camp-comics-hydrate-\(UUID().uuidString)", isDirectory: true)
+        let store = try PlayerStore(root: tmp)
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.markSkipped(playerId: player.id, n: 6)
+
+        let state = PanelReviewState.hydrate(playerId: player.id, n: 6, store: store)
+
+        #expect(state.phase == .skipped)
+    }
 }
