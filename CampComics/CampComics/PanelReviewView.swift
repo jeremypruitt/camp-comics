@@ -2,17 +2,18 @@ import SwiftUI
 import UIKit
 import CampComicsCore
 
-/// The slice-9 review surface. Drives one panel at a time and auto-advances
-/// the cursor to the next unfinished slot on Accept. Renders the candidate
-/// gallery as a filmstrip, exposes Generate / Accept / Re-roll / Cancel, and
-/// shows the out-of-order chip when an earlier panel hasn't been accepted.
+/// The slice-9/11b review surface. Drives one target at a time — panels 1..12
+/// and the cover sibling — and auto-advances the cursor to the next unfinished
+/// slot on Accept. Renders the candidate gallery as a filmstrip, exposes
+/// Generate / Accept / Re-roll / Cancel, and shows the out-of-order chip when
+/// an earlier panel hasn't been accepted (cover never flags out-of-order).
 struct PanelReviewView: View {
     let player: PlayerRecord
     let template: ClassTemplate
     let store: PlayerStore
     let generator: any PanelGenerator
 
-    @State private var currentN: Int
+    @State private var currentTarget: PanelTarget
     @State private var review: PanelReviewState
     @State private var candidates: [PanelCandidate] = []
     @State private var selectedCandidate: PanelCandidate?
@@ -32,13 +33,15 @@ struct PanelReviewView: View {
          template: ClassTemplate,
          store: PlayerStore,
          generator: any PanelGenerator = FirebaseAIPanelGenerator(),
-         startAt: Int) {
+         startAt: PanelTarget) {
         self.player = player
         self.template = template
         self.store = store
         self.generator = generator
-        _currentN = State(initialValue: startAt)
-        _review = State(initialValue: PanelReviewState.hydrate(playerId: player.id, n: startAt, store: store))
+        _currentTarget = State(initialValue: startAt)
+        _review = State(initialValue: PanelReviewState.hydrate(playerId: player.id,
+                                                               target: startAt.id,
+                                                               store: store))
     }
 
     var body: some View {
@@ -63,19 +66,19 @@ struct PanelReviewView: View {
             .padding()
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Panel \(currentN) of 12")
+        .navigationTitle(headerTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear(perform: reloadCurrentPanel)
+        .onAppear(perform: reloadCurrentTarget)
         .onDisappear {
             pendingTask?.cancel()
             throttleTask?.cancel()
         }
         .fullScreenCover(isPresented: $showingMissingPhotoCapture) {
             MissingPhotoCaptureView(
-                requirement: currentSpec.requirement,
+                requirement: currentRequirement,
                 onSaved: { jpegData in
                     try? store.savePhoto(playerId: player.id,
-                                         requirement: currentSpec.requirement,
+                                         requirement: currentRequirement,
                                          jpegData: jpegData)
                     showingMissingPhotoCapture = false
                     review.markUnstarted()
@@ -87,13 +90,13 @@ struct PanelReviewView: View {
     }
 
     private var allFinalized: Bool {
-        (1...12).allSatisfy { store.hasPanel(playerId: player.id, n: $0) }
+        allTargets.allSatisfy { store.hasPanel(playerId: player.id, target: $0.id) }
     }
 
     private var allDoneBanner: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("All 12 panels reviewed").font(.headline)
-            Text("Cover comes next (slice 11). Tap ‹ back to return to the player.")
+            Text("All 13 artifacts reviewed").font(.headline)
+            Text("Tap ‹ back to return to the player.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -107,8 +110,8 @@ struct PanelReviewView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if !currentSpec.beat.isEmpty {
-                Text(currentSpec.beat)
+            if !currentBeat.isEmpty {
+                Text(currentBeat)
                     .font(.footnote.italic())
                     .foregroundStyle(.secondary)
             }
@@ -127,10 +130,9 @@ struct PanelReviewView: View {
     }
 
     private var outOfOrderChip: Text? {
-        let plan = PhotoReferenceResolver.plan(forPanel: currentN,
-                                               spec: currentSpec,
-                                               playerId: player.id,
-                                               store: store)
+        let plan = PhotoReferenceResolver.references(for: currentTarget,
+                                                     playerId: player.id,
+                                                     store: store)
         guard plan.outOfOrder else { return nil }
         return Text("Continuity reference: none — earlier panels not yet approved")
             .font(.caption)
@@ -140,7 +142,7 @@ struct PanelReviewView: View {
     @ViewBuilder
     private var mainImage: some View {
         if case .accepted = review.phase,
-           let data = store.loadPanel(playerId: player.id, n: currentN),
+           let data = store.loadPanel(playerId: player.id, target: currentTarget.id),
            let image = UIImage(data: data) {
             ZoomableImage(image: image)
                 .aspectRatio(image.size, contentMode: .fit)
@@ -166,7 +168,7 @@ struct PanelReviewView: View {
                         ? "Throttled — Vertex per-minute quota hit. Auto-retrying in \(throttleCountdown)s…"
                         : "Throttled — auto-retry didn't clear it. Tap Retry when ready.")
         } else if case .missingPhoto = review.phase {
-            placeholder("Missing reference photo: \(PromptCopyBook.copy(for: currentSpec.requirement).title). Tap Capture this photo below.")
+            placeholder("Missing reference photo: \(PromptCopyBook.copy(for: currentRequirement).title). Tap Capture this photo below.")
         } else {
             placeholder("No candidate yet — tap Generate.")
         }
@@ -231,7 +233,7 @@ struct PanelReviewView: View {
             Button("Generate") { startGenerate() }
                 .buttonStyle(.borderedProminent)
         case .missingPhoto:
-            let copy = PromptCopyBook.copy(for: currentSpec.requirement)
+            let copy = PromptCopyBook.copy(for: currentRequirement)
             VStack(alignment: .leading, spacing: 6) {
                 Text("⚠️ Missing reference photo: \(copy.title)")
                     .font(.footnote.weight(.semibold))
@@ -291,26 +293,27 @@ struct PanelReviewView: View {
         }
     }
 
-    /// Always-visible navigation row so the operator can step through 1..12
-    /// regardless of slot phase. Hidden while a generation is in flight.
+    /// Always-visible navigation row so the operator can step through every
+    /// target (panels 1..12 + cover) regardless of slot phase. Hidden while a
+    /// generation is in flight.
     @ViewBuilder
     private var navRow: some View {
         if case .generating = review.phase {
             EmptyView()
         } else {
             HStack {
-                Button("Previous") { goTo(currentN - 1) }
-                    .disabled(currentN <= 1)
+                Button("Previous") { goPrev() }
+                    .disabled(currentIndex <= 0)
                 Spacer()
-                Button("Next") { goTo(currentN + 1) }
-                    .disabled(currentN >= 12)
+                Button("Next") { goNext() }
+                    .disabled(currentIndex >= allTargets.count - 1)
             }
             .buttonStyle(.bordered)
         }
     }
 
     /// Expandable diagnostic block — confirms exactly what prompt + reference
-    /// slots were sent on the most recent generation for this panel. Lets the
+    /// slots were sent on the most recent generation for this target. Lets the
     /// operator sanity-check whether reference_panel overrides are actually
     /// flowing through when model output drifts.
     private var debugChip: some View {
@@ -329,7 +332,7 @@ struct PanelReviewView: View {
             }
             .buttonStyle(.plain)
             if showPromptDetail {
-                Text(specDiagnostic)
+                Text(targetDiagnostic)
                     .font(.caption2.monospaced())
                     .foregroundStyle(.orange)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -356,15 +359,19 @@ struct PanelReviewView: View {
         }.joined(separator: " + ")
     }
 
-    /// Slice-9 diagnostic: surface the raw spec fields so we can tell whether a
-    /// surprising chip summary is a loader bug (`spec.referencePanel == nil`
-    /// where YAML had an override) or a resolver bug (`spec.referencePanel == X`
-    /// but `lastReferences` ignored it).
-    private var specDiagnostic: String {
-        let ref = currentSpec.referencePanel.map(String.init) ?? "nil"
-        let cost = currentSpec.costumeOverride.map { "yes (\($0.prefix(40))…)" } ?? "no"
-        let style = currentSpec.styleOverride.map { "yes (\($0.prefix(40))…)" } ?? "no"
-        return "spec.referencePanel = \(ref) · costume_override = \(cost) · style_override = \(style)"
+    /// Slice-9/11b diagnostic: surface raw target context so we can tell whether
+    /// a surprising chip summary is a loader bug, a resolver bug, or wrong-
+    /// target navigation.
+    private var targetDiagnostic: String {
+        switch currentTarget {
+        case .panel(let n, let spec):
+            let ref = spec.referencePanel.map(String.init) ?? "nil"
+            let cost = spec.costumeOverride.map { "yes (\($0.prefix(40))…)" } ?? "no"
+            let style = spec.styleOverride.map { "yes (\($0.prefix(40))…)" } ?? "no"
+            return "panel \(n) · referencePanel = \(ref) · costume_override = \(cost) · style_override = \(style)"
+        case .cover(let spec):
+            return "cover · pose = \(spec.poseDirective.prefix(60))… · aspect = \(spec.aspect)"
+        }
     }
 
     // MARK: - Actions
@@ -373,24 +380,21 @@ struct PanelReviewView: View {
         lastError = nil
         throttleTask?.cancel()
         throttleCountdown = 0
-        let spec = currentSpec
+        let target = currentTarget
         guard let photoData = store.loadPhoto(playerId: player.id,
-                                              requirement: spec.requirement) else {
+                                              requirement: currentRequirement) else {
             review.markMissingPhoto()
             return
         }
-        let plan = PhotoReferenceResolver.plan(forPanel: currentN,
-                                               spec: spec,
-                                               playerId: player.id,
-                                               store: store)
-        guard let references = materialize(plan: plan,
-                                           photoData: photoData,
-                                           spec: spec) else {
-            lastError = "Couldn't load all reference images for this panel."
+        let plan = PhotoReferenceResolver.references(for: target,
+                                                     playerId: player.id,
+                                                     store: store)
+        guard let references = materialize(plan: plan, photoData: photoData) else {
+            lastError = "Couldn't load all reference images for this target."
             return
         }
-        let prompt = PromptBuilder.buildPanelPrompt(
-            spec: spec,
+        let prompt = PromptBuilder.buildPrompt(
+            for: target,
             template: template,
             tokens: ["camper_name": player.playerName]
         )
@@ -408,11 +412,11 @@ struct PanelReviewView: View {
                                                                 references: references)
                 if Task.isCancelled { return }
                 let saved = try store.savePendingCandidate(playerId: player.id,
-                                                           n: currentN,
+                                                           target: target.id,
                                                            pngData: pngData)
                 appendAttempt(prompt: prompt, candidate: saved)
                 await MainActor.run {
-                    candidates = store.listCandidates(playerId: player.id, n: currentN)
+                    candidates = store.listCandidates(playerId: player.id, target: target.id)
                     selectedCandidate = saved
                     review.candidateReceived()
                 }
@@ -470,7 +474,7 @@ struct PanelReviewView: View {
         guard let candidate = selectedCandidate else { return }
         do {
             try store.acceptCandidate(playerId: player.id,
-                                      n: currentN,
+                                      target: currentTarget.id,
                                       candidateIndex: candidate.index)
             advance()
         } catch {
@@ -478,22 +482,34 @@ struct PanelReviewView: View {
         }
     }
 
-    /// After Accept, jump to the next unfinished panel (auto-advance per
+    /// After Accept, jump to the next unfinished target (auto-advance per
     /// design memo #5). If everything is finalized, just refresh in place
     /// so the filmstrip clears and the accepted image displays correctly.
     private func advance() {
-        if let next = nextUnfinished(after: currentN) {
-            currentN = next
+        if let next = nextUnfinished(skipping: currentTarget) {
+            currentTarget = next
         }
-        reloadCurrentPanel()
+        reloadCurrentTarget()
     }
 
-    private func goTo(_ n: Int) {
-        guard (1...12).contains(n) else { return }
+    private func goPrev() {
+        let idx = currentIndex - 1
+        guard idx >= 0 else { return }
+        currentTarget = allTargets[idx]
+        afterNav()
+    }
+
+    private func goNext() {
+        let idx = currentIndex + 1
+        guard idx < allTargets.count else { return }
+        currentTarget = allTargets[idx]
+        afterNav()
+    }
+
+    private func afterNav() {
         throttleTask?.cancel()
         throttleCountdown = 0
-        currentN = n
-        reloadCurrentPanel()
+        reloadCurrentTarget()
     }
 
     /// Re-roll-after-accept (design memo #3): demote the prior accepted image
@@ -501,9 +517,9 @@ struct PanelReviewView: View {
     /// candidate is generated. Operator can Accept either one when reviewing.
     private func rerollAccepted() {
         do {
-            try store.demoteAcceptedToCandidate(playerId: player.id, n: currentN)
+            try store.demoteAcceptedToCandidate(playerId: player.id, target: currentTarget.id)
             review = PanelReviewState(phase: .reviewing)
-            candidates = store.listCandidates(playerId: player.id, n: currentN)
+            candidates = store.listCandidates(playerId: player.id, target: currentTarget.id)
             selectedCandidate = candidates.first
             startGenerate()
         } catch {
@@ -511,26 +527,50 @@ struct PanelReviewView: View {
         }
     }
 
-    private func reloadCurrentPanel() {
-        review = PanelReviewState.hydrate(playerId: player.id, n: currentN, store: store)
-        candidates = store.listCandidates(playerId: player.id, n: currentN)
+    private func reloadCurrentTarget() {
+        review = PanelReviewState.hydrate(playerId: player.id, target: currentTarget.id, store: store)
+        candidates = store.listCandidates(playerId: player.id, target: currentTarget.id)
         selectedCandidate = candidates.last
         lastError = nil
         lastPrompt = store.attemptsState(playerId: player.id)
-            .last(where: { $0.n == currentN })?
+            .last(where: { $0.target == currentTarget.id })?
             .prompt ?? ""
-        let plan = PhotoReferenceResolver.plan(forPanel: currentN,
-                                               spec: currentSpec,
-                                               playerId: player.id,
-                                               store: store)
+        let plan = PhotoReferenceResolver.references(for: currentTarget,
+                                                     playerId: player.id,
+                                                     store: store)
         lastReferences = plan.slots
         showPromptDetail = false
     }
 
     // MARK: - Helpers
 
-    private var currentSpec: PanelSpec {
-        template.panels.first(where: { $0.n == currentN }) ?? template.panels[0]
+    /// Ordered review surface: panels 1..N followed by the cover sibling.
+    /// CONTEXT.md / project spec #11b: cover is the last slot and labelled
+    /// "Cover" (not "13 of 13").
+    private var allTargets: [PanelTarget] {
+        var out: [PanelTarget] = template.panels.map { .panel(n: $0.n, spec: $0) }
+        out.append(.cover(spec: template.cover))
+        return out
+    }
+
+    private var currentIndex: Int {
+        allTargets.firstIndex(where: { $0.id == currentTarget.id }) ?? 0
+    }
+
+    private var currentRequirement: PanelRequirement { currentTarget.requirement }
+
+    private var currentBeat: String {
+        switch currentTarget {
+        case .panel(_, let spec): return spec.beat
+        case .cover: return "Cover — hero portrait"
+        }
+    }
+
+    private var headerTitle: String {
+        switch currentTarget {
+        case .panel(let n, _): return "Panel \(n) of \(allTargets.count)"
+        case .cover: return "Cover"
+        }
     }
 
     private var stateLabel: String {
@@ -548,21 +588,19 @@ struct PanelReviewView: View {
         }
     }
 
-    private func nextUnfinished(after n: Int) -> Int? {
-        // "Next" = lowest unfinished panel ≠ n. Wraps back to earlier slots
-        // if the operator jumped ahead, so out-of-order acceptance still
-        // converges on all 12.
-        for m in 1...12 where m != n {
-            if !store.hasPanel(playerId: player.id, n: m) {
-                return m
+    /// "Next" = first unfinished target in `allTargets` whose id differs from
+    /// `skipping`. Wraps back to earlier slots if the operator jumped ahead,
+    /// so out-of-order acceptance still converges on all 13 artifacts.
+    private func nextUnfinished(skipping target: PanelTarget) -> PanelTarget? {
+        for candidate in allTargets where candidate.id != target.id {
+            if !store.hasPanel(playerId: player.id, target: candidate.id) {
+                return candidate
             }
         }
         return nil
     }
 
-    private func materialize(plan: ReferencePlan,
-                             photoData: Data,
-                             spec: PanelSpec) -> [ImageReference]? {
+    private func materialize(plan: ReferencePlan, photoData: Data) -> [ImageReference]? {
         var refs: [ImageReference] = []
         for slot in plan.slots {
             switch slot {
@@ -572,7 +610,7 @@ struct PanelReviewView: View {
                 let hero = BundledTemplates.heroCardData(forClassKey: template.classKey)
                 refs.append(ImageReference(data: hero, mimeType: "image/png"))
             case .panel(let m):
-                guard let data = store.loadPanel(playerId: player.id, n: m) else { return nil }
+                guard let data = store.loadPanel(playerId: player.id, target: .panel(m)) else { return nil }
                 refs.append(ImageReference(data: data, mimeType: "image/png"))
             }
         }
@@ -581,7 +619,7 @@ struct PanelReviewView: View {
 
     private func appendAttempt(prompt: String, candidate: PanelCandidate) {
         var existing = store.attemptsState(playerId: player.id)
-        existing.append(PanelAttempt(n: currentN,
+        existing.append(PanelAttempt(target: currentTarget.id,
                                      attempt: candidate.index,
                                      prompt: prompt,
                                      candidateFile: candidate.url.lastPathComponent,

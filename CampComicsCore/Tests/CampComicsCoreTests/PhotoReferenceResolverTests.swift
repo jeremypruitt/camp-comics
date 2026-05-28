@@ -13,21 +13,21 @@ struct PhotoReferenceResolverTests {
         return (store, player.id)
     }
 
-    private func spec(n: Int, referencePanel: Int? = nil) -> PanelSpec {
-        PanelSpec(n: n,
-                  beat: "test",
-                  referencePanel: referencePanel,
-                  emotion: .neutral,
-                  position: .front)
+    private func panel(n: Int, referencePanel: Int? = nil) -> PanelTarget {
+        .panel(n: n, spec: PanelSpec(n: n, beat: "test",
+                                     referencePanel: referencePanel,
+                                     emotion: .neutral, position: .front))
     }
+
+    private static let coverSpec = CoverSpec(emotion: .neutral, position: .profile,
+                                             poseDirective: "heroic")
 
     @Test func panel1HasNoContinuity() throws {
         let (store, playerId) = try makeStore()
 
-        let plan = PhotoReferenceResolver.plan(forPanel: 1,
-                                               spec: spec(n: 1),
-                                               playerId: playerId,
-                                               store: store)
+        let plan = PhotoReferenceResolver.references(for: panel(n: 1),
+                                                     playerId: playerId,
+                                                     store: store)
 
         #expect(plan.slots == [.photo, .hero])
         #expect(plan.outOfOrder == false)
@@ -37,10 +37,9 @@ struct PhotoReferenceResolverTests {
         let (store, playerId) = try makeStore()
         try acceptPanels(playerId: playerId, store: store, ns: [1, 2])
 
-        let plan = PhotoReferenceResolver.plan(forPanel: 3,
-                                               spec: spec(n: 3),
-                                               playerId: playerId,
-                                               store: store)
+        let plan = PhotoReferenceResolver.references(for: panel(n: 3),
+                                                     playerId: playerId,
+                                                     store: store)
 
         #expect(plan.slots == [.photo, .hero, .panel(n: 2)])
         #expect(plan.outOfOrder == false)
@@ -53,10 +52,9 @@ struct PhotoReferenceResolverTests {
         let (store, playerId) = try makeStore()
         try acceptPanels(playerId: playerId, store: store, ns: [1, 2])
 
-        let plan = PhotoReferenceResolver.plan(forPanel: 4,
-                                               spec: spec(n: 4),
-                                               playerId: playerId,
-                                               store: store)
+        let plan = PhotoReferenceResolver.references(for: panel(n: 4),
+                                                     playerId: playerId,
+                                                     store: store)
 
         #expect(plan.slots == [.photo, .hero])
         #expect(plan.outOfOrder == true)
@@ -66,10 +64,9 @@ struct PhotoReferenceResolverTests {
         // Operator jumped to panel 7 with panels 1-6 unstarted (nothing on disk).
         let (store, playerId) = try makeStore()
 
-        let plan = PhotoReferenceResolver.plan(forPanel: 7,
-                                               spec: spec(n: 7),
-                                               playerId: playerId,
-                                               store: store)
+        let plan = PhotoReferenceResolver.references(for: panel(n: 7),
+                                                     playerId: playerId,
+                                                     store: store)
 
         #expect(plan.slots == [.photo, .hero])
         #expect(plan.outOfOrder == true)
@@ -81,10 +78,11 @@ struct PhotoReferenceResolverTests {
         let (store, playerId) = try makeStore()
         try acceptPanels(playerId: playerId, store: store, ns: Array(1...11))
 
-        let plan = PhotoReferenceResolver.plan(forPanel: 12,
-                                               spec: spec(n: 12, referencePanel: 1),
-                                               playerId: playerId,
-                                               store: store)
+        let plan = PhotoReferenceResolver.references(
+            for: panel(n: 12, referencePanel: 1),
+            playerId: playerId,
+            store: store
+        )
 
         #expect(plan.slots == [.photo, .hero, .panel(n: 1)])
         #expect(plan.outOfOrder == false)
@@ -98,10 +96,11 @@ struct PhotoReferenceResolverTests {
         let (store, playerId) = try makeStore()
         try acceptPanels(playerId: playerId, store: store, ns: [1, 2])
 
-        let plan = PhotoReferenceResolver.plan(forPanel: 4,
-                                               spec: spec(n: 4, referencePanel: 3),
-                                               playerId: playerId,
-                                               store: store)
+        let plan = PhotoReferenceResolver.references(
+            for: panel(n: 4, referencePanel: 3),
+            playerId: playerId,
+            store: store
+        )
 
         #expect(plan.slots == [.photo, .hero])
         #expect(plan.outOfOrder == false)
@@ -113,19 +112,33 @@ struct PhotoReferenceResolverTests {
         let (store, playerId) = try makeStore()
         try acceptPanels(playerId: playerId, store: store, ns: [1, 2, 3])
 
-        let plan = PhotoReferenceResolver.plan(forPanel: 6,
-                                               spec: spec(n: 6),
-                                               playerId: playerId,
-                                               store: store)
+        let plan = PhotoReferenceResolver.references(for: panel(n: 6),
+                                                     playerId: playerId,
+                                                     store: store)
 
         #expect(plan.slots == [.photo, .hero])
         #expect(plan.outOfOrder == true)
     }
 
+    @Test func coverGetsPhotoAndHeroNeverContinuity() throws {
+        // Slice 11b / CONTEXT.md: cover always sends [photo, hero] regardless
+        // of how many panels are accepted. No continuity reference, ever — the
+        // cover is a sibling artifact, not "panel 13".
+        let (store, playerId) = try makeStore()
+        try acceptPanels(playerId: playerId, store: store, ns: Array(1...12))
+
+        let plan = PhotoReferenceResolver.references(for: .cover(spec: Self.coverSpec),
+                                                     playerId: playerId,
+                                                     store: store)
+
+        #expect(plan.slots == [.photo, .hero])
+        #expect(plan.outOfOrder == false)
+    }
+
     private func acceptPanels(playerId: String, store: PlayerStore, ns: [Int]) throws {
         for n in ns {
-            _ = try store.savePendingCandidate(playerId: playerId, n: n, pngData: Data([0xAA]))
-            try store.acceptCandidate(playerId: playerId, n: n, candidateIndex: 0)
+            _ = try store.savePendingCandidate(playerId: playerId, target: .panel(n), pngData: Data([0xAA]))
+            try store.acceptCandidate(playerId: playerId, target: .panel(n), candidateIndex: 0)
         }
     }
 }

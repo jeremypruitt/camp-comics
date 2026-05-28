@@ -40,7 +40,7 @@ struct CapturePlannerTests {
             classKey: "minimal",
             name: "Minimal",
             panels: [PanelSpec(n: 1, beat: "only", emotion: .neutral, position: .front)],
-            cover: PanelRequirement(emotion: .neutral, position: .front)
+            cover: CoverSpec(emotion: .neutral, position: .front)
         )
 
         #expect(CapturePlanner.plan(for: template) ==
@@ -54,7 +54,7 @@ struct CapturePlannerTests {
             classKey: "front-only",
             name: "Front Only",
             panels: [PanelSpec(n: 1, beat: "x", emotion: .neutral, position: .front)],
-            cover: PanelRequirement(emotion: .joy, position: .profile)
+            cover: CoverSpec(emotion: .joy, position: .profile)
         )
 
         #expect(CapturePlanner.plan(for: template) == [
@@ -75,7 +75,7 @@ struct CapturePlannerTests {
                 PanelSpec(n: 4, beat: "d", emotion: .neutral,  position: .profile),
                 PanelSpec(n: 5, beat: "e", emotion: .neutral,  position: .front),
             ],
-            cover: PanelRequirement(emotion: .joy, position: .profile)
+            cover: CoverSpec(emotion: .joy, position: .profile)
         )
 
         #expect(CapturePlanner.plan(for: scrambled) == [
@@ -97,7 +97,7 @@ struct CapturePlannerTests {
                 PanelSpec(n: 1, beat: "x", emotion: .joy, position: .front),
                 count: 5
             ),
-            cover: PanelRequirement(emotion: .joy, position: .front)
+            cover: CoverSpec(emotion: .joy, position: .front)
         )
 
         #expect(CapturePlanner.plan(for: template) ==
@@ -134,7 +134,7 @@ private func druidTemplate() -> ClassTemplate {
             PanelSpec(n: 11, beat: "Receiving the reward",  emotion: .neutral,  position: .front),
             PanelSpec(n: 12, beat: "Return home",           emotion: .joy,      position: .front),
         ],
-        cover: PanelRequirement(emotion: .neutral, position: .profile)
+        cover: CoverSpec(emotion: .neutral, position: .profile)
     )
 }
 
@@ -156,6 +156,6 @@ private func wizardTemplate() -> ClassTemplate {
             PanelSpec(n: 11, beat: "The bound tome",       emotion: .neutral,  position: .front),
             PanelSpec(n: 12, beat: "Return, wiser",        emotion: .neutral,  position: .front),
         ],
-        cover: PanelRequirement(emotion: .neutral, position: .profile)
+        cover: CoverSpec(emotion: .neutral, position: .profile)
     )
 }

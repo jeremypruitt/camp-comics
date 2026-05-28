@@ -41,7 +41,7 @@ struct PlayerDetailView: View {
                             template: template,
                             store: store,
                             generator: generator,
-                            startAt: startPanel)
+                            startAt: startTarget)
         }
     }
 
@@ -63,10 +63,10 @@ struct PlayerDetailView: View {
     private var progressCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Progress").font(.headline)
-            Text("\(finalizedCount) of 12 panels finalized")
+            Text("\(finalizedCount) of \(allTargets.count) artifacts finalized")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            ProgressView(value: Double(finalizedCount), total: 12)
+            ProgressView(value: Double(finalizedCount), total: Double(allTargets.count))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
@@ -89,23 +89,34 @@ struct PlayerDetailView: View {
 
     // MARK: - Derived
 
-    private var finalizedCount: Int {
-        (1...12).filter { store.hasPanel(playerId: player.id, n: $0) }.count
+    /// Ordered review surface: 12 panels + the cover sibling. Mirrors
+    /// `PanelReviewView.allTargets` — both screens have to agree on what "N
+    /// of 13" means and which slot Start/Continue jumps to.
+    private var allTargets: [PanelTarget] {
+        var out: [PanelTarget] = template.panels.map { .panel(n: $0.n, spec: $0) }
+        out.append(.cover(spec: template.cover))
+        return out
     }
 
-    private var startPanel: Int {
-        for n in 1...12 {
-            if !store.hasPanel(playerId: player.id, n: n) {
-                return n
-            }
-        }
-        return 1
+    private var finalizedCount: Int {
+        allTargets.filter { store.hasPanel(playerId: player.id, target: $0.id) }.count
+    }
+
+    private var startTarget: PanelTarget {
+        allTargets.first(where: { !store.hasPanel(playerId: player.id, target: $0.id) })
+            ?? allTargets[0]
     }
 
     private var continueLabel: String {
+        let total = allTargets.count
         if finalizedCount == 0 { return "Start generation" }
-        if finalizedCount == 12 { return "Review panels" }
-        return "Continue generation — panel \(startPanel) of 12"
+        if finalizedCount == total { return "Review panels" }
+        switch startTarget {
+        case .panel(let n, _):
+            return "Continue generation — panel \(n) of \(total)"
+        case .cover:
+            return "Continue generation — cover"
+        }
     }
 
     private var headline: String {

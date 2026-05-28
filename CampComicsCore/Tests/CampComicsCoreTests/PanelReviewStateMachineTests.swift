@@ -154,9 +154,11 @@ struct PanelReviewStateMachineTests {
             .appendingPathComponent("camp-comics-hydrate-\(UUID().uuidString)", isDirectory: true)
         let store = try PlayerStore(root: tmp)
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        _ = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xAB]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(3),
+                                           pngData: Data([0xAB]))
 
-        let state = PanelReviewState.hydrate(playerId: player.id, n: 3, store: store)
+        let state = PanelReviewState.hydrate(playerId: player.id, target: .panel(3),
+                                             store: store)
 
         #expect(state.phase == .reviewing)
     }
@@ -167,8 +169,24 @@ struct PanelReviewStateMachineTests {
         let store = try PlayerStore(root: tmp)
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
 
-        let state = PanelReviewState.hydrate(playerId: player.id, n: 6, store: store)
+        let state = PanelReviewState.hydrate(playerId: player.id, target: .panel(6),
+                                             store: store)
 
         #expect(state.phase == .unstarted)
+    }
+
+    @Test func hydrateRecognizesAcceptedCover() throws {
+        // Slice 11b: hydrate is target-shaped, so a saved cover.png surfaces
+        // as `.accepted` just like a panel does.
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("camp-comics-hydrate-\(UUID().uuidString)", isDirectory: true)
+        let store = try PlayerStore(root: tmp)
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.savePanel(playerId: player.id, target: .cover, pngData: Data([0xC0]))
+
+        let state = PanelReviewState.hydrate(playerId: player.id, target: .cover,
+                                             store: store)
+
+        #expect(state.phase == .accepted)
     }
 }

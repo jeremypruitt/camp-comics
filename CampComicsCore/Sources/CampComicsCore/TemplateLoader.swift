@@ -36,7 +36,11 @@ public enum TemplateLoader {
                 position: panel.position
             )
         }
-        let cover = PanelRequirement(emotion: dto.cover.emotion, position: dto.cover.position)
+        let cover = CoverSpec(
+            requirement: PanelRequirement(emotion: dto.cover.emotion, position: dto.cover.position),
+            poseDirective: dto.cover.poseDirective ?? "",
+            aspect: dto.cover.aspect ?? "3:4"
+        )
         let palette = Palette(
             lighting: dto.palette?.lighting ?? "",
             colors: dto.palette?.colors ?? ""
@@ -100,4 +104,11 @@ private struct PanelDTO: Decodable {
 private struct CoverDTO: Decodable {
     let emotion: Emotion
     let position: Position
+    let poseDirective: String?
+    let aspect: String?
+
+    enum CodingKeys: String, CodingKey {
+        case emotion, position, aspect
+        case poseDirective = "pose_directive"
+    }
 }

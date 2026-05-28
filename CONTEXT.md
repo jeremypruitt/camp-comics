@@ -19,7 +19,7 @@ The 13th generated artifact, sibling to (not a kind of) panel. Has its own promp
 _Avoid_: "panel 13", "cover panel".
 
 **PanelTarget**:
-Code-level discriminator for the shared review surface: `panel(n: Int, spec: PanelSpec) | cover(requirement: PanelRequirement)`. Parameterizes `PanelReviewView`, `PromptBuilder`, and `PhotoReferenceResolver` so panels and the cover share one code path.
+Code-level discriminator for the shared review surface: `panel(n: Int, spec: PanelSpec) | cover(spec: CoverSpec)`. Parameterizes `PanelReviewView`, `PromptBuilder`, and `PhotoReferenceResolver` so panels and the cover share one code path. On-disk identity is a sibling enum `PanelTargetID` (`.panel(Int) | .cover`) — serialized as the string discriminator `"panel_07"` / `"cover"` in `_attempts.json` and used by `PlayerStore` to address files.
 
 ### Generation loop
 

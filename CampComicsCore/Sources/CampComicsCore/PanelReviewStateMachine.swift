@@ -94,15 +94,17 @@ public struct PanelReviewState: Equatable, Sendable {
         phase = .unstarted
     }
 
-    /// Disk-derived initial state for a panel slot, used on view entry and
-    /// after navigation. Priority: `hasPanel` (accepted winner exists) →
-    /// candidates present (live review session) → `.unstarted`. Legacy
-    /// `_skipped_NN` markers on disk are inert post-slice-11a.
-    public static func hydrate(playerId: String, n: Int, store: PlayerStore) -> PanelReviewState {
-        if store.hasPanel(playerId: playerId, n: n) {
+    /// Disk-derived initial state for a panel slot or the cover, used on view
+    /// entry and after navigation. Priority: `hasPanel` (accepted winner
+    /// exists) → candidates present (live review session) → `.unstarted`.
+    /// Legacy `_skipped_NN` markers on disk are inert post-slice-11a.
+    public static func hydrate(playerId: String,
+                               target: PanelTargetID,
+                               store: PlayerStore) -> PanelReviewState {
+        if store.hasPanel(playerId: playerId, target: target) {
             return PanelReviewState(phase: .accepted)
         }
-        if !store.listCandidates(playerId: playerId, n: n).isEmpty {
+        if !store.listCandidates(playerId: playerId, target: target).isEmpty {
             return PanelReviewState(phase: .reviewing)
         }
         return PanelReviewState(phase: .unstarted)

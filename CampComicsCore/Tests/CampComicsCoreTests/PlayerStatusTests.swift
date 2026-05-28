@@ -31,7 +31,7 @@ struct PlayerStatusTests {
             classKey: "druid",
             name: "Druid",
             panels: panels,
-            cover: PanelRequirement(emotion: .joy, position: .front)
+            cover: CoverSpec(emotion: .joy, position: .front)
         )
     }
 
@@ -65,13 +65,13 @@ struct PlayerStatusTests {
         let player = try store.create(playerName: "Alex", characterName: "",
                                       classKey: "druid")
         try captureAllPhotos(for: template, playerId: player.id, store: store)
-        try store.savePanel(playerId: player.id, n: 1,
+        try store.savePanel(playerId: player.id, target: .panel(1),
                             pngData: Data([0x89, 0x50, 0x4E, 0x47]))
 
         let status = PlayerStatus.derive(playerId: player.id,
                                          template: template,
                                          store: store)
-        #expect(status == .generating(done: 1, total: 12))
+        #expect(status == .generating(done: 1, total: 13))
     }
 
     @Test func onlyAcceptedPanelsCountTowardDone() throws {
@@ -83,13 +83,13 @@ struct PlayerStatusTests {
         let player = try store.create(playerName: "Alex", characterName: "",
                                       classKey: "druid")
         try captureAllPhotos(for: template, playerId: player.id, store: store)
-        try store.savePanel(playerId: player.id, n: 1,
+        try store.savePanel(playerId: player.id, target: .panel(1),
                             pngData: Data([0x89, 0x50, 0x4E, 0x47]))
 
         let status = PlayerStatus.derive(playerId: player.id,
                                          template: template,
                                          store: store)
-        #expect(status == .generating(done: 1, total: 12))
+        #expect(status == .generating(done: 1, total: 13))
     }
 
     @Test func allAcceptedReportsDone() throws {
@@ -99,14 +99,52 @@ struct PlayerStatusTests {
                                       classKey: "druid")
         try captureAllPhotos(for: template, playerId: player.id, store: store)
         for panel in template.panels {
-            try store.savePanel(playerId: player.id, n: panel.n,
+            try store.savePanel(playerId: player.id, target: .panel(panel.n),
+                                pngData: Data([0x89, 0x50, 0x4E, 0x47]))
+        }
+        try store.savePanel(playerId: player.id, target: .cover,
+                            pngData: Data([0x89, 0x50, 0x4E, 0x47]))
+
+        let status = PlayerStatus.derive(playerId: player.id,
+                                         template: template,
+                                         store: store)
+        #expect(status == .done)
+    }
+
+    @Test func missingCoverHoldsAtGenerating() throws {
+        // Slice 11b: cover is the 13th artifact. All 12 panels accepted but no
+        // cover.png yet → `.generating(done: 12, total: 13)` (not `.done`).
+        let (store, _) = try makeStore()
+        let template = makeTemplate()
+        let player = try store.create(playerName: "Alex", characterName: "",
+                                      classKey: "druid")
+        try captureAllPhotos(for: template, playerId: player.id, store: store)
+        for panel in template.panels {
+            try store.savePanel(playerId: player.id, target: .panel(panel.n),
                                 pngData: Data([0x89, 0x50, 0x4E, 0x47]))
         }
 
         let status = PlayerStatus.derive(playerId: player.id,
                                          template: template,
                                          store: store)
-        #expect(status == .done)
+        #expect(status == .generating(done: 12, total: 13))
+    }
+
+    @Test func acceptedCoverWithoutPanelsCountsTowardDone() throws {
+        // Cover alone advances `done` by one even when no panels are accepted
+        // (out-of-order acceptance of the cover early in the loop).
+        let (store, _) = try makeStore()
+        let template = makeTemplate()
+        let player = try store.create(playerName: "Alex", characterName: "",
+                                      classKey: "druid")
+        try captureAllPhotos(for: template, playerId: player.id, store: store)
+        try store.savePanel(playerId: player.id, target: .cover,
+                            pngData: Data([0x89, 0x50, 0x4E, 0x47]))
+
+        let status = PlayerStatus.derive(playerId: player.id,
+                                         template: template,
+                                         store: store)
+        #expect(status == .generating(done: 1, total: 13))
     }
 
     @Test func unresolvedPanelWithMissingPhotoReportsNeedsPhoto() throws {
@@ -136,14 +174,14 @@ struct PlayerStatusTests {
                                       classKey: "druid")
         try captureAllPhotos(for: template, playerId: player.id, store: store)
         for panel in template.panels where !panel.n.isMultiple(of: 2) {
-            try store.savePanel(playerId: player.id, n: panel.n,
+            try store.savePanel(playerId: player.id, target: .panel(panel.n),
                                 pngData: Data([0x89, 0x50, 0x4E, 0x47]))
         }
 
         let status = PlayerStatus.derive(playerId: player.id,
                                          template: template,
                                          store: store)
-        #expect(status == .generating(done: 6, total: 12))
+        #expect(status == .generating(done: 6, total: 13))
     }
 
     @Test func deletingPanelFileFromDoneDropsBackToGenerating() throws {
@@ -153,18 +191,20 @@ struct PlayerStatusTests {
                                       classKey: "druid")
         try captureAllPhotos(for: template, playerId: player.id, store: store)
         for panel in template.panels {
-            try store.savePanel(playerId: player.id, n: panel.n,
+            try store.savePanel(playerId: player.id, target: .panel(panel.n),
                                 pngData: Data([0x89, 0x50, 0x4E, 0x47]))
         }
+        try store.savePanel(playerId: player.id, target: .cover,
+                            pngData: Data([0x89, 0x50, 0x4E, 0x47]))
         #expect(PlayerStatus.derive(playerId: player.id, template: template,
                                     store: store) == .done)
 
-        try store.deletePanel(playerId: player.id, n: 5)
+        try store.deletePanel(playerId: player.id, target: .panel(5))
 
         let status = PlayerStatus.derive(playerId: player.id,
                                          template: template,
                                          store: store)
-        #expect(status == .generating(done: 11, total: 12))
+        #expect(status == .generating(done: 12, total: 13))
     }
 
     @Test func missingPhotoDoesNotFlagWhenEveryPanelResolved() throws {
@@ -174,11 +214,13 @@ struct PlayerStatusTests {
                                       classKey: "druid")
         try captureAllPhotos(for: template, playerId: player.id, store: store)
         for panel in template.panels {
-            try store.savePanel(playerId: player.id, n: panel.n,
+            try store.savePanel(playerId: player.id, target: .panel(panel.n),
                                 pngData: Data([0x89, 0x50, 0x4E, 0x47]))
         }
-        // Delete a required photo *after* all panels are done. Since no panel
-        // still needs that photo for generation, the player should stay .done.
+        try store.savePanel(playerId: player.id, target: .cover,
+                            pngData: Data([0x89, 0x50, 0x4E, 0x47]))
+        // Delete a required photo *after* every artifact is done. Since no
+        // panel still needs that photo for generation, the player stays .done.
         try store.deletePhoto(playerId: player.id,
                               requirement: template.panels[0].requirement)
 
