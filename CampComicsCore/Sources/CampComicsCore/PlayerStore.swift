@@ -302,6 +302,25 @@ public struct PlayerStore: Sendable {
 
     // MARK: - Paths
 
+    /// On-disk root for one player — the directory holding `tokens.json`,
+    /// `photos/`, `panels/`, and (after `PDFRenderer.render`) `comic.pdf`.
+    /// Public so the PDF renderer can pass it as `WKWebView`'s read-access
+    /// directory when loading `panels/_render.html`.
+    public func playerDirectory(playerId: String) -> URL {
+        playerDir(for: playerId)
+    }
+
+    /// On-disk address of the finalized comic PDF for one player.
+    public func comicURL(playerId: String) -> URL {
+        playerDir(for: playerId).appendingPathComponent("comic.pdf")
+    }
+
+    /// On-disk address of the `panels/` directory (panels + cover + the
+    /// transient `_render.html` written by `PDFRenderer`).
+    public func panelsDirectory(playerId: String) -> URL {
+        panelsDir(for: playerId)
+    }
+
     private func playerDir(for id: String) -> URL {
         playersDir(in: root).appendingPathComponent(id)
     }
