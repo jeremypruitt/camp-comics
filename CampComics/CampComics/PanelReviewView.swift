@@ -608,15 +608,13 @@ struct PanelReviewView: View {
         }
     }
 
-    /// Prefill for the Re-prompt textarea: the editable preamble portion of
-    /// `lastPrompt` (everything before ` Style: `). Falls back to the YAML
-    /// default preamble if `lastPrompt` is empty or doesn't contain the cut
-    /// marker — e.g. fresh hydrate before any generation has run.
+    /// Prefill for the Re-prompt textarea: always the freshly-built preamble.
+    /// We deliberately ignore the persisted `lastPrompt` here so that template
+    /// edits and new layout hints (e.g. slice 30a's diagonal-pair composition
+    /// pressure) reach the model on the next regen. Tradeoff acknowledged in
+    /// issue #35: per-panel manual edits don't survive re-opening Re-prompt.
     private var repromptPrefill: String {
-        if let r = lastPrompt.range(of: " Style: ") {
-            return String(lastPrompt[..<r.lowerBound])
-        }
-        return PromptBuilder.buildPreamble(
+        PromptBuilder.buildPreamble(
             for: currentTarget,
             template: template,
             tokens: ["camper_name": player.playerName]
