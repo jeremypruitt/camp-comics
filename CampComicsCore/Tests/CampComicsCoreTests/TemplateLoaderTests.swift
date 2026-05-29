@@ -113,8 +113,18 @@ struct TemplateLoaderTests {
     @Test func parsesCoverRequirement() throws {
         let template = try TemplateLoader.load(yaml: Self.druidYAML)
 
-        #expect(template.cover.emotion == .neutral)
-        #expect(template.cover.position == .profile)
+        #expect(template.cover.requirement.emotion == .neutral)
+        #expect(template.cover.requirement.position == .profile)
+    }
+
+    @Test func parsesCoverPoseDirectiveAndDefaultAspect() throws {
+        // Slice 11b: CoverSpec carries the YAML pose_directive verbatim so
+        // PromptBuilder can splice it into assemble_cover_prompt. aspect
+        // defaults to "3:4" (COVER_ASPECT in _legacy/scripts/generate.py).
+        let template = try TemplateLoader.load(yaml: Self.druidYAML)
+
+        #expect(template.cover.poseDirective == "heroic stance")
+        #expect(template.cover.aspect == "3:4")
     }
 
     @Test func parsesPaletteAndCostume() throws {
@@ -338,8 +348,10 @@ struct TemplateLoaderTests {
             #expect(spec.position == position)
         }
 
-        #expect(template.cover.emotion == .neutral)
-        #expect(template.cover.position == .profile)
+        #expect(template.cover.requirement.emotion == .neutral)
+        #expect(template.cover.requirement.position == .profile)
+        #expect(!template.cover.poseDirective.isEmpty)
+        #expect(template.cover.aspect == "3:4")
     }
 
     private func loadTemplateYAML(classKey: String,

@@ -8,7 +8,7 @@ struct QAGatePromptTests {
         classKey: "druid",
         name: "Druid",
         panels: [],
-        cover: PanelRequirement(emotion: .neutral, position: .profile)
+        cover: CoverSpec(emotion: .neutral, position: .profile)
     )
 
     @Test func promptMentionsClassDisplayName() {

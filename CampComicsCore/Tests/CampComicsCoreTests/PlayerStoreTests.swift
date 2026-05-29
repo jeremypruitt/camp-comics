@@ -171,8 +171,8 @@ struct PlayerStoreTests {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
         let bytes = Data((0..<8192).map { _ in UInt8.random(in: 0...255) })
-        try store.savePanel(playerId: player.id, n: 1, pngData: bytes)
-        #expect(store.loadPanel(playerId: player.id, n: 1) == bytes)
+        try store.savePanel(playerId: player.id, target: .panel(1), pngData: bytes)
+        #expect(store.loadPanel(playerId: player.id, target: .panel(1)) == bytes)
     }
 
     @Test func savePanelWritesPaddedFilename() throws {
@@ -180,23 +180,54 @@ struct PlayerStoreTests {
         // on-disk grammar in CONTEXT.md / project_panel_loop_design.md #15.
         let (store, root) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        try store.savePanel(playerId: player.id, n: 7, pngData: Data([0x01]))
+        try store.savePanel(playerId: player.id, target: .panel(7), pngData: Data([0x01]))
         let url = root.appendingPathComponent("players/\(player.id)/panels/panel_07.png")
         #expect(FileManager.default.fileExists(atPath: url.path))
+    }
+
+    @Test func saveCoverWritesCoverPng() throws {
+        // Slice 11b: cover target maps to `panels/cover.png` (no panel_ prefix).
+        let (store, root) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.savePanel(playerId: player.id, target: .cover, pngData: Data([0xC0, 0x5E, 0x18]))
+        let url = root.appendingPathComponent("players/\(player.id)/panels/cover.png")
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        #expect(store.loadPanel(playerId: player.id, target: .cover) == Data([0xC0, 0x5E, 0x18]))
+        #expect(store.hasPanel(playerId: player.id, target: .cover))
+    }
+
+    @Test func saveCoverCandidatesLandUnderCoverDir() throws {
+        // Slice 11b: cover candidates live in `_candidates/cover/`, separate
+        // from any `_candidates/NN/` panel galleries on the same player.
+        let (store, root) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, target: .cover,
+                                           pngData: Data([0xAA]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .cover,
+                                           pngData: Data([0xBB]))
+
+        let coverDir = root.appendingPathComponent(
+            "players/\(player.id)/panels/_candidates/cover")
+        let entries = try FileManager.default.contentsOfDirectory(atPath: coverDir.path).sorted()
+        #expect(entries == ["000.png", "001.png"])
+
+        try store.acceptCandidate(playerId: player.id, target: .cover, candidateIndex: 1)
+        #expect(store.loadPanel(playerId: player.id, target: .cover) == Data([0xBB]))
+        #expect(store.listCandidates(playerId: player.id, target: .cover).isEmpty)
     }
 
     @Test func hasPanelReflectsDiskState() throws {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        #expect(store.hasPanel(playerId: player.id, n: 1) == false)
-        try store.savePanel(playerId: player.id, n: 1, pngData: Data([0x09]))
-        #expect(store.hasPanel(playerId: player.id, n: 1) == true)
+        #expect(store.hasPanel(playerId: player.id, target: .panel(1)) == false)
+        try store.savePanel(playerId: player.id, target: .panel(1), pngData: Data([0x09]))
+        #expect(store.hasPanel(playerId: player.id, target: .panel(1)) == true)
     }
 
     @Test func loadPanelReturnsNilWhenAbsent() throws {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        #expect(store.loadPanel(playerId: player.id, n: 1) == nil)
+        #expect(store.loadPanel(playerId: player.id, target: .panel(1)) == nil)
     }
 
     @Test func hasQAPanelReflectsDiskState() throws {
@@ -215,8 +246,8 @@ struct PlayerStoreTests {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
 
-        let first = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xAA]))
-        let second = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xBB]))
+        let first = try store.savePendingCandidate(playerId: player.id, target: .panel(3), pngData: Data([0xAA]))
+        let second = try store.savePendingCandidate(playerId: player.id, target: .panel(3), pngData: Data([0xBB]))
 
         #expect(first.index == 0)
         #expect(second.index == 1)
@@ -225,11 +256,11 @@ struct PlayerStoreTests {
     @Test func listCandidatesReturnsAllSavedInIndexOrder() throws {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        _ = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xAA]))
-        _ = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xBB]))
-        _ = try store.savePendingCandidate(playerId: player.id, n: 3, pngData: Data([0xCC]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(3), pngData: Data([0xAA]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(3), pngData: Data([0xBB]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(3), pngData: Data([0xCC]))
 
-        let candidates = store.listCandidates(playerId: player.id, n: 3)
+        let candidates = store.listCandidates(playerId: player.id, target: .panel(3))
 
         #expect(candidates.map(\.index) == [0, 1, 2])
     }
@@ -237,32 +268,32 @@ struct PlayerStoreTests {
     @Test func listCandidatesIsEmptyForUntouchedPanel() throws {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        #expect(store.listCandidates(playerId: player.id, n: 7).isEmpty)
+        #expect(store.listCandidates(playerId: player.id, target: .panel(7)).isEmpty)
     }
 
     @Test func acceptCandidatePromotesChosenAndDeletesTheRest() throws {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        _ = try store.savePendingCandidate(playerId: player.id, n: 4, pngData: Data([0xAA]))
-        _ = try store.savePendingCandidate(playerId: player.id, n: 4, pngData: Data([0xBB]))
-        _ = try store.savePendingCandidate(playerId: player.id, n: 4, pngData: Data([0xCC]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(4), pngData: Data([0xAA]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(4), pngData: Data([0xBB]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(4), pngData: Data([0xCC]))
 
-        try store.acceptCandidate(playerId: player.id, n: 4, candidateIndex: 1)
+        try store.acceptCandidate(playerId: player.id, target: .panel(4), candidateIndex: 1)
 
-        #expect(store.loadPanel(playerId: player.id, n: 4) == Data([0xBB]))
-        #expect(store.listCandidates(playerId: player.id, n: 4).isEmpty)
+        #expect(store.loadPanel(playerId: player.id, target: .panel(4)) == Data([0xBB]))
+        #expect(store.listCandidates(playerId: player.id, target: .panel(4)).isEmpty)
     }
 
     @Test func deletePanelRemovesTheAcceptedImage() throws {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        _ = try store.savePendingCandidate(playerId: player.id, n: 2, pngData: Data([0x09]))
-        try store.acceptCandidate(playerId: player.id, n: 2, candidateIndex: 0)
-        #expect(store.hasPanel(playerId: player.id, n: 2))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(2), pngData: Data([0x09]))
+        try store.acceptCandidate(playerId: player.id, target: .panel(2), candidateIndex: 0)
+        #expect(store.hasPanel(playerId: player.id, target: .panel(2)))
 
-        try store.deletePanel(playerId: player.id, n: 2)
+        try store.deletePanel(playerId: player.id, target: .panel(2))
 
-        #expect(store.hasPanel(playerId: player.id, n: 2) == false)
+        #expect(store.hasPanel(playerId: player.id, target: .panel(2)) == false)
     }
 
     @Test func attemptsStateIsEmptyBeforeAnyWrites() throws {
@@ -277,14 +308,14 @@ struct PlayerStoreTests {
         // commit a new winner (design memo decision #3).
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
-        _ = try store.savePendingCandidate(playerId: player.id, n: 5, pngData: Data([0xAA]))
-        try store.acceptCandidate(playerId: player.id, n: 5, candidateIndex: 0)
-        #expect(store.hasPanel(playerId: player.id, n: 5))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(5), pngData: Data([0xAA]))
+        try store.acceptCandidate(playerId: player.id, target: .panel(5), candidateIndex: 0)
+        #expect(store.hasPanel(playerId: player.id, target: .panel(5)))
 
-        try store.demoteAcceptedToCandidate(playerId: player.id, n: 5)
+        try store.demoteAcceptedToCandidate(playerId: player.id, target: .panel(5))
 
-        #expect(store.hasPanel(playerId: player.id, n: 5) == false)
-        let candidates = store.listCandidates(playerId: player.id, n: 5)
+        #expect(store.hasPanel(playerId: player.id, target: .panel(5)) == false)
+        let candidates = store.listCandidates(playerId: player.id, target: .panel(5))
         #expect(candidates.count == 1)
         let bytes = try Data(contentsOf: candidates[0].url)
         #expect(bytes == Data([0xAA]))
@@ -295,14 +326,56 @@ struct PlayerStoreTests {
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
         let when = Date(timeIntervalSince1970: 1_750_000_000)
         let records: [PanelAttempt] = [
-            PanelAttempt(n: 1, attempt: 0, prompt: "first prompt",
+            PanelAttempt(target: .panel(1), attempt: 0, prompt: "first prompt",
                          candidateFile: "_candidates/01/000.png", generatedAt: when),
-            PanelAttempt(n: 1, attempt: 1, prompt: "tweaked prompt",
+            PanelAttempt(target: .panel(1), attempt: 1, prompt: "tweaked prompt",
                          candidateFile: "_candidates/01/001.png", generatedAt: when),
+            PanelAttempt(target: .cover, attempt: 0, prompt: "cover prompt",
+                         candidateFile: "_candidates/cover/000.png", generatedAt: when),
         ]
 
         try store.setAttemptsState(playerId: player.id, attempts: records)
 
         #expect(store.attemptsState(playerId: player.id) == records)
+    }
+
+    @Test func panelAttemptEncodesTargetAsDiscriminatorString() throws {
+        // Slice 11b: PanelAttempt.target is persisted as "panel_07" / "cover"
+        // on disk so the JSON stays human-readable and the same file works for
+        // both panel and cover attempts.
+        let attempts: [PanelAttempt] = [
+            PanelAttempt(target: .panel(7), attempt: 0, prompt: "p",
+                         candidateFile: "f", generatedAt: Date(timeIntervalSince1970: 0)),
+            PanelAttempt(target: .cover, attempt: 0, prompt: "p",
+                         candidateFile: "f", generatedAt: Date(timeIntervalSince1970: 0)),
+        ]
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let json = String(data: try encoder.encode(attempts), encoding: .utf8) ?? ""
+
+        #expect(json.contains("\"target\":\"panel_07\""))
+        #expect(json.contains("\"target\":\"cover\""))
+    }
+
+    @Test func attemptsStateReturnsEmptyForLegacyNSchemaJSON() throws {
+        // Slice 11b: hard cutover — pre-slice-11b _attempts.json carried
+        // `{"n": 1, ...}` rows. They no longer match PanelAttempt's shape, so
+        // the decoder fails and attemptsState() yields [] rather than crashing.
+        // No migration is performed; the operator just loses prior-prompt
+        // recall for already-generated panels (irrelevant for fresh cohorts).
+        let (store, root) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        let panelsDir = root
+            .appendingPathComponent("players/\(player.id)/panels", isDirectory: true)
+        try FileManager.default.createDirectory(at: panelsDir, withIntermediateDirectories: true)
+        let legacyJSON = """
+        [
+          { "n": 1, "attempt": 0, "prompt": "old", "candidateFile": "f", "generatedAt": "2026-01-01T00:00:00Z" }
+        ]
+        """.data(using: .utf8)!
+        try legacyJSON.write(to: panelsDir.appendingPathComponent("_attempts.json"))
+
+        #expect(store.attemptsState(playerId: player.id).isEmpty)
     }
 }

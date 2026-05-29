@@ -22,11 +22,12 @@ public struct ReferencePlan: Equatable, Sendable {
     }
 }
 
-/// Resolves the reference list for one panel generation. Pure given a
+/// Resolves the reference list for one generation call. Pure given a
 /// `PlayerStore` snapshot: re-reading after on-disk state changes is the
 /// caller's responsibility.
 ///
 /// Rules (CONTEXT.md + ADR-0002 + project_panel_loop_design.md #8):
+/// - Cover: `[photo, hero]` always (no continuity, never out-of-order).
 /// - Panel 1: `[photo, hero]`.
 /// - Any earlier panel not yet accepted → out-of-order; slots = `[photo, hero]`.
 /// - `spec.referencePanel = M` override hits → `[photo, hero, .panel(M)]`.
@@ -36,10 +37,21 @@ public struct ReferencePlan: Equatable, Sendable {
 ///   accepted image.
 public enum PhotoReferenceResolver {
 
-    public static func plan(forPanel n: Int,
-                            spec: PanelSpec,
-                            playerId: String,
-                            store: PlayerStore) -> ReferencePlan {
+    public static func references(for target: PanelTarget,
+                                  playerId: String,
+                                  store: PlayerStore) -> ReferencePlan {
+        switch target {
+        case .cover:
+            return ReferencePlan(slots: [.photo, .hero], outOfOrder: false)
+        case .panel(let n, let spec):
+            return panelPlan(n: n, spec: spec, playerId: playerId, store: store)
+        }
+    }
+
+    private static func panelPlan(n: Int,
+                                  spec: PanelSpec,
+                                  playerId: String,
+                                  store: PlayerStore) -> ReferencePlan {
         if n <= 1 {
             return ReferencePlan(slots: [.photo, .hero], outOfOrder: false)
         }
@@ -47,7 +59,7 @@ public enum PhotoReferenceResolver {
             // ADR-0002: override miss → no continuity, no fallback. Override
             // also wins over the out-of-order check because the YAML pinned the
             // specific reference; if that reference is on disk, use it.
-            if store.hasPanel(playerId: playerId, n: override) {
+            if store.hasPanel(playerId: playerId, target: .panel(override)) {
                 return ReferencePlan(slots: [.photo, .hero, .panel(n: override)],
                                      outOfOrder: false)
             }
@@ -66,7 +78,7 @@ public enum PhotoReferenceResolver {
                                              playerId: String,
                                              store: PlayerStore) -> Bool {
         for m in 1..<n {
-            if !store.hasPanel(playerId: playerId, n: m) { return true }
+            if !store.hasPanel(playerId: playerId, target: .panel(m)) { return true }
         }
         return false
     }
@@ -75,7 +87,7 @@ public enum PhotoReferenceResolver {
                                                   playerId: String,
                                                   store: PlayerStore) -> Int? {
         for m in stride(from: n - 1, through: 1, by: -1) {
-            if store.hasPanel(playerId: playerId, n: m) {
+            if store.hasPanel(playerId: playerId, target: .panel(m)) {
                 return m
             }
         }

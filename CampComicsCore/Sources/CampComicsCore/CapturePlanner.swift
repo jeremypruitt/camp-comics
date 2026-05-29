@@ -64,20 +64,47 @@ public struct Palette: Equatable, Codable, Sendable {
     }
 }
 
+/// Cover-only counterpart to `PanelSpec`. The cover is a sibling artifact (not
+/// "panel 13" per CONTEXT.md): its prompt skeleton, references, and aspect
+/// ratio diverge from the panel path, so it gets its own spec rather than
+/// reusing PanelSpec's beat/scene/composition vocabulary.
+public struct CoverSpec: Equatable, Codable, Sendable {
+    public let requirement: PanelRequirement
+    public let poseDirective: String
+    public let aspect: String
+
+    public init(requirement: PanelRequirement,
+                poseDirective: String,
+                aspect: String = "3:4") {
+        self.requirement = requirement
+        self.poseDirective = poseDirective
+        self.aspect = aspect
+    }
+
+    public init(emotion: Emotion,
+                position: Position,
+                poseDirective: String = "",
+                aspect: String = "3:4") {
+        self.init(requirement: PanelRequirement(emotion: emotion, position: position),
+                  poseDirective: poseDirective,
+                  aspect: aspect)
+    }
+}
+
 public struct ClassTemplate: Equatable, Codable, Sendable {
     public let classKey: String
     public let name: String
     public let costume: String
     public let palette: Palette
     public let panels: [PanelSpec]
-    public let cover: PanelRequirement
+    public let cover: CoverSpec
 
     public init(classKey: String,
                 name: String,
                 costume: String = "",
                 palette: Palette = Palette(lighting: "", colors: ""),
                 panels: [PanelSpec],
-                cover: PanelRequirement) {
+                cover: CoverSpec) {
         self.classKey = classKey
         self.name = name
         self.costume = costume
@@ -97,7 +124,7 @@ public enum CapturePlanner {
     public static func plan(for template: ClassTemplate) -> [PanelRequirement] {
         var seen = Set<PanelRequirement>()
         for spec in template.panels { seen.insert(spec.requirement) }
-        seen.insert(template.cover)
+        seen.insert(template.cover.requirement)
         return seen.sorted(by: order)
     }
 

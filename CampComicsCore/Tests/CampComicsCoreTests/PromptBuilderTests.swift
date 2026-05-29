@@ -123,12 +123,66 @@ struct PromptBuilderTests {
         #expect(prompt.contains("Style: \(expectedStyleBlock)"))
     }
 
+    @Test func coverPromptMatchesLegacyFormat() {
+        // Slice 11b: ports assemble_cover_prompt from
+        // _legacy/scripts/generate.py:145-156 verbatim. STYLE_SUFFIX MUST
+        // trail per ADR-0004 — anything after it wins on recency, and the
+        // cover doesn't override face/costume guidance.
+        let coverSpec = CoverSpec(
+            emotion: .neutral,
+            position: .profile,
+            poseDirective: "heroic full-body portrait in full druid regalia"
+        )
+        let template = ClassTemplate(
+            classKey: "druid",
+            name: "Druid",
+            costume: "weathered leather and bark armor",
+            palette: Palette(lighting: "warm golden-hour", colors: "deep mossy greens"),
+            panels: [],
+            cover: coverSpec
+        )
+
+        let prompt = PromptBuilder.buildPrompt(
+            for: .cover(spec: coverSpec),
+            template: template,
+            tokens: ["camper_name": "Alex"]
+        )
+
+        let expected =
+            "heroic full-body portrait in full druid regalia, depicting Alex as a Druid. "
+            + "Costume: weathered leather and bark armor. "
+            + "Lighting and color: warm golden-hour, deep mossy greens. "
+            + "Style: \(PromptBuilder.styleSuffix) "
+            + "Image aspect ratio: 3:4."
+        #expect(prompt == expected)
+    }
+
+    @Test func panelTargetEntryMatchesPanelPromptForPanelCase() {
+        // The unified buildPrompt(for: PanelTarget) entry produces the same
+        // text as the existing panel-only path for the .panel(n:spec:) case.
+        let spec = PanelSpec(n: 1, beat: "Tuesday.",
+                             scene: "Alex stands in a kitchen",
+                             composition: "intimate medium shot, centered",
+                             emotion: .neutral, position: .front)
+
+        let direct = PromptBuilder.buildPanelPrompt(
+            spec: spec, template: Self.druidTemplate, tokens: ["camper_name": "Alex"]
+        )
+        let unified = PromptBuilder.buildPrompt(
+            for: .panel(n: 1, spec: spec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"]
+        )
+
+        #expect(direct == unified)
+    }
+
     private static let druidTemplate = ClassTemplate(
         classKey: "druid",
         name: "Druid",
         costume: "weathered leather and bark armor",
         palette: Palette(lighting: "warm golden-hour", colors: "deep mossy greens"),
         panels: [],
-        cover: PanelRequirement(emotion: .neutral, position: .profile)
+        cover: CoverSpec(emotion: .neutral, position: .profile)
     )
 }

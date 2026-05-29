@@ -42,15 +42,18 @@ public struct PanelCandidate: Equatable, Sendable {
 
 /// One row of `_attempts.json` — used by Re-prompt to recover the operator's
 /// last-edited prompt and by debug tooling to audit what was generated where.
+/// `target` is the disk discriminator (`panel_07` / `cover`) so the cover and
+/// panel attempts can coexist in one file (slice 11b).
 public struct PanelAttempt: Equatable, Codable, Sendable {
-    public let n: Int
+    public let target: PanelTargetID
     public let attempt: Int
     public let prompt: String
     public let candidateFile: String
     public let generatedAt: Date
 
-    public init(n: Int, attempt: Int, prompt: String, candidateFile: String, generatedAt: Date) {
-        self.n = n
+    public init(target: PanelTargetID, attempt: Int, prompt: String,
+                candidateFile: String, generatedAt: Date) {
+        self.target = target
         self.attempt = attempt
         self.prompt = prompt
         self.candidateFile = candidateFile
@@ -157,38 +160,39 @@ public struct PlayerStore: Sendable {
         FileManager.default.fileExists(atPath: qaPanelURL(playerId: playerId).path)
     }
 
-    // MARK: - Narrative panels (panel_NN.png — slice 8+)
+    // MARK: - Accepted artifact (panel_NN.png / cover.png — slice 11b)
 
-    public func savePanel(playerId: String, n: Int, pngData: Data) throws {
+    public func savePanel(playerId: String, target: PanelTargetID, pngData: Data) throws {
         try FileManager.default.createDirectory(at: panelsDir(for: playerId),
                                                 withIntermediateDirectories: true)
-        try pngData.write(to: panelURL(playerId: playerId, n: n), options: .atomic)
+        try pngData.write(to: panelURL(playerId: playerId, target: target), options: .atomic)
     }
 
-    public func loadPanel(playerId: String, n: Int) -> Data? {
-        try? Data(contentsOf: panelURL(playerId: playerId, n: n))
+    public func loadPanel(playerId: String, target: PanelTargetID) -> Data? {
+        try? Data(contentsOf: panelURL(playerId: playerId, target: target))
     }
 
-    public func hasPanel(playerId: String, n: Int) -> Bool {
-        FileManager.default.fileExists(atPath: panelURL(playerId: playerId, n: n).path)
+    public func hasPanel(playerId: String, target: PanelTargetID) -> Bool {
+        FileManager.default.fileExists(atPath: panelURL(playerId: playerId, target: target).path)
     }
 
-    // MARK: - Candidate gallery (slice 9)
+    // MARK: - Candidate gallery (slice 9, slice 11b unified for cover)
 
-    /// Append a candidate PNG to `_candidates/NN/` and return its assigned
-    /// index. Indices are dense and monotonically increasing per panel until
-    /// `acceptCandidate` clears the directory.
-    public func savePendingCandidate(playerId: String, n: Int, pngData: Data) throws -> PanelCandidate {
-        let dir = candidatesDir(for: playerId, n: n)
+    /// Append a candidate PNG to `_candidates/{NN or cover}/` and return its
+    /// assigned index. Indices are dense and monotonically increasing per
+    /// target until `acceptCandidate` clears the directory.
+    public func savePendingCandidate(playerId: String, target: PanelTargetID,
+                                     pngData: Data) throws -> PanelCandidate {
+        let dir = candidatesDir(for: playerId, target: target)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let index = nextCandidateIndex(in: dir)
-        let url = candidateURL(playerId: playerId, n: n, index: index)
+        let url = candidateURL(playerId: playerId, target: target, index: index)
         try pngData.write(to: url, options: .atomic)
         return PanelCandidate(index: index, url: url)
     }
 
-    public func listCandidates(playerId: String, n: Int) -> [PanelCandidate] {
-        let dir = candidatesDir(for: playerId, n: n)
+    public func listCandidates(playerId: String, target: PanelTargetID) -> [PanelCandidate] {
+        let dir = candidatesDir(for: playerId, target: target)
         let entries = (try? FileManager.default.contentsOfDirectory(at: dir,
                                                                     includingPropertiesForKeys: nil)) ?? []
         return entries
@@ -199,45 +203,45 @@ public struct PlayerStore: Sendable {
             .sorted { $0.index < $1.index }
     }
 
-    /// Promote one candidate to `panel_NN.png` and discard the rest of the
-    /// gallery. After this, `listCandidates(n)` is empty and `loadPanel(n)`
-    /// returns the chosen bytes.
-    public func acceptCandidate(playerId: String, n: Int, candidateIndex: Int) throws {
-        let source = candidateURL(playerId: playerId, n: n, index: candidateIndex)
+    /// Promote one candidate to `panel_NN.png` / `cover.png` and discard the
+    /// rest of the gallery. After this, `listCandidates(target)` is empty and
+    /// `loadPanel(target)` returns the chosen bytes.
+    public func acceptCandidate(playerId: String, target: PanelTargetID, candidateIndex: Int) throws {
+        let source = candidateURL(playerId: playerId, target: target, index: candidateIndex)
         let data = try Data(contentsOf: source)
         try FileManager.default.createDirectory(at: panelsDir(for: playerId),
                                                 withIntermediateDirectories: true)
-        try data.write(to: panelURL(playerId: playerId, n: n), options: .atomic)
-        try clearCandidates(playerId: playerId, n: n)
+        try data.write(to: panelURL(playerId: playerId, target: target), options: .atomic)
+        try clearCandidates(playerId: playerId, target: target)
     }
 
-    public func deletePanel(playerId: String, n: Int) throws {
-        let url = panelURL(playerId: playerId, n: n)
+    public func deletePanel(playerId: String, target: PanelTargetID) throws {
+        let url = panelURL(playerId: playerId, target: target)
         if FileManager.default.fileExists(atPath: url.path) {
             try FileManager.default.removeItem(at: url)
         }
     }
 
-    /// Re-roll-after-accept (design memo #3). Moves `panel_NN.png` back into
-    /// `_candidates/NN/` as candidate index 0 and removes the accepted file —
+    /// Re-roll-after-accept (design memo #3). Moves `panel_NN.png` / `cover.png`
+    /// back into the candidate dir as index 0 and removes the accepted file —
     /// the operator's prior choice stays visible in the gallery until they
     /// commit a new winner. If a gallery already exists, prepends to it.
-    public func demoteAcceptedToCandidate(playerId: String, n: Int) throws {
-        let panelFile = panelURL(playerId: playerId, n: n)
+    public func demoteAcceptedToCandidate(playerId: String, target: PanelTargetID) throws {
+        let panelFile = panelURL(playerId: playerId, target: target)
         guard FileManager.default.fileExists(atPath: panelFile.path) else { return }
         let bytes = try Data(contentsOf: panelFile)
-        let dir = candidatesDir(for: playerId, n: n)
+        let dir = candidatesDir(for: playerId, target: target)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         // Renumber any existing candidates upward so the demoted prior winner
         // takes index 0 (operators expect it first in the filmstrip).
-        let existing = listCandidates(playerId: playerId, n: n)
+        let existing = listCandidates(playerId: playerId, target: target)
             .sorted { $0.index > $1.index }
         for candidate in existing {
-            let bumped = candidateURL(playerId: playerId, n: n, index: candidate.index + 1)
+            let bumped = candidateURL(playerId: playerId, target: target, index: candidate.index + 1)
             try FileManager.default.moveItem(at: candidate.url, to: bumped)
         }
-        let target = candidateURL(playerId: playerId, n: n, index: 0)
-        try bytes.write(to: target, options: .atomic)
+        let demoted = candidateURL(playerId: playerId, target: target, index: 0)
+        try bytes.write(to: demoted, options: .atomic)
         try FileManager.default.removeItem(at: panelFile)
     }
 
@@ -259,8 +263,8 @@ public struct PlayerStore: Sendable {
         try data.write(to: attemptsURL(playerId: playerId), options: .atomic)
     }
 
-    private func clearCandidates(playerId: String, n: Int) throws {
-        let dir = candidatesDir(for: playerId, n: n)
+    private func clearCandidates(playerId: String, target: PanelTargetID) throws {
+        let dir = candidatesDir(for: playerId, target: target)
         if FileManager.default.fileExists(atPath: dir.path) {
             try FileManager.default.removeItem(at: dir)
         }
@@ -318,22 +322,29 @@ public struct PlayerStore: Sendable {
         panelsDir(for: playerId).appendingPathComponent("qa_avatar.png")
     }
 
-    private func panelURL(playerId: String, n: Int) -> URL {
-        panelsDir(for: playerId).appendingPathComponent(String(format: "panel_%02d.png", n))
+    private func panelURL(playerId: String, target: PanelTargetID) -> URL {
+        panelsDir(for: playerId).appendingPathComponent("\(target.diskName).png")
     }
 
     private func attemptsURL(playerId: String) -> URL {
         panelsDir(for: playerId).appendingPathComponent("_attempts.json")
     }
 
-    private func candidatesDir(for playerId: String, n: Int) -> URL {
-        panelsDir(for: playerId)
+    /// Cover and panels share the parent `_candidates/` dir but get different
+    /// stems: `_candidates/07/` for panel 7, `_candidates/cover/` for the
+    /// cover. Panel-stem stays zero-padded-N so legacy tests keep working.
+    private func candidatesDir(for playerId: String, target: PanelTargetID) -> URL {
+        let stem: String = switch target {
+        case .panel(let n): String(format: "%02d", n)
+        case .cover: "cover"
+        }
+        return panelsDir(for: playerId)
             .appendingPathComponent("_candidates")
-            .appendingPathComponent(String(format: "%02d", n))
+            .appendingPathComponent(stem)
     }
 
-    private func candidateURL(playerId: String, n: Int, index: Int) -> URL {
-        candidatesDir(for: playerId, n: n)
+    private func candidateURL(playerId: String, target: PanelTargetID, index: Int) -> URL {
+        candidatesDir(for: playerId, target: target)
             .appendingPathComponent(String(format: "%03d.png", index))
     }
 

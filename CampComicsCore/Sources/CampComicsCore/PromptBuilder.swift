@@ -44,6 +44,36 @@ public enum PromptBuilder {
         12: "16:9",
     ]
 
+    /// Unified entry (slice 11b): dispatches to `buildPanelPrompt` for panel
+    /// targets and `buildCoverPrompt` for the cover. Callers in the review
+    /// loop hold a `PanelTarget` so they don't have to switch on the case.
+    public static func buildPrompt(for target: PanelTarget,
+                                   template: ClassTemplate,
+                                   tokens: [String: String]) -> String {
+        switch target {
+        case .panel(_, let spec):
+            return buildPanelPrompt(spec: spec, template: template, tokens: tokens)
+        case .cover(let spec):
+            return buildCoverPrompt(spec: spec, template: template, tokens: tokens)
+        }
+    }
+
+    /// Direct port of _legacy/scripts/generate.py:assemble_cover_prompt
+    /// (lines 145-156). The cover skips the panel scene/composition vocabulary
+    /// and leans on `poseDirective` + `display_name` to set the heroic shot.
+    /// STYLE_SUFFIX trails per ADR-0004; the cover doesn't append anything
+    /// after it (no style_override on the cover).
+    public static func buildCoverPrompt(spec: CoverSpec,
+                                        template: ClassTemplate,
+                                        tokens: [String: String]) -> String {
+        let name = tokens["camper_name"] ?? ""
+        return "\(spec.poseDirective), depicting \(name) as a \(template.name). "
+            + "Costume: \(template.costume). "
+            + "Lighting and color: \(template.palette.lighting), \(template.palette.colors). "
+            + "Style: \(styleSuffix) "
+            + "Image aspect ratio: \(spec.aspect)."
+    }
+
     public static func buildPanelPrompt(spec: PanelSpec,
                                         template: ClassTemplate,
                                         tokens: [String: String]) -> String {
