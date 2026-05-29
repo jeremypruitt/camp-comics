@@ -26,6 +26,7 @@ struct PanelReviewView: View {
     @State private var throttleTask: Task<Void, Never>?
     @State private var showingMissingPhotoCapture: Bool = false
     @State private var showingGrid: Bool = false
+    @State private var showingReprompt: Bool = false
 
     /// Fallback wait when Vertex 429s without a parseable retry-after.
     private static let defaultRetryAfterSeconds: TimeInterval = 6
@@ -97,6 +98,17 @@ struct PanelReviewView: View {
                 }
                 .accessibilityLabel("Open panel grid")
             }
+        }
+        .sheet(isPresented: $showingReprompt) {
+            RepromptSheet(prefill: repromptPrefill,
+                          aspect: currentAspect,
+                          onSubmit: { edited in
+                              showingReprompt = false
+                              submitReprompt(edited)
+                          },
+                          onCancel: { showingReprompt = false })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingGrid) {
             NavigationStack {
@@ -284,6 +296,8 @@ struct PanelReviewView: View {
                     .buttonStyle(.borderedProminent)
                 Button("Re-roll") { startGenerate() }
                     .buttonStyle(.bordered)
+                Button("Re-prompt") { showingReprompt = true }
+                    .buttonStyle(.bordered)
             }
         case .accepted:
             Button("Re-roll") { rerollAccepted() }
@@ -404,7 +418,7 @@ struct PanelReviewView: View {
 
     // MARK: - Actions
 
-    private func startGenerate(autoRetry: Bool = false) {
+    private func startGenerate(autoRetry: Bool = false, promptOverride: String? = nil) {
         lastError = nil
         throttleTask?.cancel()
         throttleCountdown = 0
@@ -421,7 +435,7 @@ struct PanelReviewView: View {
             lastError = "Couldn't load all reference images for this target."
             return
         }
-        let prompt = PromptBuilder.buildPrompt(
+        let prompt = promptOverride ?? PromptBuilder.buildPrompt(
             for: target,
             template: template,
             tokens: ["camper_name": player.playerName]
@@ -587,6 +601,35 @@ struct PanelReviewView: View {
 
     private var currentRequirement: PanelRequirement { currentTarget.requirement }
 
+    private var currentAspect: String {
+        switch currentTarget {
+        case .panel(let n, _): return PromptBuilder.panelAspectRatios[n] ?? "4:3"
+        case .cover(let spec): return spec.aspect
+        }
+    }
+
+    /// Prefill for the Re-prompt textarea: the editable preamble portion of
+    /// `lastPrompt` (everything before ` Style: `). Falls back to the YAML
+    /// default preamble if `lastPrompt` is empty or doesn't contain the cut
+    /// marker — e.g. fresh hydrate before any generation has run.
+    private var repromptPrefill: String {
+        if let r = lastPrompt.range(of: " Style: ") {
+            return String(lastPrompt[..<r.lowerBound])
+        }
+        return PromptBuilder.buildPreamble(
+            for: currentTarget,
+            template: template,
+            tokens: ["camper_name": player.playerName]
+        )
+    }
+
+    private func submitReprompt(_ editedPreamble: String) {
+        let assembled = editedPreamble
+            + " Style: \(PromptBuilder.styleSuffix)"
+            + " Image aspect ratio: \(currentAspect)."
+        startGenerate(promptOverride: assembled)
+    }
+
     private var currentBeat: String {
         switch currentTarget {
         case .panel(_, let spec): return spec.beat
@@ -739,6 +782,67 @@ private struct MissingPhotoCaptureView: View {
                     showingPicker = false
                 }
                 .ignoresSafeArea()
+            }
+        }
+    }
+}
+
+/// Slice-11c Re-prompt editor. Edits the preamble (scene/composition/costume/
+/// lighting); STYLE_SUFFIX + aspect are locked per
+/// `feedback_style_override_face_fidelity` — appending anything after
+/// STYLE_SUFFIX without reiterating face-fidelity instructions softens the
+/// model's identity lock. Submit assembles `editedPreamble + " Style: " +
+/// styleSuffix + " Image aspect ratio: \(aspect)."` and kicks generation;
+/// the new candidate appends to the gallery without dropping priors.
+private struct RepromptSheet: View {
+    let prefill: String
+    let aspect: String
+    let onSubmit: (String) -> Void
+    let onCancel: () -> Void
+
+    @State private var edited: String
+
+    init(prefill: String,
+         aspect: String,
+         onSubmit: @escaping (String) -> Void,
+         onCancel: @escaping () -> Void) {
+        self.prefill = prefill
+        self.aspect = aspect
+        self.onSubmit = onSubmit
+        self.onCancel = onCancel
+        _edited = State(initialValue: prefill)
+    }
+
+    private var trimmedIsEmpty: Bool {
+        edited.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 12) {
+                TextEditor(text: $edited)
+                    .font(.body)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .frame(minHeight: 200)
+                Text("+ Style: (locked) · Image aspect ratio: \(aspect)")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Re-prompt")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Submit") { onSubmit(edited) }
+                        .disabled(trimmedIsEmpty)
+                }
             }
         }
     }

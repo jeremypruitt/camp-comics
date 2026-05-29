@@ -44,6 +44,29 @@ public enum PromptBuilder {
         12: "16:9",
     ]
 
+    /// Slice 11c: the editable section of a target's prompt — everything before
+    /// ` Style: \(styleSuffix)…`. Re-prompt prefills the editor with this and
+    /// reassembles `preamble + " Style: " + styleSuffix + " Image aspect ratio:
+    /// \(aspect)."` on submit. `buildPanelPrompt` and `buildCoverPrompt` also
+    /// route through this helper so prefill and final assembly share one path.
+    public static func buildPreamble(for target: PanelTarget,
+                                     template: ClassTemplate,
+                                     tokens: [String: String]) -> String {
+        switch target {
+        case .panel(_, let spec):
+            let scene = interpolate(spec.scene, tokens: tokens)
+            let costume = spec.costumeOverride ?? template.costume
+            return "\(scene). \(spec.composition). "
+                + "Costume: \(costume). "
+                + "Lighting and color: \(template.palette.lighting), \(template.palette.colors)."
+        case .cover(let spec):
+            let name = tokens["camper_name"] ?? ""
+            return "\(spec.poseDirective), depicting \(name) as a \(template.name). "
+                + "Costume: \(template.costume). "
+                + "Lighting and color: \(template.palette.lighting), \(template.palette.colors)."
+        }
+    }
+
     /// Unified entry (slice 11b): dispatches to `buildPanelPrompt` for panel
     /// targets and `buildCoverPrompt` for the cover. Callers in the review
     /// loop hold a `PanelTarget` so they don't have to switch on the case.
@@ -66,30 +89,21 @@ public enum PromptBuilder {
     public static func buildCoverPrompt(spec: CoverSpec,
                                         template: ClassTemplate,
                                         tokens: [String: String]) -> String {
-        let name = tokens["camper_name"] ?? ""
-        return "\(spec.poseDirective), depicting \(name) as a \(template.name). "
-            + "Costume: \(template.costume). "
-            + "Lighting and color: \(template.palette.lighting), \(template.palette.colors). "
-            + "Style: \(styleSuffix) "
-            + "Image aspect ratio: \(spec.aspect)."
+        let preamble = buildPreamble(for: .cover(spec: spec),
+                                     template: template,
+                                     tokens: tokens)
+        return preamble + " Style: \(styleSuffix) Image aspect ratio: \(spec.aspect)."
     }
 
     public static func buildPanelPrompt(spec: PanelSpec,
                                         template: ClassTemplate,
                                         tokens: [String: String]) -> String {
-        let scene = interpolate(spec.scene, tokens: tokens)
-        let composition = spec.composition
-        let costume = spec.costumeOverride ?? template.costume
-        let lighting = template.palette.lighting
-        let colors = template.palette.colors
+        let preamble = buildPreamble(for: .panel(n: spec.n, spec: spec),
+                                     template: template,
+                                     tokens: tokens)
         let aspect = panelAspectRatios[spec.n] ?? "4:3"
         let styleBlock = spec.styleOverride.map { "\(styleSuffix) \($0)" } ?? styleSuffix
-
-        return "\(scene). \(composition). "
-            + "Costume: \(costume). "
-            + "Lighting and color: \(lighting), \(colors). "
-            + "Style: \(styleBlock) "
-            + "Image aspect ratio: \(aspect)."
+        return preamble + " Style: \(styleBlock) Image aspect ratio: \(aspect)."
     }
 
     private static func interpolate(_ template: String, tokens: [String: String]) -> String {

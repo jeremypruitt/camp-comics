@@ -157,6 +157,64 @@ struct PromptBuilderTests {
         #expect(prompt == expected)
     }
 
+    @Test func buildPreamblePanelReturnsEditableSection() {
+        // Slice 11c: Re-prompt edits the preamble (scene + composition + costume +
+        // lighting) and leaves STYLE_SUFFIX + aspect locked. The preamble helper
+        // is also what `buildPanelPrompt` uses internally, so prefill and final
+        // assembly share one path.
+        let spec = PanelSpec(
+            n: 1,
+            beat: "Tuesday.",
+            scene: "{camper_name} stands in a kitchen",
+            composition: "intimate medium shot, centered",
+            emotion: .neutral,
+            position: .front
+        )
+        let preamble = PromptBuilder.buildPreamble(
+            for: .panel(n: 1, spec: spec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"]
+        )
+
+        let expected = "Alex stands in a kitchen. intimate medium shot, centered. "
+            + "Costume: weathered leather and bark armor. "
+            + "Lighting and color: warm golden-hour, deep mossy greens."
+        #expect(preamble == expected)
+        #expect(!preamble.contains(" Style: "))
+    }
+
+    @Test func buildPreambleCoverReturnsEditableSection() {
+        // Slice 11c: cover Re-prompt edits the pose+identity+costume+lighting
+        // line and leaves STYLE_SUFFIX + aspect locked. Symmetric to the panel
+        // variant so the Re-prompt sheet doesn't have to branch on target.
+        let coverSpec = CoverSpec(
+            emotion: .neutral,
+            position: .profile,
+            poseDirective: "heroic full-body portrait in full druid regalia"
+        )
+        let template = ClassTemplate(
+            classKey: "druid",
+            name: "Druid",
+            costume: "weathered leather and bark armor",
+            palette: Palette(lighting: "warm golden-hour", colors: "deep mossy greens"),
+            panels: [],
+            cover: coverSpec
+        )
+
+        let preamble = PromptBuilder.buildPreamble(
+            for: .cover(spec: coverSpec),
+            template: template,
+            tokens: ["camper_name": "Alex"]
+        )
+
+        let expected =
+            "heroic full-body portrait in full druid regalia, depicting Alex as a Druid. "
+            + "Costume: weathered leather and bark armor. "
+            + "Lighting and color: warm golden-hour, deep mossy greens."
+        #expect(preamble == expected)
+        #expect(!preamble.contains(" Style: "))
+    }
+
     @Test func panelTargetEntryMatchesPanelPromptForPanelCase() {
         // The unified buildPrompt(for: PanelTarget) entry produces the same
         // text as the existing panel-only path for the .panel(n:spec:) case.
