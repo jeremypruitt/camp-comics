@@ -46,11 +46,14 @@ struct HTMLAssemblerTests {
         }
     }
 
-    @Test func actThreeBlockContainsInlineSVGWithClipPath() {
+    @Test func actThreeDiagonalPairUsesCSSClipPath() {
         let html = HTMLAssembler.assemble(player: Self.player(), template: Self.template())
         let act3 = actBlock(in: html, act: 3)
-        #expect(act3.contains("<svg"))
-        #expect(act3.contains("<clipPath"))
+        #expect(act3.contains(#"class="diag-left""#))
+        #expect(act3.contains(#"class="diag-right""#))
+        #expect(html.contains(".diag-left"))
+        #expect(html.contains(".diag-right"))
+        #expect(html.contains("clip-path: polygon("))
     }
 
     @Test func eachPanelBeatAppearsInOutput() {
