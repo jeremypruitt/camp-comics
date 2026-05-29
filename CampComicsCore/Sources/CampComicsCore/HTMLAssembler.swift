@@ -8,9 +8,9 @@ import Foundation
 /// Ports `_legacy/layout/comic.html.j2` + `comic.css` near-verbatim, with two
 /// deltas:
 ///   1. No page-5 roster (deferred until cohorts ship).
-///   2. Diagonal P10/P11 pair is one inline `<svg>` with `<clipPath>`s on iOS
-///      WebKit (legacy WeasyPrint 68 couldn't render clip-path so it baked the
-///      alpha into intermediate PNGs via PIL — see ADR-0005).
+///   2. Diagonal P10/P11 pair is two `<img>` tags clipped via CSS
+///      `clip-path: polygon(...)` instead of the legacy PIL-baked alpha PNGs
+///      (see ADR-0005).
 public enum HTMLAssembler {
 
     public struct Constants: Sendable {
@@ -91,33 +91,27 @@ public enum HTMLAssembler {
         """
     }
 
-    /// Inline SVG replacement for the legacy PIL alpha-baked PNG pair (ADR-0005).
-    /// Shared diagonal goes from (70%, 0) to (30%, 100%); both trapezoids touch
-    /// that line so the seam is exact. Cream gap between them is the container
-    /// background showing through. `non-scaling-stroke` keeps the diagonal line
-    /// at 1pt even though the SVG is stretched non-uniformly by the grid cell.
+    /// CSS clip-path replacement for the legacy PIL alpha-baked PNG pair
+    /// (ADR-0005). Two `<img>` tags share the cell; each is clipped to a
+    /// trapezoid via CSS `clip-path: polygon(...)`. The two polygons sit on
+    /// either side of the original (70,0)→(30,100) seam, each shifted 1.75pp
+    /// horizontally outward, giving a 3.5pp cream gap (~0.21in on a 6.025in
+    /// grid) that visually matches the 0.16in gutter between other panels.
+    /// Equal offsets at top and bottom keep the perpendicular gap width
+    /// constant along the diagonal.
     private static func renderDiagonalPair(left: PanelSpec, right: PanelSpec) -> String {
         let leftFile = String(format: "panel_%02d.png", left.n)
         let rightFile = String(format: "panel_%02d.png", right.n)
         return """
           <figure class="panel panel-pair-\(left.n)-\(right.n)">
-            <svg class="diag-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <defs>
-                <clipPath id="diag-left-\(left.n)" clipPathUnits="userSpaceOnUse">
-                  <polygon points="0,0 70,0 30,100 0,100"/>
-                </clipPath>
-                <clipPath id="diag-right-\(right.n)" clipPathUnits="userSpaceOnUse">
-                  <polygon points="70,0 100,0 100,100 30,100"/>
-                </clipPath>
-              </defs>
-              <image href="\(leftFile)" x="0" y="0" width="100" height="100"
-                     preserveAspectRatio="xMidYMin slice"
-                     clip-path="url(#diag-left-\(left.n))"/>
-              <image href="\(rightFile)" x="0" y="0" width="100" height="100"
-                     preserveAspectRatio="xMidYMin slice"
-                     clip-path="url(#diag-right-\(right.n))"/>
-              <line x1="70" y1="0" x2="30" y2="100"
-                    stroke="#2a1f15" stroke-width="1pt"
+            <img class="diag-left" src="\(leftFile)" alt="">
+            <img class="diag-right" src="\(rightFile)" alt="">
+            <svg class="diag-seams" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <line x1="68.25" y1="0" x2="28.25" y2="100"
+                    stroke="#2a1f15" stroke-width="0.5pt"
+                    vector-effect="non-scaling-stroke"/>
+              <line x1="71.75" y1="0" x2="31.75" y2="100"
+                    stroke="#2a1f15" stroke-width="0.5pt"
                     vector-effect="non-scaling-stroke"/>
             </svg>
             <figcaption class="cap-left">\(escape(left.beat))</figcaption>
@@ -134,9 +128,9 @@ public enum HTMLAssembler {
 
     /// Ported near-verbatim from `_legacy/layout/comic.css`. Deltas vs. legacy:
     /// (1) roster section removed (deferred with page 5 — see ADR-0005),
-    /// (2) `.diag-img` rules replaced with `.diag-svg` rules — the diagonal
-    /// trapezoids are now SVG `<image>` elements clipped via `<clipPath>`
-    /// instead of pre-baked alpha PNGs.
+    /// (2) `.diag-img` rules replaced with two `<img>` tags clipped via CSS
+    /// `clip-path: polygon(...)` — the SVG approach distorted images under the
+    /// non-uniform viewBox stretch (issue #24).
     /// File names PDFRenderer copies into the player's `panels/` directory
     /// before rendering. Stylesheet's `@font-face` `src:` rules reference these
     /// by relative path. PRD §40 requires offline operation — no Google Fonts
@@ -224,11 +218,23 @@ public enum HTMLAssembler {
     .page-act-3 .panel-pair-10-11 {
       grid-column: 1 / span 2; grid-row: 2;
       position: relative; background: #fffaf0;
-      border: none; overflow: hidden; min-width: 0; min-height: 0;
+      border: none; box-shadow: none;
+      overflow: hidden; min-width: 0; min-height: 0;
     }
-    .page-act-3 .panel-pair-10-11 .diag-svg {
+    .page-act-3 .panel-pair-10-11 .diag-left,
+    .page-act-3 .panel-pair-10-11 .diag-right {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: center top;
+      display: block;
+      border: 1pt solid #2a1f15;
+    }
+    .page-act-3 .panel-pair-10-11 .diag-left  { clip-path: polygon(0 0,      68.25% 0, 28.25% 100%, 0   100%); }
+    .page-act-3 .panel-pair-10-11 .diag-right { clip-path: polygon(71.75% 0, 100% 0,   100% 100%,   31.75% 100%); }
+    .page-act-3 .panel-pair-10-11 .diag-seams {
       position: absolute; top: 0; left: 0;
       width: 100%; height: 100%; display: block;
+      pointer-events: none; z-index: 1;
     }
     .page-act-3 .panel-pair-10-11 .cap-left,
     .page-act-3 .panel-pair-10-11 .cap-right {
