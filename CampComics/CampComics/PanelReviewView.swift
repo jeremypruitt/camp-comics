@@ -25,6 +25,7 @@ struct PanelReviewView: View {
     @State private var throttleCountdown: Int = 0
     @State private var throttleTask: Task<Void, Never>?
     @State private var showingMissingPhotoCapture: Bool = false
+    @State private var showingGrid: Bool = false
 
     /// Fallback wait when Vertex 429s without a parseable retry-after.
     private static let defaultRetryAfterSeconds: TimeInterval = 6
@@ -86,6 +87,33 @@ struct PanelReviewView: View {
                 },
                 onCancel: { showingMissingPhotoCapture = false }
             )
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingGrid = true
+                } label: {
+                    Image(systemName: "square.grid.3x3")
+                }
+                .accessibilityLabel("Open panel grid")
+            }
+        }
+        .sheet(isPresented: $showingGrid) {
+            NavigationStack {
+                PanelGridView(player: player,
+                              template: template,
+                              store: store) { tappedID in
+                    if let next = allTargets.first(where: { $0.id == tappedID }) {
+                        currentTarget = next
+                    }
+                    showingGrid = false
+                    afterNav()
+                }
+                .navigationTitle("Grid")
+                .navigationBarTitleDisplayMode(.inline)
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 
