@@ -215,6 +215,66 @@ struct PromptBuilderTests {
         #expect(!preamble.contains(" Style: "))
     }
 
+    @Test func panel10PromptForcesSubjectIntoLeftThird() {
+        // Slice 30a: P10 sits behind the LEFT half of the diagonal pair on
+        // page 4 (see ADR-0005). Under `object-fit: cover` into the 6.025×2.67in
+        // cell, a 16:9 source has zero horizontal overflow — `object-position-X`
+        // cannot recompose the subject. Push composition at prompt time so the
+        // subject lands inside the visible left polygon naturally.
+        let spec = PanelSpec(
+            n: 10, beat: "ten.",
+            scene: "{camper_name} stands at a clearing",
+            composition: "wide establishing shot",
+            emotion: .neutral, position: .front
+        )
+        let prompt = PromptBuilder.buildPanelPrompt(
+            spec: spec, template: Self.druidTemplate, tokens: ["camper_name": "Alex"]
+        )
+        #expect(prompt.contains("LEFT third of the frame"))
+    }
+
+    @Test func panel11PromptForcesFiguresIntoRightSide() {
+        // Slice 30a: P11 is the right-hand trapezoid of the diagonal pair.
+        // The two ceremonial figures must land inside the visible right
+        // polygon, mirroring the P10 left-hint rationale above.
+        let spec = PanelSpec(
+            n: 11, beat: "eleven.",
+            scene: "two figures bow before {camper_name}",
+            composition: "wide ceremonial shot",
+            emotion: .neutral, position: .front
+        )
+        let prompt = PromptBuilder.buildPanelPrompt(
+            spec: spec, template: Self.druidTemplate, tokens: ["camper_name": "Alex"]
+        )
+        #expect(prompt.contains("RIGHT side of the frame"))
+    }
+
+    @Test func panel9And12PromptsDoNotCarryDiagonalHints() {
+        // Slice 30a guard: the layout hint must be scoped strictly to the
+        // diagonal pair (P10/P11). Neighbor panels — P9 (full-bleed 16:9
+        // approach) and P12 (full-bleed return-home, continuity-anchored to
+        // P1) — share the same 16:9 aspect but render into different cell
+        // shapes and must NOT inherit the diagonal composition pressure.
+        let n9 = PanelSpec(
+            n: 9, beat: "nine.", scene: "approach", composition: "wide",
+            emotion: .neutral, position: .front
+        )
+        let n12 = PanelSpec(
+            n: 12, beat: "twelve.", scene: "return", composition: "wide",
+            emotion: .neutral, position: .front
+        )
+        let p9 = PromptBuilder.buildPanelPrompt(
+            spec: n9, template: Self.druidTemplate, tokens: [:]
+        )
+        let p12 = PromptBuilder.buildPanelPrompt(
+            spec: n12, template: Self.druidTemplate, tokens: [:]
+        )
+        #expect(!p9.contains("LEFT third of the frame"))
+        #expect(!p9.contains("RIGHT side of the frame"))
+        #expect(!p12.contains("LEFT third of the frame"))
+        #expect(!p12.contains("RIGHT side of the frame"))
+    }
+
     @Test func panelTargetEntryMatchesPanelPromptForPanelCase() {
         // The unified buildPrompt(for: PanelTarget) entry produces the same
         // text as the existing panel-only path for the .panel(n:spec:) case.

@@ -26,6 +26,19 @@ public enum PromptBuilder {
         + "recent approved panel). Do not invent new clothing details, swap colors, "
         + "or restyle existing gear between panels."
 
+    /// Slice 30a: layout hints appended to a panel's `composition` clause to
+    /// push the model's subject placement inside the visible region of its
+    /// diagonal trapezoid. P10/P11 are 16:9 sources rendered into a 6.025×2.67in
+    /// cell under `object-fit: cover` — zero horizontal overflow, so
+    /// `object-position-X` cannot recompose the subject after the fact (see
+    /// ADR-0005). The hint rides inside the composition clause, so STYLE_SUFFIX
+    /// still appends last and the face-fidelity ([[feedback-style-override-face-fidelity]])
+    /// rule for style overrides does not apply.
+    public static let panelLayoutHints: [Int: String] = [
+        10: "Subject MUST be composed in the LEFT third of the frame, occupying the left 0–35% horizontally, weighted toward the upper half. The right two-thirds is empty negative space or background environmental detail",
+        11: "Both ceremonial figures MUST be composed in the RIGHT side of the frame, occupying the right 50–100% horizontally, weighted toward the upper half. The left third is empty environmental space — sky, distant background, ambient light only",
+    ]
+
     /// Aspect ratio per panel number, mirroring PANEL_ASPECT_RATIOS in
     /// _legacy/scripts/generate.py — driven by panel beat, not class. The CSS
     /// layout in _legacy/layout/comic.css uses matching grid cell shapes.
@@ -56,7 +69,9 @@ public enum PromptBuilder {
         case .panel(_, let spec):
             let scene = interpolate(spec.scene, tokens: tokens)
             let costume = spec.costumeOverride ?? template.costume
-            return "\(scene). \(spec.composition). "
+            var composition = spec.composition
+            if let hint = panelLayoutHints[spec.n] { composition += "; \(hint)" }
+            return "\(scene). \(composition). "
                 + "Costume: \(costume). "
                 + "Lighting and color: \(template.palette.lighting), \(template.palette.colors)."
         case .cover(let spec):
