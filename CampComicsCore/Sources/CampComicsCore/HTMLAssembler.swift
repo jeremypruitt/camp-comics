@@ -38,6 +38,7 @@ public enum HTMLAssembler {
         <html lang="en">
         <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=636">
         <title>\(escape(player.characterName)) — A Tale from \(escape(constants.campName))</title>
         <style>\(stylesheet)</style>
         </head>

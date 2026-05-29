@@ -66,6 +66,14 @@ struct HTMLAssemblerTests {
         #expect(cover.contains("cover.png"))
     }
 
+    /// WKWebView's 980 CSS-px default viewport leaves a ~30% white column on
+    /// the right of every page (issue #25). The viewport meta tag pins the
+    /// rendering width to the actual page width — 6.625in × 96 CSS px/in = 636.
+    @Test func headContainsViewportMetaPinnedToPageWidth() {
+        let html = HTMLAssembler.assemble(player: Self.player(), template: Self.template())
+        #expect(html.contains(#"<meta name="viewport" content="width=636">"#))
+    }
+
     private func coverBlock(in html: String) -> Substring {
         guard let openRange = html.range(of: #"<section class="page cover">"#) else { return "" }
         let after = html[openRange.upperBound...]
