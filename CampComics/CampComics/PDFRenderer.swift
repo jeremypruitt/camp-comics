@@ -36,11 +36,13 @@ public final class PDFRenderer: NSObject {
                      template: ClassTemplate,
                      store: PlayerStore,
                      constants: HTMLAssembler.Constants) async throws -> URL {
-        let html = HTMLAssembler.assemble(player: player,
-                                          template: template,
-                                          constants: constants)
         let panelsDir = store.panelsDirectory(playerId: player.id)
         try FileManager.default.createDirectory(at: panelsDir, withIntermediateDirectories: true)
+        let panelPositions = await Self.diagonalPairSaliency(in: panelsDir)
+        let html = HTMLAssembler.assemble(player: player,
+                                          template: template,
+                                          constants: constants,
+                                          panelPositions: panelPositions)
         try Self.copyBundledFonts(to: panelsDir)
         let htmlURL = panelsDir.appendingPathComponent("_render.html")
         try html.data(using: .utf8)!.write(to: htmlURL, options: .atomic)
@@ -64,6 +66,21 @@ public final class PDFRenderer: NSObject {
         let outURL = store.comicURL(playerId: player.id)
         try pdfData.write(to: outURL, options: .atomic)
         return outURL
+    }
+
+    /// Slice 30b: run on-device saliency in parallel against panel_10.png
+    /// and panel_11.png, build the position map for `HTMLAssembler.assemble`.
+    /// Nils from `SaliencyAnalyzer.centroid` (missing file, Vision failure,
+    /// no salient region) silently omit that panel — falls back to the
+    /// slice-30a CSS baseline.
+    private static func diagonalPairSaliency(in panelsDir: URL) async -> [Int: HTMLAssembler.PanelPosition] {
+        async let left = SaliencyAnalyzer.centroid(of: panelsDir.appendingPathComponent("panel_10.png"))
+        async let right = SaliencyAnalyzer.centroid(of: panelsDir.appendingPathComponent("panel_11.png"))
+        let (leftPos, rightPos) = await (left, right)
+        var map: [Int: HTMLAssembler.PanelPosition] = [:]
+        if let leftPos { map[10] = leftPos }
+        if let rightPos { map[11] = rightPos }
+        return map
     }
 
     /// Copy the bundled font files into the player's `panels/` directory so
