@@ -13,6 +13,9 @@ struct PlayerDetailView: View {
     let generator: any PanelGenerator
 
     @State private var showingReview = false
+    @State private var previewItem: PreviewItem?
+    @State private var isRendering = false
+    @State private var renderError: String?
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -30,6 +33,14 @@ struct PlayerDetailView: View {
                 summary
                 progressCard
                 continueButton
+                if isDone {
+                    generatePDFButton
+                }
+                if let renderError {
+                    Text(renderError)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
             }
             .padding()
         }
@@ -42,6 +53,9 @@ struct PlayerDetailView: View {
                             store: store,
                             generator: generator,
                             startAt: startTarget)
+        }
+        .sheet(item: $previewItem) { item in
+            PDFPreview(url: item.url)
         }
     }
 
@@ -87,6 +101,42 @@ struct PlayerDetailView: View {
         .controlSize(.large)
     }
 
+    private var generatePDFButton: some View {
+        Button {
+            Task { await generatePDF() }
+        } label: {
+            HStack {
+                if isRendering {
+                    ProgressView()
+                    Text("Generating…")
+                } else {
+                    Image(systemName: "doc.richtext")
+                    Text("Generate PDF")
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .fontWeight(.semibold)
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .disabled(isRendering)
+    }
+
+    private func generatePDF() async {
+        renderError = nil
+        isRendering = true
+        defer { isRendering = false }
+        do {
+            let url = try await PDFRenderer.render(player: player,
+                                                   template: template,
+                                                   store: store)
+            previewItem = PreviewItem(url: url)
+        } catch {
+            renderError = "PDF render failed: \(error.localizedDescription)"
+        }
+    }
+
     // MARK: - Derived
 
     /// Ordered review surface: 12 panels + the cover sibling. Mirrors
@@ -100,6 +150,10 @@ struct PlayerDetailView: View {
 
     private var finalizedCount: Int {
         allTargets.filter { store.hasPanel(playerId: player.id, target: $0.id) }.count
+    }
+
+    private var isDone: Bool {
+        PlayerStatus.derive(playerId: player.id, template: template, store: store) == .done
     }
 
     private var startTarget: PanelTarget {

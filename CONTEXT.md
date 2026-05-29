@@ -21,6 +21,24 @@ _Avoid_: "panel 13", "cover panel".
 **PanelTarget**:
 Code-level discriminator for the shared review surface: `panel(n: Int, spec: PanelSpec) | cover(spec: CoverSpec)`. Parameterizes `PanelReviewView`, `PromptBuilder`, and `PhotoReferenceResolver` so panels and the cover share one code path. On-disk identity is a sibling enum `PanelTargetID` (`.panel(Int) | .cover`) — serialized as the string discriminator `"panel_07"` / `"cover"` in `_attempts.json` and used by `PlayerStore` to address files.
 
+### Print layout
+
+**Comic**:
+The final printable artifact for one player — a PDF assembled from the player's 12 accepted panels + cover. On-disk: `Documents/players/player_NNN/comic.pdf`. Distinct from the *story* (the narrative encoded in the class template) and from any individual *panel* or *cover* (the source images that fill it).
+_Avoid_: "book" (informal), "PDF" (technical artifact, not the named thing).
+
+**Page**:
+One of the page-sized sections of the printed comic. v1 ships four pages — cover (page 1) and three interior pages (pages 2–4). A fifth back-cover **cohort roster** page is deferred until cohorts ship. Page size is 6.625" × 10.25" (comic standard), declared via CSS `@page` and read by `WKWebView.createPDF(configuration:)`.
+_Avoid_: "panel" (a panel is one cell on a page, not the whole page).
+
+**Act**:
+One of the three interior pages, each carrying a narrative beat from the class template — Act I (Ordinary → Call, panels 1–4), Act II (The Quest, panels 5–8), Act III (The Return, panels 9–12). Each act has its own asymmetric grid declared in CSS.
+_Avoid_: "interior page" when you mean the narrative beat ("Act II" reads as story; "page 3" reads as the third sheet).
+
+**Diagonal pair**:
+The single cell on Act III that holds panels 10 and 11 along a shared diagonal seam, rather than placing them in two adjacent rectangular cells. A continuity device — the two beats share a moment that side-by-side rectangles would visually disconnect. The trapezoid masks are rendered via inline SVG `<clipPath>` on iOS (see ADR-0005), unlike the legacy WeasyPrint pipeline which bakes the alpha into intermediate PNGs.
+_Avoid_: "split panel" (suggests one panel was split, when these are two distinct `PanelSpec`s).
+
 ### Generation loop
 
 **Candidate**:
