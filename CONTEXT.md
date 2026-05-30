@@ -118,3 +118,20 @@ Accepting panel N when one or more earlier panels (`m < N`) are unapproved. Allo
 **Player**:
 A summer-camp kid who ends up with a printed comic. Project-wide rename of the legacy "camper" term (legacy Python still uses "camper" on disk and in CLI flags).
 _Avoid_: "camper" (in any new code or conversation), "user".
+
+### Billing
+
+**BillingMode**:
+The "who pays Google" axis. Two cases: `.sponsored` (the `comic-harness` Firebase project pays — Jeremy's card, capped per-install + capped globally by Google Cloud budget) and `.byo` (the user provides their own Gemini Developer API key — bills against their own Google account, uncapped). User-facing copy may say "free" / "use your own key"; the glossary term names the axis. Stored per-app in `UserDefaults` (the BYO key itself lives in Keychain). Not recorded per-player; flipping mid-comic is supported because both modes call the same model with the same `STYLE_SUFFIX`.
+_Avoid_: "Default" (describes UX, not who's paying), "paid mode" (ambiguous about which side is paying).
+
+**Sponsored trial**:
+The 2-comic free allotment each install gets on `.sponsored`. "Comic" here means *finalized* (PDF generated); incomplete comics don't decrement the install counter. Surfaced upfront on first launch ("Try 2 free, then bring your own key") so the App Store reviewer sees the BYO model immediately. Per-install counter keyed on the Firebase Auth anonymous UID, server-side in Firestore.
+_Avoid_: "free tier" (suggests an ongoing tier, not a finite trial).
+
+**Generation budget**:
+Per-comic ceiling of `2 × slots` = 32 Vertex calls (15 panels + 1 cover). Every `gemini-2.5-flash-image` call on this comic decrements it — initial generations, Re-rolls, Re-prompts, and Re-roll-after-accept all count uniformly. The **QA-gate** generation does NOT count (it gates whether the comic even starts). Visible mid-flight as a low-key chip ("23 re-rolls left"). On exhaustion, a modal offers "accept current candidates and finalize" or "paste a Gemini key to continue in BYO." Per-comic budget exists only in `.sponsored`; `.byo` is uncapped.
+_Avoid_: "panel budget" (it's shared across all slots, not per-panel), "re-roll budget" (re-rolls are one consumer; initial generations and re-prompts also draw).
+
+**Global budget cap**:
+Google Cloud hard budget limit on the `comic-harness` project. The actual liability ceiling — per-install caps and per-comic budgets are friction controls layered on top, but only the GCP cap stops billing in extremis. Load-bearing. Must be configured before any Sponsored code ships.
