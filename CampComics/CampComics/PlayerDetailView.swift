@@ -7,6 +7,7 @@ import CampComicsCore
 /// `PanelReviewView`. Auto-start from the player list is deliberately gated so
 /// the operator opts in to Vertex spend.
 struct PlayerDetailView: View {
+    @Environment(\.themeKind) private var theme
     let player: PlayerRecord
     let template: ClassTemplate
     let store: PlayerStore
@@ -28,25 +29,32 @@ struct PlayerDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                summary
-                progressCard
-                continueButton
-                if isDone {
-                    generatePDFButton
+        let p = theme.palette
+        ZStack {
+            ThemedBackground()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    summary
+                    progressCard
+                    continueButton
+                    if isDone {
+                        generatePDFButton
+                    }
+                    if let renderError {
+                        Text(renderError)
+                            .font(theme.captionFont(12))
+                            .foregroundStyle(p.danger)
+                    }
                 }
-                if let renderError {
-                    Text(renderError)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                }
+                .padding()
+                .padding(.bottom, 120)
             }
-            .padding()
         }
-        .background(Color(.systemGroupedBackground))
         .navigationTitle(player.playerName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(p.paper, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(theme.preferredColorScheme, for: .navigationBar)
         .navigationDestination(isPresented: $showingReview) {
             PanelReviewView(player: player,
                             template: template,
@@ -62,66 +70,58 @@ struct PlayerDetailView: View {
     // MARK: - Subviews
 
     private var summary: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(headline).font(.title2.weight(.semibold))
-            Text("Class: \(template.name) · \(player.id)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        let p = theme.palette
+        return ThemedCard {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(headline)
+                    .font(theme.displayFont(28))
+                    .foregroundStyle(p.inkPrimary)
+                Text("\(template.name) · \(player.id)")
+                    .font(theme.captionFont(13))
+                    .tracking(2)
+                    .foregroundStyle(p.accent)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var progressCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Progress").font(.headline)
-            Text("\(finalizedCount) of \(allTargets.count) artifacts finalized")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            ProgressView(value: Double(finalizedCount), total: Double(allTargets.count))
+        let p = theme.palette
+        return ThemedCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(progressTitle)
+                    .font(theme.headingFont(18))
+                    .foregroundStyle(p.inkPrimary)
+                Text("\(finalizedCount) of \(allTargets.count) artifacts finalized")
+                    .font(theme.bodyFont(14))
+                    .foregroundStyle(p.inkSecondary)
+                ProgressView(value: Double(finalizedCount), total: Double(allTargets.count))
+                    .tint(p.accent)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var continueButton: some View {
-        Button {
+        ThemedPrimaryButton(continueLabel, systemImage: "sparkles") {
             showingReview = true
-        } label: {
-            Text(continueLabel)
-                .frame(maxWidth: .infinity)
-                .fontWeight(.semibold)
-                .padding(.vertical, 6)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
     }
 
     private var generatePDFButton: some View {
-        Button {
+        ThemedPrimaryButton(
+            isRendering ? "Generating…" : pdfButtonLabel,
+            systemImage: isRendering ? nil : "doc.richtext",
+            isLoading: isRendering,
+            isEnabled: !isRendering
+        ) {
             Task { await generatePDF() }
-        } label: {
-            HStack {
-                if isRendering {
-                    ProgressView()
-                    Text("Generating…")
-                } else {
-                    Image(systemName: "doc.richtext")
-                    Text("Generate PDF")
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .fontWeight(.semibold)
-            .padding(.vertical, 6)
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .disabled(isRendering)
     }
+
+    private var progressTitle: String { "Campaign Log" }
+
+    private var pdfButtonLabel: String { "Print the Quest" }
 
     private func generatePDF() async {
         renderError = nil

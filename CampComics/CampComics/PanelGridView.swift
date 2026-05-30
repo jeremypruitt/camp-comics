@@ -8,6 +8,7 @@ import CampComicsCore
 /// no observation of in-flight generation, no live refresh. Operator dismisses
 /// + reopens to see new state.
 struct PanelGridView: View {
+    @Environment(\.themeKind) private var theme
     let player: PlayerRecord
     let template: ClassTemplate
     let store: PlayerStore
@@ -20,43 +21,50 @@ struct PanelGridView: View {
     private var coverTarget: PanelTarget { .cover(spec: template.cover) }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 12)],
-                          spacing: 12) {
-                    ForEach(panelTargets, id: \.id) { target in
+        let p = theme.palette
+        ZStack {
+            ThemedBackground()
+            ScrollView {
+                VStack(spacing: 22) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 12)],
+                              spacing: 14) {
+                        ForEach(panelTargets, id: \.id) { target in
+                            Button {
+                                onSelect(target.id)
+                            } label: {
+                                Cell(target: target,
+                                     playerId: player.id,
+                                     store: store,
+                                     width: 100,
+                                     height: 100)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    VStack(spacing: 10) {
+                        Text(coverLabel)
+                            .font(theme.captionFont(11))
+                            .tracking(3)
+                            .foregroundStyle(p.accent)
                         Button {
-                            onSelect(target.id)
+                            onSelect(coverTarget.id)
                         } label: {
-                            Cell(target: target,
+                            Cell(target: coverTarget,
                                  playerId: player.id,
                                  store: store,
-                                 width: 100,
-                                 height: 100)
+                                 width: 220,
+                                 height: coverHeight(width: 220))
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                VStack(spacing: 8) {
-                    Text("Cover")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Button {
-                        onSelect(coverTarget.id)
-                    } label: {
-                        Cell(target: coverTarget,
-                             playerId: player.id,
-                             store: store,
-                             width: 220,
-                             height: coverHeight(width: 220))
-                    }
-                    .buttonStyle(.plain)
-                }
+                .padding()
+                .padding(.bottom, 120)
             }
-            .padding()
         }
-        .background(Color(.systemGroupedBackground))
     }
+
+    private var coverLabel: String { "·  COVER  ·" }
 
     private func coverHeight(width: CGFloat) -> CGFloat {
         let parts = template.cover.aspect.split(separator: ":")
@@ -71,6 +79,7 @@ struct PanelGridView: View {
 }
 
 private struct Cell: View {
+    @Environment(\.themeKind) private var theme
     let target: PanelTarget
     let playerId: String
     let store: PlayerStore
@@ -78,24 +87,59 @@ private struct Cell: View {
     let height: CGFloat
 
     var body: some View {
-        VStack(spacing: 6) {
+        let p = theme.palette
+        VStack(spacing: 8) {
             ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color(.tertiarySystemGroupedBackground))
+                RoundedRectangle(cornerRadius: cellCorner, style: .continuous)
+                    .fill(p.surface)
                 if let image = thumbnail() {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: cellCorner, style: .continuous))
                 }
             }
             .frame(width: width, height: height)
+            .overlay(
+                RoundedRectangle(cornerRadius: cellCorner, style: .continuous)
+                    .stroke(p.divider.opacity(0.7), lineWidth: theme == .questCard ? 2 : 0.8)
+            )
+            .shadow(color: shadowColor, radius: shadowRadius, x: shadowOffsetX, y: shadowOffsetY)
             VStack(spacing: 4) {
-                Text(label).font(.caption.weight(.semibold))
-                Pill(status: status)
+                Text(label)
+                    .font(theme.headingFont(13))
+                    .foregroundStyle(p.inkPrimary)
+                ThemedPill(label: pillLabel, tint: pillTint)
             }
         }
         .contentShape(Rectangle())
+    }
+
+    private var cellCorner: CGFloat { 4 }
+
+    private var shadowColor: Color { Color.black.opacity(0.45) }
+
+    private var shadowRadius: CGFloat { 6 }
+    private var shadowOffsetX: CGFloat { 0 }
+    private var shadowOffsetY: CGFloat { 3 }
+
+    private var pillLabel: String {
+        switch status {
+        case .accepted: return "accepted"
+        case .reviewing: return "reviewing"
+        case .missingPhoto: return "needs photo"
+        case .unstarted: return "unstarted"
+        }
+    }
+
+    private var pillTint: Color {
+        let p = theme.palette
+        switch status {
+        case .accepted: return p.positive
+        case .reviewing: return p.accent
+        case .missingPhoto: return p.warning
+        case .unstarted: return p.inkSecondary
+        }
     }
 
     private var label: String {
@@ -127,33 +171,3 @@ private struct Cell: View {
     }
 }
 
-private struct Pill: View {
-    let status: PanelGridCellStatus
-
-    var body: some View {
-        Text(label)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(tint.opacity(0.18), in: Capsule())
-            .foregroundStyle(tint)
-    }
-
-    private var label: String {
-        switch status {
-        case .accepted: return "accepted"
-        case .reviewing: return "reviewing"
-        case .missingPhoto: return "needs-photo"
-        case .unstarted: return "unstarted"
-        }
-    }
-
-    private var tint: Color {
-        switch status {
-        case .accepted: return .green
-        case .reviewing: return .blue
-        case .missingPhoto: return .orange
-        case .unstarted: return .secondary
-        }
-    }
-}

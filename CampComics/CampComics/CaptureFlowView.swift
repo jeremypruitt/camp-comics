@@ -10,6 +10,7 @@ enum SubmissionState {
 }
 
 struct CaptureFlowView: View {
+    @Environment(\.themeKind) private var theme
     let player: PlayerRecord
     let template: ClassTemplate
     let store: PlayerStore
@@ -49,29 +50,36 @@ struct CaptureFlowView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                summary
-                if let savedAvatar {
-                    SavedAvatarChip(image: savedAvatar) { viewingSavedAvatar = true }
-                }
-                VStack(spacing: 12) {
-                    ForEach(captureState.plan) { requirement in
-                        ChecklistRow(
-                            requirement: requirement,
-                            isCaptured: captureState.isCaptured(requirement),
-                            thumbnail: image(for: requirement),
-                            onTap: { handleTap(requirement) }
-                        )
+        let p = theme.palette
+        ZStack {
+            ThemedBackground()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    summary
+                    if let savedAvatar {
+                        SavedAvatarChip(image: savedAvatar) { viewingSavedAvatar = true }
                     }
+                    VStack(spacing: 12) {
+                        ForEach(captureState.plan) { requirement in
+                            ChecklistRow(
+                                requirement: requirement,
+                                isCaptured: captureState.isCaptured(requirement),
+                                thumbnail: image(for: requirement),
+                                onTap: { handleTap(requirement) }
+                            )
+                        }
+                    }
+                    submitButton
                 }
-                submitButton
+                .padding()
+                .padding(.bottom, 120)
             }
-            .padding()
         }
-        .background(Color(.systemGroupedBackground))
         .navigationTitle("\(template.name) capture")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(p.paper, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(theme.preferredColorScheme, for: .navigationBar)
         .sheet(item: $reviewing) { requirement in
             ReviewSheet(
                 requirement: requirement,
@@ -150,43 +158,36 @@ struct CaptureFlowView: View {
     }
 
     private var summary: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(playerHeadline)
-                .font(.title2.weight(.semibold))
-            Text("\(captureState.capturedCount) of \(captureState.plan.count) photos · tap any row.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            ProgressSegments(total: captureState.plan.count, captured: captureState.capturedCount)
+        let p = theme.palette
+        return ThemedCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(playerHeadline)
+                    .font(theme.headingFont(22))
+                    .foregroundStyle(p.inkPrimary)
+                Text("\(captureState.capturedCount) of \(captureState.plan.count) photos · tap any row.")
+                    .font(theme.bodyFont(14))
+                    .foregroundStyle(p.inkSecondary)
+                ProgressSegments(total: captureState.plan.count, captured: captureState.capturedCount)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var submitButton: some View {
-        Button {
+        let label = isSubmitting
+            ? "Generating test panel…"
+            : (captureState.isReadyToSubmit
+               ? "All set — submit"
+               : "\(captureState.remainingCount) more to go")
+        return ThemedPrimaryButton(
+            label,
+            systemImage: isSubmitting ? nil : "checkmark.seal.fill",
+            isLoading: isSubmitting,
+            isEnabled: captureState.isReadyToSubmit && !isSubmitting
+        ) {
             Task { await submit() }
-        } label: {
-            Group {
-                if isSubmitting {
-                    HStack(spacing: 8) {
-                        ProgressView().tint(.white)
-                        Text("Generating test panel…")
-                    }
-                } else {
-                    Text(captureState.isReadyToSubmit
-                         ? "All set — submit"
-                         : "\(captureState.remainingCount) more to go")
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .fontWeight(.semibold)
-            .padding(.vertical, 6)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .disabled(!captureState.isReadyToSubmit || isSubmitting)
-        .padding(.top, 8)
+        .padding(.top, 6)
     }
 
     private func submit() async {
@@ -270,6 +271,7 @@ struct CaptureFlowView: View {
 }
 
 private struct ChecklistRow: View {
+    @Environment(\.themeKind) private var theme
     let requirement: PanelRequirement
     let isCaptured: Bool
     let thumbnail: UIImage?
@@ -277,21 +279,26 @@ private struct ChecklistRow: View {
 
     var body: some View {
         let copy = PromptCopyBook.copy(for: requirement)
+        let p = theme.palette
         Button(action: onTap) {
             HStack(spacing: 14) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(isCaptured ? Color.accentColor.opacity(0.18) : Color(.tertiarySystemFill))
+                    RoundedRectangle(cornerRadius: tileCorner, style: .continuous)
+                        .fill(isCaptured ? p.accent.opacity(0.22) : p.surface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: tileCorner, style: .continuous)
+                                .stroke(isCaptured ? p.accent.opacity(0.7) : p.divider, lineWidth: 1)
+                        )
                     if let thumbnail {
                         Image(uiImage: thumbnail)
                             .resizable()
                             .scaledToFill()
                             .frame(width: 56, height: 56)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: tileCorner, style: .continuous))
                     } else if isCaptured {
                         Image(systemName: "checkmark")
                             .font(.title2.weight(.bold))
-                            .foregroundStyle(.tint)
+                            .foregroundStyle(p.accent)
                     } else {
                         Text(copy.emoji).font(.title)
                     }
@@ -300,70 +307,77 @@ private struct ChecklistRow: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(copy.title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
+                        .font(theme.headingFont(17))
+                        .foregroundStyle(p.inkPrimary)
                     Text("\(requirement.emotion.rawValue) · \(requirement.position.rawValue)")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(theme.captionFont(12))
+                        .foregroundStyle(p.inkSecondary)
                 }
                 Spacer()
                 Image(systemName: isCaptured ? "checkmark.circle.fill" : "chevron.right")
-                    .foregroundStyle(isCaptured ? Color.accentColor : Color.secondary)
+                    .foregroundStyle(isCaptured ? p.accent : p.inkSecondary)
             }
-            .padding(12)
+            .padding(14)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isCaptured ? Color.accentColor.opacity(0.08) : Color(.secondarySystemGroupedBackground))
+                RoundedRectangle(cornerRadius: cardCorner, style: .continuous)
+                    .fill(isCaptured ? p.accent.opacity(0.08) : p.surfaceRaised)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cardCorner, style: .continuous)
+                    .stroke(p.divider.opacity(0.7), lineWidth: 0.8)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
+
+    private var tileCorner: CGFloat { 10 }
+    private var cardCorner: CGFloat { 4 }
 }
 
 private struct SavedAvatarChip: View {
+    @Environment(\.themeKind) private var theme
     let image: UIImage
     let onTap: () -> Void
 
     var body: some View {
+        let p = theme.palette
         Button(action: onTap) {
-            HStack(spacing: 14) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 56, height: 56)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Test panel ready")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text("Tap to view, re-roll, or retake the gate photo.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+            ThemedCard {
+                HStack(spacing: 14) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Test panel ready")
+                            .font(theme.headingFont(17))
+                            .foregroundStyle(p.inkPrimary)
+                        Text("Tap to view, re-roll, or retake the gate photo.")
+                            .font(theme.captionFont(12))
+                            .foregroundStyle(p.inkSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(p.accent)
                 }
-                Spacer()
-                Image(systemName: "chevron.right").foregroundStyle(.secondary)
             }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
-            )
-            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 }
 
 private struct ProgressSegments: View {
+    @Environment(\.themeKind) private var theme
     let total: Int
     let captured: Int
 
     var body: some View {
+        let p = theme.palette
         HStack(spacing: 4) {
             ForEach(0..<total, id: \.self) { i in
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .fill(i < captured ? Color.accentColor : Color(.tertiarySystemFill))
+                    .fill(i < captured ? p.accent : p.divider.opacity(0.4))
                     .frame(height: 6)
             }
         }
