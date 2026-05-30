@@ -127,10 +127,15 @@ public enum HTMLAssembler {
 
     /// Renders one transition triptych (ADR-0007): three `<img>` tags sharing
     /// one figure, each clipped via CSS `clip-path: polygon(...)`. `kind` is
-    /// `"in"` (page 2, parallelogram middle + trapezoid bookends, //// slashes)
-    /// or `"out"` (page 4, hexagonal diamond-middle + pentagon bookends). No
-    /// `<figcaption>` — the adjacent on-page panels carry the narrative captions
-    /// (Watchmen-style).
+    /// `"in"` (page 2, parallelogram middle + trapezoid bookends, "/" slashes
+    /// — lower-left to upper-right, forward motion) or `"out"` (page 4,
+    /// hexagonal diamond-middle + pentagon bookends). No `<figcaption>` — the
+    /// adjacent on-page panels carry the narrative captions (Watchmen-style).
+    ///
+    /// The SVG overlay strokes a 0.5pt line along each diagonal seam edge so
+    /// the visual border continues across the cuts (same approach as the
+    /// legacy diagonal pair). `clip-path` cuts the rectangular border off the
+    /// diagonal portions of each cell, so the SVG overlay supplies it.
     private static func renderTriptych(panels: [PanelSpec], kind: String) -> String {
         let imgs = zip(panels, ["tri-left", "tri-middle", "tri-right"]).map { panel, cls in
             let filename = String(format: "panel_%02d.png", panel.n)
@@ -139,7 +144,47 @@ public enum HTMLAssembler {
         return """
           <figure class="panel-triptych-\(kind)">
             \(imgs)
+            \(triptychSeamsSVG(kind: kind))
           </figure>
+        """
+    }
+
+    /// SVG overlay strokes the diagonal edges of each clipped cell with a
+    /// 0.5pt line, matching the rectangular 1pt panel borders in visual weight
+    /// at print resolution. Polygon vertices below match the corresponding
+    /// `clip-path: polygon(...)` declarations in the stylesheet.
+    private static func triptychSeamsSVG(kind: String) -> String {
+        let lines: String
+        switch kind {
+        case "in":
+            // P-in: four diagonal seam edges (two cells on each side of each
+            // of the two seams). "/" slope — top X > bottom X.
+            lines = """
+            <line x1="37.83" y1="0" x2="25.83" y2="100" stroke="#2a1f15" stroke-width="0.5pt" vector-effect="non-scaling-stroke"/>
+            <line x1="40.83" y1="0" x2="28.83" y2="100" stroke="#2a1f15" stroke-width="0.5pt" vector-effect="non-scaling-stroke"/>
+            <line x1="71.16" y1="0" x2="59.16" y2="100" stroke="#2a1f15" stroke-width="0.5pt" vector-effect="non-scaling-stroke"/>
+            <line x1="74.16" y1="0" x2="62.16" y2="100" stroke="#2a1f15" stroke-width="0.5pt" vector-effect="non-scaling-stroke"/>
+            """
+        case "out":
+            // H-out: four diagonal contours (pentagon inner ">", hex left "<",
+            // hex right ">", pentagon inner "<"). Each is a 3-point polyline
+            // tracing the cell's inner diagonal edge. Pentagon edges are
+            // PARALLEL to the hex edges with a constant 2.7pp horizontal
+            // offset, giving a uniform cream gap that matches the panel
+            // gutter elsewhere on the page.
+            lines = """
+            <polyline points="31.3,0 16.3,50 31.3,100" fill="none" stroke="#2a1f15" stroke-width="0.5pt" vector-effect="non-scaling-stroke"/>
+            <polyline points="34,0 19,50 34,100" fill="none" stroke="#2a1f15" stroke-width="0.5pt" vector-effect="non-scaling-stroke"/>
+            <polyline points="66,0 81,50 66,100" fill="none" stroke="#2a1f15" stroke-width="0.5pt" vector-effect="non-scaling-stroke"/>
+            <polyline points="68.7,0 83.7,50 68.7,100" fill="none" stroke="#2a1f15" stroke-width="0.5pt" vector-effect="non-scaling-stroke"/>
+            """
+        default:
+            return ""
+        }
+        return """
+        <svg class="tri-seams" viewBox="0 0 100 100" preserveAspectRatio="none">
+        \(lines)
+        </svg>
         """
     }
 
@@ -302,24 +347,38 @@ public enum HTMLAssembler {
       display: block;
       border: 1pt solid #2a1f15;
     }
-    /* P-in: //// slashes (top-left → bottom-right), forward-leaning motion.
-       Three equal-area cells, with seam 1 at ~33% and seam 2 at ~66% width,
-       each leaning 4pp from top to bottom, with a 3.5pp constant gap. */
-    .panel-triptych-in .tri-left   { clip-path: polygon(0 0,        29.58% 0,   33.58% 100%,  0     100%); }
-    .panel-triptych-in .tri-middle { clip-path: polygon(33.08% 0,   62.91% 0,   66.91% 100%,  37.08% 100%); }
-    .panel-triptych-in .tri-right  { clip-path: polygon(66.41% 0,   100% 0,     100% 100%,    70.41% 100%); }
+    /* SVG seam overlay strokes the diagonal edges that clip-path leaves
+       borderless — see renderer's triptychSeamsSVG. */
+    .panel-triptych-in .tri-seams,
+    .panel-triptych-out .tri-seams {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; display: block;
+      pointer-events: none; z-index: 1;
+    }
+
+    /* P-in: "/" slashes — seams travel from lower-left to upper-right (top X >
+       bottom X), reading as forward motion / progress. Three equal-area cells,
+       with seam 1 at ~33% and seam 2 at ~66% width. Aggressive 12pp lean from
+       top to bottom (acute trapezoid corners) with a 3pp constant horizontal
+       gap that matches the 0.16in panel gutter elsewhere on the page. */
+    .panel-triptych-in .tri-left   { clip-path: polygon(0 0,       37.83% 0,  25.83% 100%, 0     100%); }
+    .panel-triptych-in .tri-middle { clip-path: polygon(40.83% 0,  71.16% 0,  59.16% 100%, 28.83% 100%); }
+    .panel-triptych-in .tri-right  { clip-path: polygon(74.16% 0,  100% 0,    100% 100%,   62.16% 100%); }
     /* H-out: hexagonal diamond-middle (widest at mid-height), pentagon
        bookends mirroring the hex's outward fan. The mid-height widening is
        where the gift close-up's focal subject sits — diamond was chosen over
-       bow-tie so the gift isn't cropped. */
+       bow-tie so the gift isn't cropped. Pentagon inner edges run STRICTLY
+       PARALLEL to the hex's outer edges with a uniform 2.7pp horizontal
+       offset, giving a constant ~0.16in perpendicular cream gap that matches
+       the panel-gutter elsewhere on the page. */
     .panel-triptych-out .tri-left {
-      clip-path: polygon(0 0, 31.58% 0, 14.91% 50%, 31.58% 100%, 0 100%);
+      clip-path: polygon(0 0, 31.3% 0, 16.3% 50%, 31.3% 100%, 0 100%);
     }
     .panel-triptych-out .tri-middle {
-      clip-path: polygon(33.33% 0, 66.66% 0, 83.33% 50%, 66.66% 100%, 33.33% 100%, 16.66% 50%);
+      clip-path: polygon(34% 0, 66% 0, 81% 50%, 66% 100%, 34% 100%, 19% 50%);
     }
     .panel-triptych-out .tri-right {
-      clip-path: polygon(68.41% 0, 100% 0, 100% 100%, 68.41% 100%, 85.08% 50%);
+      clip-path: polygon(68.7% 0, 100% 0, 100% 100%, 68.7% 100%, 83.7% 50%);
     }
     """
 }
