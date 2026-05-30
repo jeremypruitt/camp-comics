@@ -12,6 +12,9 @@ struct ContentView: View {
     @State private var statuses: [String: PlayerStatus] = [:]
     @State private var activePlayer: PlayerRecord?
     @State private var showingIntake = false
+    @State private var trial: SponsoredTrial = .empty
+
+    private let trialBackend: any SponsoredTrialBackend = FirestoreSponsoredTrialBackend()
 
     var body: some View {
         NavigationStack {
@@ -19,7 +22,8 @@ struct ContentView: View {
                 ThemedBackground()
                 ScrollView {
                     VStack(spacing: 0) {
-                        QuestCardHeader { showingIntake = true }
+                        QuestCardHeader(onAdd: { showingIntake = true },
+                                        trialRemaining: trialChipValue)
                         rosterBody
                         Spacer(minLength: 140)
                     }
@@ -47,15 +51,34 @@ struct ContentView: View {
                 let template = BundledTemplates.template(forClassKey: player.classKey)
                 Group {
                     if store.hasQAPanel(playerId: player.id) {
-                        PlayerDetailView(player: player, template: template, store: store)
+                        PlayerDetailView(player: player,
+                                         template: template,
+                                         store: store,
+                                         trialBackend: trialBackend)
                     } else {
                         CaptureFlowView(player: player, template: template, store: store)
                     }
                 }
                 .environment(\.themeKind, theme)
             }
+            .task { await refreshTrial() }
             .onAppear { refresh() }
-            .onChange(of: activePlayer) { _, new in if new == nil { refresh() } }
+            .onChange(of: activePlayer) { _, new in
+                if new == nil {
+                    refresh()
+                    Task { await refreshTrial() }
+                }
+            }
+        }
+    }
+
+    private var trialChipValue: Int? {
+        BillingModeStore().current == .sponsored ? trial.remaining : nil
+    }
+
+    private func refreshTrial() async {
+        if let next = try? await trialBackend.fetch() {
+            trial = next
         }
     }
 
