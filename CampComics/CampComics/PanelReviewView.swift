@@ -34,7 +34,7 @@ struct PanelReviewView: View {
     init(player: PlayerRecord,
          template: ClassTemplate,
          store: PlayerStore,
-         generator: any PanelGenerator = FirebaseAIPanelGenerator(),
+         generator: any PanelGenerator = FirebaseAIPanelGenerator(billingMode: BillingModeStore().current),
          startAt: PanelTarget) {
         self.player = player
         self.template = template
