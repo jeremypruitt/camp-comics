@@ -62,25 +62,47 @@ public enum HTMLAssembler {
         """
     }
 
+    /// Explicit per-act panel-range table. Replaces the legacy
+    /// `((n-1)/4)+1` formula which assumed a uniform 4/4/4 split. ADR-0007 splits
+    /// 6/5/4 so the page-2 P-in triptych (panels 3–5) and the page-4 H-out
+    /// triptych (panels 12–14) each have room for the surrounding bookending
+    /// on-page panels.
+    private static let actPanelRanges: [Int: ClosedRange<Int>] = [
+        1: 1...6,
+        2: 7...11,
+        3: 12...15
+    ]
+
+    /// Per ADR-0007: panels in these ranges render as one shared triptych
+    /// figure rather than three standalone panels. **P-in** spans page 2 / act 1
+    /// (panels 3–5, parallelogram middle + trapezoid bookends, //// slashes).
+    /// **H-out** spans page 4 / act 3 (panels 12–14, hexagonal diamond-middle +
+    /// pentagon bookends).
+    private static let pInTriptychPanels: ClosedRange<Int> = 3...5
+    private static let hOutTriptychPanels: ClosedRange<Int> = 12...14
+
     private static func renderActPage(act: Int, template: ClassTemplate) -> String {
-        let panels = template.panels.filter { ((($0.n - 1) / 4) + 1) == act }
+        let range = actPanelRanges[act] ?? 1...0
+        let panels = template.panels.filter { range.contains($0.n) }
         var body = ""
-        var skipNext = false
+        var emittedTriptych = false
         for panel in panels {
-            if skipNext { skipNext = false; continue }
-            if act == 3 && panel.n == 10 {
-                let next = panels.first(where: { $0.n == panel.n + 1 })
-                body += renderDiagonalPair(left: panel, right: next ?? panel)
-                skipNext = true
-            } else {
-                let filename = String(format: "panel_%02d.png", panel.n)
-                body += """
-                  <figure class="panel panel-\(panel.n)">
-                    <img src="\(filename)" alt="">
-                    <figcaption>\(escape(panel.beat))</figcaption>
-                  </figure>
-                """
+            let triptychRange = triptychRange(forActPage: act)
+            if let triptychRange, triptychRange.contains(panel.n) {
+                if !emittedTriptych {
+                    let triptychPanels = panels.filter { triptychRange.contains($0.n) }
+                    body += renderTriptych(panels: triptychPanels, kind: triptychKind(forActPage: act))
+                    emittedTriptych = true
+                }
+                continue
             }
+            let filename = String(format: "panel_%02d.png", panel.n)
+            body += """
+              <figure class="panel panel-\(panel.n)">
+                <img src="\(filename)" alt="">
+                <figcaption>\(escape(panel.beat))</figcaption>
+              </figure>
+            """
         }
         return """
         <section class="page interior page-act-\(act)">
@@ -88,6 +110,36 @@ public enum HTMLAssembler {
         \(body)
           </div>
         </section>
+        """
+    }
+
+    private static func triptychRange(forActPage act: Int) -> ClosedRange<Int>? {
+        switch act {
+        case 1: return pInTriptychPanels
+        case 3: return hOutTriptychPanels
+        default: return nil
+        }
+    }
+
+    private static func triptychKind(forActPage act: Int) -> String {
+        act == 1 ? "in" : "out"
+    }
+
+    /// Renders one transition triptych (ADR-0007): three `<img>` tags sharing
+    /// one figure, each clipped via CSS `clip-path: polygon(...)`. `kind` is
+    /// `"in"` (page 2, parallelogram middle + trapezoid bookends, //// slashes)
+    /// or `"out"` (page 4, hexagonal diamond-middle + pentagon bookends). No
+    /// `<figcaption>` — the adjacent on-page panels carry the narrative captions
+    /// (Watchmen-style).
+    private static func renderTriptych(panels: [PanelSpec], kind: String) -> String {
+        let imgs = zip(panels, ["tri-left", "tri-middle", "tri-right"]).map { panel, cls in
+            let filename = String(format: "panel_%02d.png", panel.n)
+            return #"<img class="\#(cls)" src="\#(filename)" alt="">"#
+        }.joined(separator: "\n    ")
+        return """
+          <figure class="panel-triptych-\(kind)">
+            \(imgs)
+          </figure>
         """
     }
 
@@ -198,53 +250,76 @@ public enum HTMLAssembler {
       padding: 0.07in 0.1in; text-align: center;
     }
 
-    .page-act-1 .panel-grid { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr); }
+    /* Act 1 (page 2, 6 panels): two squares, P-in triptych, hero splash. */
+    .page-act-1 .panel-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.3fr);
+    }
     .page-act-1 .panel-1 { grid-column: 1; grid-row: 1; }
-    .page-act-1 .panel-2 { grid-column: 2; grid-row: 1 / span 2; }
-    .page-act-1 .panel-3 { grid-column: 1; grid-row: 2; }
-    .page-act-1 .panel-4 { grid-column: 1 / span 2; grid-row: 3; }
+    .page-act-1 .panel-2 { grid-column: 2; grid-row: 1; }
+    .page-act-1 .panel-triptych-in { grid-column: 1 / span 2; grid-row: 2; }
+    .page-act-1 .panel-6 { grid-column: 1 / span 2; grid-row: 3; }
 
-    .page-act-2 .panel-grid { grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
-    .page-act-2 .panel-5 { grid-column: 1 / span 2; grid-row: 1; }
-    .page-act-2 .panel-6 { grid-column: 1; grid-row: 2; }
-    .page-act-2 .panel-7 { grid-column: 2; grid-row: 2 / span 2; }
-    .page-act-2 .panel-8 { grid-column: 1; grid-row: 3; }
-    .page-act-2 .panel-5 img { object-position: center bottom; }
+    /* Act 2 (page 3, 5 panels): forest splash, 3-up middle band, kneeling close-up. */
+    .page-act-2 .panel-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.4fr);
+    }
+    .page-act-2 .panel-7  { grid-column: 1 / span 3; grid-row: 1; }
+    .page-act-2 .panel-8  { grid-column: 1; grid-row: 2; }
+    .page-act-2 .panel-9  { grid-column: 2; grid-row: 2; }
+    .page-act-2 .panel-10 { grid-column: 3; grid-row: 2; }
+    .page-act-2 .panel-11 { grid-column: 1 / span 3; grid-row: 3; }
+    .page-act-2 .panel-7 img { object-position: center bottom; }
 
-    .page-act-3 .panel-grid { grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
-    .page-act-3 .panel-9  { grid-column: 1 / span 2; grid-row: 1; }
-    .page-act-3 .panel-12 { grid-column: 1 / span 2; grid-row: 3; }
+    /* Act 3 (page 4, 4 panels): H-out triptych dominates, kitchen return splash. */
+    .page-act-3 .panel-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr);
+    }
+    .page-act-3 .panel-triptych-out { grid-column: 1 / span 2; grid-row: 1; }
+    .page-act-3 .panel-15 { grid-column: 1 / span 2; grid-row: 2; }
 
-    .page-act-3 .panel-pair-10-11 {
-      grid-column: 1 / span 2; grid-row: 2;
+    /* Transition triptychs (ADR-0007). Each is one figure with three clipped
+       <img> children. The cream container background shows through the gaps
+       along the diagonal seams. Polygons leave a ~3.5pp constant-width gap
+       perpendicular to each seam, matching the ADR-0005 gap convention. */
+    .panel-triptych-in,
+    .panel-triptych-out {
       position: relative; background: #fffaf0;
       border: none; box-shadow: none;
       overflow: hidden; min-width: 0; min-height: 0;
     }
-    .page-act-3 .panel-pair-10-11 .diag-left,
-    .page-act-3 .panel-pair-10-11 .diag-right {
+    .panel-triptych-in .tri-left,
+    .panel-triptych-in .tri-middle,
+    .panel-triptych-in .tri-right,
+    .panel-triptych-out .tri-left,
+    .panel-triptych-out .tri-middle,
+    .panel-triptych-out .tri-right {
       position: absolute; top: 0; left: 0;
       width: 100%; height: 100%;
       object-fit: cover; object-position: center top;
       display: block;
       border: 1pt solid #2a1f15;
     }
-    .page-act-3 .panel-pair-10-11 .diag-left  { clip-path: polygon(0 0,      68.25% 0, 28.25% 100%, 0   100%); }
-    .page-act-3 .panel-pair-10-11 .diag-right { clip-path: polygon(71.75% 0, 100% 0,   100% 100%,   31.75% 100%); }
-    .page-act-3 .panel-pair-10-11 .diag-seams {
-      position: absolute; top: 0; left: 0;
-      width: 100%; height: 100%; display: block;
-      pointer-events: none; z-index: 1;
+    /* P-in: //// slashes (top-left → bottom-right), forward-leaning motion.
+       Three equal-area cells, with seam 1 at ~33% and seam 2 at ~66% width,
+       each leaning 4pp from top to bottom, with a 3.5pp constant gap. */
+    .panel-triptych-in .tri-left   { clip-path: polygon(0 0,        29.58% 0,   33.58% 100%,  0     100%); }
+    .panel-triptych-in .tri-middle { clip-path: polygon(33.08% 0,   62.91% 0,   66.91% 100%,  37.08% 100%); }
+    .panel-triptych-in .tri-right  { clip-path: polygon(66.41% 0,   100% 0,     100% 100%,    70.41% 100%); }
+    /* H-out: hexagonal diamond-middle (widest at mid-height), pentagon
+       bookends mirroring the hex's outward fan. The mid-height widening is
+       where the gift close-up's focal subject sits — diamond was chosen over
+       bow-tie so the gift isn't cropped. */
+    .panel-triptych-out .tri-left {
+      clip-path: polygon(0 0, 31.58% 0, 14.91% 50%, 31.58% 100%, 0 100%);
     }
-    .page-act-3 .panel-pair-10-11 .cap-left,
-    .page-act-3 .panel-pair-10-11 .cap-right {
-      position: absolute; bottom: 3pt;
-      background: rgba(20, 14, 8, 0.85); color: #fffaf0;
-      font-family: 'EB Garamond', Garamond, serif;
-      font-style: italic; font-size: 8.5pt; line-height: 1.3;
-      padding: 0.07in 0.1in; text-align: center; z-index: 2;
+    .panel-triptych-out .tri-middle {
+      clip-path: polygon(33.33% 0, 66.66% 0, 83.33% 50%, 66.66% 100%, 33.33% 100%, 16.66% 50%);
     }
-    .page-act-3 .panel-pair-10-11 .cap-left  { left: 0; right: auto; width: 28%; }
-    .page-act-3 .panel-pair-10-11 .cap-right { left: auto; right: 0; width: 28%; }
+    .panel-triptych-out .tri-right {
+      clip-path: polygon(68.41% 0, 100% 0, 100% 100%, 68.41% 100%, 85.08% 50%);
+    }
     """
 }

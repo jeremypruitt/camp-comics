@@ -26,22 +26,28 @@ public enum PromptBuilder {
         + "recent approved panel). Do not invent new clothing details, swap colors, "
         + "or restyle existing gear between panels."
 
-    /// Aspect ratio per panel number, mirroring PANEL_ASPECT_RATIOS in
-    /// _legacy/scripts/generate.py — driven by panel beat, not class. The CSS
-    /// layout in _legacy/layout/comic.css uses matching grid cell shapes.
+    /// Aspect ratio per panel number. Originally mirrored PANEL_ASPECT_RATIOS in
+    /// _legacy/scripts/generate.py. ADR-0007 renumbered to 15 panels with two
+    /// transition triptychs; the table below reflects the new numbering.
+    /// Triptych bookends (3, 5, 12, 14) use 16:9 to match the trapezoid /
+    /// pentagon horizontal extent; triptych middles (4, 13) use 1:1 for the
+    /// hand/prop close-up framing.
     public static let panelAspectRatios: [Int: String] = [
-        1: "1:1",
-        2: "3:4",
-        3: "1:1",
-        4: "16:9",
-        5: "16:9",
-        6: "1:1",
-        7: "3:4",
-        8: "1:1",
-        9: "16:9",
-        10: "16:9",
-        11: "16:9",
-        12: "16:9",
+        1: "1:1",   // everyday kitchen (mirror of new-P15)
+        2: "3:4",   // sees-stag TALL PORTRAIT
+        3: "16:9",  // P-in left bookend, mid-stride
+        4: "1:1",   // P-in middle, hand close-up
+        5: "16:9",  // P-in right bookend, mid-stride
+        6: "16:9",  // hero splash
+        7: "16:9",  // vast forest splash
+        8: "1:1",   // mentor + gift handoff close
+        9: "3:4",   // obstacle towering
+        10: "1:1",  // strain close-up
+        11: "16:9", // kneeling cinematic
+        12: "16:9", // H-out left bookend, mid-stride
+        13: "1:1",  // H-out middle, hand close-up
+        14: "16:9", // H-out right bookend, mid-stride
+        15: "16:9", // kitchen return splash (wide mirror of P1)
     ]
 
     /// Slice 11c: the editable section of a target's prompt — everything before

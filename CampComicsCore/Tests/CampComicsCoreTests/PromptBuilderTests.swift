@@ -215,6 +215,32 @@ struct PromptBuilderTests {
         #expect(!preamble.contains(" Style: "))
     }
 
+    /// ADR-0007 grows the panel count from 12 to 15. Every panel must have an
+    /// explicit aspect-ratio entry — falling through to the `?? "4:3"` default
+    /// is fine as a safety net but is not the contract; the new triptych
+    /// panels each need a deliberate aspect.
+    @Test func panelAspectRatiosCoverAllFifteenPanels() {
+        for n in 1...15 {
+            #expect(PromptBuilder.panelAspectRatios[n] != nil,
+                    "panel \(n) missing aspect-ratio entry")
+        }
+    }
+
+    /// ADR-0007 triptych middles (panels 4, 13) are hand/prop close-ups —
+    /// square framing. Triptych bookends (panels 3, 5, 12, 14) are mid-stride
+    /// transition shots — 16:9 wide framing matches the trapezoid / pentagon
+    /// horizontal extent.
+    @Test func triptychPanelAspectsMatchTheirGeometry() {
+        // Middles: hand/prop close-up
+        #expect(PromptBuilder.panelAspectRatios[4] == "1:1")
+        #expect(PromptBuilder.panelAspectRatios[13] == "1:1")
+        // Bookends: mid-stride wide
+        #expect(PromptBuilder.panelAspectRatios[3] == "16:9")
+        #expect(PromptBuilder.panelAspectRatios[5] == "16:9")
+        #expect(PromptBuilder.panelAspectRatios[12] == "16:9")
+        #expect(PromptBuilder.panelAspectRatios[14] == "16:9")
+    }
+
     @Test func panelTargetEntryMatchesPanelPromptForPanelCase() {
         // The unified buildPrompt(for: PanelTarget) entry produces the same
         // text as the existing panel-only path for the .panel(n:spec:) case.
