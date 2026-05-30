@@ -1,5 +1,25 @@
-# Trickster (reframed Rogue) — clone of druid.yaml adapted for the Trickster class.
-# See spec/design.md §3 (value), §4 (beats), §8 (prompt anatomy).
+# Trickster (reframed Rogue) — canonical 15-panel class arc template (ADR-0007).
+# Cloned from druid.yaml; class language preserved from the pre-ADR-0007
+# 12-panel arc where it fits (especially captions on new-P9, P10, P11).
+#
+# Tone (v2): D&D-campaign-narrator voice — punchy, situational, slightly
+# humorous, action-forward. Not mythic-Joseph-Campbell. Dice-table feel.
+#
+# Layout (ADR-0007):
+#   Act 1 / page 2: panels 1–6 — two squares, P-in triptych (panels 3–5),
+#                   hero splash. Captioned panels: 1, 2, 6. Triptych panels
+#                   3, 4, 5 are captionless (Watchmen-style).
+#   Act 2 / page 3: panels 7–11 — establishing splash, 3-up middle band,
+#                   close-up climax. All captioned.
+#   Act 3 / page 4: panels 12–15 — H-out triptych (panels 12–14), kitchen
+#                   return splash. Captioned panels: 15. Triptych panels
+#                   12, 13, 14 are captionless.
+#
+# Prop / through-line (ADR-0007): small brass key on a thin cord. Old
+# trickster mentor hands it over GLOWING with indigo light and faint sparks
+# at its teeth at panel 8. Glowing in panel 12 (H-out left bookend),
+# visibly dimming in panel 13 (H-out middle close-up), mundane in panel 14
+# (H-out right bookend) and panel 15.
 
 class: trickster
 display_name: Trickster
@@ -25,92 +45,139 @@ panels:
   - n: 1
     emotion: neutral
     position: front
-    scene: "{camper_name} in modern everyday clothes, standing in an ordinary contemporary setting, looking thoughtful with a hint of mischief, soft natural daylight"
-    composition: "medium shot, eye-level, sly knowing expression"
-    caption: "Before the call, there was only the ordinary world."
-    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT fantasy armor or class regalia. The camper has not yet been transformed and is in their normal everyday clothes."
-    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the class hero card). Do NOT include any fantasy armor, weapons, accessories, or class-specific attire — the transformation has not happened yet. Plain modern everyday clothing only."
+    scene: "{camper_name} in modern everyday clothes, in an ordinary contemporary kitchen or living room on an unremarkable afternoon, surrounded by Tuesday-ish detail (a mug, sneakers by the door, ordinary light), looking thoughtful with a hint of mischief"
+    composition: "intimate eye-level medium shot, camper centered in a SQUARE frame, ordinary domestic detail visible around them, calm balanced composition"
+    caption: "It was Tuesday. Nothing interesting was happening. Yet."
+    # Pre-transformation — peel the trickster costume + hero ref off this
+    # panel the same way panel 15 does for the return-home beat. Without
+    # these overrides the Costume: line + STYLE_SUFFIX "match the second
+    # reference" cue drag trickster regalia into a scene that's supposed
+    # to be everyday.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT trickster regalia, NOT dark leathers or hooded cloak. The camper has not yet been transformed and is in their normal Tuesday-afternoon clothes."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the trickster hero card). Do NOT include any dark traveling leathers, hooded indigo cloak, lockpicks, grappling hook, fingerless gloves, climbing boots, or any other trickster's regalia — the transformation has not happened yet. Plain modern everyday clothing only."
 
   - n: 2
     emotion: surprise
     position: front
-    scene: "{camper_name} sees an impossible thing — a small mechanical bird made of brass and starlight perched on {hometown_landmark}, watching them, then leaping into the air leaving a glowing trail of clockwork sparks"
-    composition: "wide shot, camper small in frame, mechanical bird and trail dominant"
-    caption: "But something cleverer was already watching, already inviting."
+    scene: "a small mechanical bird made of brass and starlight perches on {hometown_landmark}, watching {camper_name}, then leaps into the air leaving a glowing trail of clockwork sparks above them, looking down as if already inviting"
+    composition: "TALL PORTRAIT composition, mechanical bird and clockwork-spark trail dominating the upper two-thirds of the vertical frame, {camper_name} small at the bottom looking up, dramatic vertical negative space"
+    caption: "Something cleverer was already watching, already inviting."
 
   - n: 3
     emotion: neutral
-    position: front
-    scene: "{camper_name} reaching toward the bird as dark leathers and hooded cloak materialize around them, half ordinary clothes and half trickster regalia, mid-transformation, silver and brass motes orbiting them"
-    composition: "three-quarter shot, light agile motion into frame"
-    caption: "The first leap was off the map. They took it."
+    position: profile
+    scene: "{camper_name} in modern everyday clothes, mid-stride, stepping forward through a threshold of cool indigo twilight, one foot in an ordinary doorway, the other already on a moonlit cobbled alley, expression curious-but-uncertain"
+    composition: "wide profile mid-stride, hero on the left third moving rightward, motion forward, the everyday giving way to moonlit alley"
+    # Triptych panel — no caption (ADR-0007 Watchmen-style).
+    # P-in left bookend uses OLD-P1 face/clothing overrides so the transformation
+    # hasn't visibly started yet. STYLE_SUFFIX's "match the second reference" cue
+    # would otherwise pull trickster regalia in before the triptych middle.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT trickster regalia, NOT dark leathers or hooded cloak. The transformation has not visibly started; they have only just begun stepping forward."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is mid-stride through a threshold from everyday into the magical. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing here. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference (everyday clothes), NOT to the SECOND reference (the trickster hero card). Do NOT include any dark traveling leathers, hooded indigo cloak, lockpicks, grappling hook, fingerless gloves, climbing boots, or any other trickster's regalia — the transformation has not happened yet."
 
   - n: 4
-    emotion: joy
+    emotion: neutral
     position: front
-    scene: "{camper_name} in full trickster regalia, heroic balanced stance crouched on a moonlit rooftop, hood up, brass lockpicks held in one hand, the mechanical bird perched on the other arm, city below, full transformation reveal"
-    composition: "full body hero shot, slight low angle, cinematic moonlight"
-    caption: "And the city below sleep-talked all its secrets."
+    scene: "extreme close-up of {camper_name}'s hand and forearm at the moment of transformation — indigo and brass clockwork-spark light blooming across the knuckles, dark leather beginning to materialize over the wrist, silver and brass motes catching at the fingertips"
+    composition: "tight macro shot of one hand and forearm, shallow depth of field, face out of frame entirely, magical particles in focus"
+    # Triptych middle — no caption (ADR-0007). Hand-only framing means
+    # STYLE_SUFFIX face-fidelity language does not fight the composition;
+    # no overrides needed.
 
   - n: 5
-    emotion: neutral
-    position: profile
-    scene: "vast clever realm of moonlit rooftops and twisting alleys, distant clock towers glowing softly, hidden bridges between spires, {camper_name} crouched on a high ledge, small in frame, world dominant"
-    composition: "extreme wide establishing shot, camper as small silhouette"
-    caption: "The world was full of locked doors and unwatched windows."
-
-  - n: 6
-    emotion: neutral
-    position: front
-    scene: "{camper_name} meeting an old retired trickster mentor — a weathered figure with sharp eyes and ink-stained fingers — sliding a small mysterious key across a tavern table"
-    composition: "medium shot, two-figure framing, warm lantern light"
-    caption: "The mentor said: every problem has a door you haven't tried."
-
-  - n: 7
-    emotion: fear
-    position: front
-    scene: "{camper_name} faces the challenge — {fear_image} — an enormous obstacle representing {world_problem}, perhaps an impossibly tall locked gate or a vast wall, blocking a winding alley, the trickster small before it"
-    composition: "wide shot, towering obstacle dominating background, trickster small in foreground"
-    caption: "The front door was a trap. It always had been."
-
-  - n: 8
-    emotion: fear
-    position: front
-    scene: "{camper_name} attempting to pick the massive lock head-on — perched on the obstacle with lockpicks, magical wards sparking against them — and being thrown back, breathless, tools clattering"
-    composition: "dynamic action shot, magical sparks repelling, recoil"
-    caption: "The obvious cleverness was already a trick someone played."
-
-  - n: 9
-    emotion: neutral
-    position: front
-    scene: "{camper_name} crouched in a side alley having found a small overlooked side window or hidden crawlspace, illuminated by moonlight, slipping through with a knowing smile, the great locked gate ignored entirely behind them"
-    composition: "intimate medium shot, clever discovery, side passage"
-    caption: "The trickster looked sideways. The world made a way."
-
-  - n: 10
     emotion: joy
     position: profile
-    scene: "{camper_name} emerging calmly on the other side of the great obstacle, lockpicks tucked away, no triumph on their face — only quiet satisfaction, the obstacle still standing useless behind them"
-    composition: "medium shot, sideways walking motion, sly serenity"
-    caption: "Triumph wore the quiet shape of an unlocked window."
+    scene: "{camper_name} in full trickster regalia, mid-stride, stepping out of the threshold light onto the moonlit cobbled alley on the far side, the everyday doorway dissolving behind, hood up, lockpicks at the belt, brushed silver buckles catching the new moonlight"
+    composition: "wide profile mid-stride, hero moving rightward into the clever realm, motion forward, fantasy world opening on the right"
+    # Triptych right bookend — no caption (ADR-0007).
+    # Default chain handles the regalia: prior panel is the triptych middle
+    # (hand close-up) which doesn't carry costume, and the hero card ref
+    # anchors the full trickster silhouette. No overrides needed.
+
+  - n: 6
+    emotion: joy
+    position: front
+    scene: "{camper_name} in full trickster regalia, crouched in a heroic balanced stance on a moonlit rooftop ledge in the middle of a vast clever realm, hood up, brass lockpicks held in one hand, the small mechanical bird perched on the other arm, twisting alleys and clock towers stretching out behind, moonlight breaking through scudding clouds"
+    composition: "WIDE CINEMATIC HERO SPLASH, full body but framed wide like a movie poster, slight low angle from below, sweeping landscape composition with dramatic moonlit sky on either side of the figure, hero centered with epic environment"
+    caption: "Class: Trickster. Stats: locked. The city sleep-talked its secrets."
+
+  - n: 7
+    emotion: neutral
+    position: profile
+    scene: "a vast clever realm of moonlit rooftops and twisting alleys, {camper_name} a tiny silhouette crouched on a high ledge far below, distant clock towers glowing softly, hidden bridges between spires receding into the haze"
+    composition: "bird's-eye / high-angle aerial shot looking down at the clever realm, camper a small figure, world overwhelmingly dominant"
+    caption: "The map was big. The map is always big."
+
+  - n: 8
+    emotion: neutral
+    position: front
+    scene: "an old retired trickster mentor with sharp eyes and ink-stained fingers sits across from {camper_name} at a lantern-lit tavern table, the mentor extending both hands forward to offer a small brass key on a thin cord glowing softly with indigo light, faint sparks at its teeth, indigo and brass light spilling outward from the gift, warm reverent lantern light"
+    composition: "intimate two-shot close, both faces in frame at eye-level, the gift centered between them, warm soft-focus tavern background, sense of a ceremonial handoff"
+    caption: "Mentor handed over the quest gear. Probably important."
+
+  - n: 9
+    emotion: fear
+    position: front
+    scene: "{fear_image} — an enormous obstacle representing {world_problem}, perhaps an impossibly tall locked gate or a vast wall, blocking a winding alley across a clearing; {camper_name} stands small in the foreground, looking up at the obstacle"
+    composition: "dramatic low angle from behind and below the camper, obstacle towering and filling most of the frame, camper small in lower-third"
+    caption: "The front door was a trap. It always had been."
+
+  - n: 10
+    emotion: fear
+    position: front
+    scene: "{camper_name}'s hands gripping a set of brass lockpicks white-knuckled against the massive lock head-on, magical wards sparking against the picks, sweat on the brow, fingertips trembling, strain visible"
+    composition: "tight action mid-shot focused on hands, lockpicks, and lower face — close enough to see the strain, side-lit"
+    caption: "The obvious cleverness was already a trick someone played."
 
   - n: 11
     emotion: neutral
     position: front
-    scene: "{camper_name} on a moonlit rooftop receiving a glowing {quality_symbol} from the old trickster mentor, both figures haloed in silver-blue light, ceremonial stillness, the mechanical bird perched between them"
-    composition: "medium two-shot, ceremonial composition, vertical light"
-    caption: "The best lock the trickster ever picked was their own assumptions."
+    scene: "cinematic close-up of {camper_name}'s face, eyes open with sly clarity, indigo-and-silver moonlight reflected on the cheekbones from one side, faint lantern-amber glow from a sideways opening at the edges of the wide frame, the dark silhouette of the great obstacle blurred behind"
+    composition: "WIDE CINEMATIC extreme close-up on the face centered in a horizontal letterbox frame, very shallow focus, intimate but cinematic — the kind of close-up a film would hold on"
+    caption: "The trickster looked sideways. The world made a way."
 
   - n: 12
     emotion: joy
+    position: profile
+    scene: "{camper_name} in full trickster regalia, mid-stride leaving the moonlit alley, a small brass key on a thin cord glowing softly with indigo light and faint sparks at its teeth in one hand, cool twilight fading behind, expression peaceful-but-aware"
+    composition: "wide profile mid-stride, hero on the left third moving rightward, the glowing key catching focus in the hand, motion forward, fantasy realm receding behind"
+    # Triptych left bookend — no caption (ADR-0007). Default chain works:
+    # prior panel (new-P11, trickster regalia) + hero card pull the costume.
+
+  - n: 13
+    emotion: neutral
     position: front
-    scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but with a small brass key on a thin cord around their neck, eyes bright with quiet mischief"
-    composition: "medium shot, eye-level, mirror of panel 1, slight clever smile"
-    caption: "Home was the same. Only they had changed."
+    scene: "extreme close-up of {camper_name}'s hand cradling the small brass key on its thin cord at the exact instant the indigo glow visibly DIMS to ordinary brass and the sparks at its teeth fade away, the magical light fading out across the fingertips, a few last indigo motes drifting away"
+    composition: "tight macro shot of one hand and the key, shallow depth of field, face out of frame entirely, focus pulled to the moment of transformation back to mundane"
+    # Triptych middle — no caption (ADR-0007). Hand-only framing means
+    # STYLE_SUFFIX face-fidelity language does not fight the composition;
+    # no overrides needed.
+
+  - n: 14
+    emotion: joy
+    position: profile
+    scene: "{camper_name} back in their modern everyday clothes, mid-stride at the threshold of their kitchen doorway, one foot on the porch, the other already inside, wearing the now-mundane small brass key on a thin cord at the neck, ordinary afternoon light, faint clever smile"
+    composition: "wide profile mid-stride, hero on the right third moving leftward into the everyday, motion forward (into the kitchen), fantasy realm fully gone behind"
+    # Triptych right bookend — no caption (ADR-0007).
+    # Mirror beat to new-P3 — return to everyday clothes. Chain off panel 01
+    # (everyday clothes) instead of the default most-recent (panel 13, hand
+    # close-up + the regalia chain), and override "match previous costume"
+    # so the model doesn't carry the dark leathers and hooded cloak into the
+    # threshold.
+    reference_panel: "01"
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT trickster regalia. They carry one small souvenir from the quest as a callback: a small brass key on a thin cord at the neck. The key is mundane now (no glow, no sparks)."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is at the threshold returning home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include dark traveling leathers, hooded indigo cloak, lockpicks, grappling hook, fingerless gloves, soft-soled climbing boots, or any other trickster's regalia. Only the small brass key on a thin cord as a mundane callback from the quest."
+
+  - n: 15
+    emotion: joy
+    position: front
+    scene: "{camper_name} back in their modern everyday clothes, in the same ordinary kitchen as panel 1 — same mug on the counter, same window — but now wearing a small brass key on a thin cord at the throat, the kitchen extending out wide on either side, eyes bright with quiet mischief, faint clever smile"
+    composition: "WIDE CINEMATIC mirror of panel 1's framing but in a horizontal letterbox, eye-level, camper centered with the everyday environment extending on both sides — same kitchen, wider lens, balanced quiet composition"
+    caption: "Same Tuesday kitchen. Smaller world. Bigger trickster."
     # Mirror beat — return to everyday life. Chain off panel 01 (everyday
-    # clothes) instead of the default most-recent (panel 11, trickster regalia)
-    # and override the "match previous costume" instruction so the model
-    # doesn't carry the dark leathers and indigo hood into the return-home scene.
+    # clothes) instead of the default most-recent (panel 14, also everyday
+    # but profile mid-stride at a threshold). The override block was the
+    # OLD-P12 override; carries forward unchanged.
     reference_panel: "01"
     costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT trickster regalia. They may carry one small souvenir from the quest as a callback: a small brass key on a thin cord at the neck."
     style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include dark traveling leathers, hooded indigo cloak, lockpicks, grappling hook, fingerless gloves, soft-soled climbing boots, or any other trickster's regalia. Only the small brass key on a thin cord as a callback from the quest."
@@ -121,15 +188,18 @@ cover:
   pose_directive: "heroic full-body portrait in full trickster regalia crouched balanced on a moonlit rooftop ledge, hood up, lockpicks in one hand, the small brass mechanical bird perched on the other arm, city sleeping below, generous empty sky at the top of the frame for title text overlay"
 
 fallbacks:
-  1:  "A young person in modern everyday clothes standing in a quiet outdoor setting, soft natural light, hint of mischief"
+  1:  "A young person in modern everyday clothes in an ordinary contemporary kitchen, soft natural light, hint of mischief"
   2:  "A small mechanical bird of brass and starlight perched on a building at twilight, leaping into the air leaving a glowing trail"
-  3:  "A young figure reaching upward as dark leathers and hooded cloak materialize around them, silver and brass motes swirling"
-  4:  "A trickster in dark leathers and hood crouched on a moonlit rooftop, lockpicks in hand, mechanical bird on arm"
-  5:  "A vast realm of moonlit rooftops and twisting alleys with distant glowing clock towers, a tiny figure crouched on a high ledge"
-  6:  "A young trickster meeting an old retired trickster mentor at a lantern-lit tavern table"
-  7:  "A trickster standing small before an enormous towering locked gate blocking a winding alley"
-  8:  "A trickster attempting to pick a massive magical lock head-on, sparks repelling them, tools clattering"
-  9:  "A trickster slipping through a small overlooked side window in moonlight, knowing smile, ignoring the great locked gate"
-  10: "A trickster emerging calmly on the other side of a great unlocked obstacle, lockpicks tucked away"
-  11: "A trickster receiving a glowing token from an old mentor on a moonlit rooftop, mechanical bird perched between them"
-  12: "A young person back in modern clothes wearing a small brass key on a cord, in an ordinary contemporary setting"
+  3:  "A young person in everyday clothes stepping through a threshold of indigo twilight onto a moonlit cobbled alley, profile mid-stride"
+  4:  "Extreme close-up of a hand with indigo and brass clockwork sparks blooming on the knuckles, dark leather materializing on the wrist"
+  5:  "A trickster in dark leathers and indigo hood stepping onto a moonlit cobbled alley, profile mid-stride, lockpicks at belt catching moonlight"
+  6:  "A trickster in dark leathers and hood crouched on a moonlit rooftop, lockpicks in hand, mechanical bird on arm, low-angle hero shot"
+  7:  "Bird's-eye view of a vast realm of moonlit rooftops and twisting alleys with distant glowing clock towers, a tiny crouched figure on a ledge"
+  8:  "Intimate two-shot of a trickster and an old retired trickster mentor at a lantern-lit tavern table, a glowing brass key on a thin cord offered between them"
+  9:  "Low angle of a small trickster figure looking up at an enormous towering locked gate blocking a winding alley"
+  10: "Tight close-up of hands gripping brass lockpicks against a massive magical lock, sparks repelling, strain visible"
+  11: "Extreme close-up of a serene face with eyes open in sly clarity, indigo-and-silver moonlight on cheekbones, lantern-amber glow at the edges"
+  12: "A trickster in full regalia walking out of a moonlit alley, glowing brass key in hand, profile mid-stride"
+  13: "Extreme close-up of a hand cradling a small brass key on a thin cord, the indigo glow visibly fading to ordinary brass"
+  14: "A young person back in everyday clothes at a kitchen threshold mid-stride, mundane brass key at neck, faint clever smile"
+  15: "A young person back in modern clothes in the same kitchen, wearing a small brass key on a thin cord, faint clever smile"

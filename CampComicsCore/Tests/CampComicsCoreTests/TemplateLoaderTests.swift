@@ -285,58 +285,41 @@ struct TemplateLoaderTests {
     // photo set.
 
     @Test func loadsWarriorYAML() throws {
-        try assertCanonicalArc(classKey: "warrior", displayName: "Warrior")
+        try assertCanonicalArcV2(classKey: "warrior", displayName: "Warrior")
     }
 
     @Test func loadsWizardYAML() throws {
-        try assertCanonicalArc(classKey: "wizard", displayName: "Wizard")
+        try assertCanonicalArcV2(classKey: "wizard", displayName: "Wizard")
     }
 
     @Test func loadsBardYAML() throws {
-        try assertCanonicalArc(classKey: "bard", displayName: "Bard")
+        try assertCanonicalArcV2(classKey: "bard", displayName: "Bard")
     }
 
     @Test func loadsHealerYAML() throws {
-        try assertCanonicalArc(classKey: "healer", displayName: "Healer")
+        try assertCanonicalArcV2(classKey: "healer", displayName: "Healer")
     }
 
     @Test func loadsTricksterYAML() throws {
-        try assertCanonicalArc(classKey: "trickster", displayName: "Trickster")
+        try assertCanonicalArcV2(classKey: "trickster", displayName: "Trickster")
     }
 
     @Test func loadsDruidYAMLFromDisk() throws {
-        try assertDruidArcV2()
+        try assertCanonicalArcV2(classKey: "druid", displayName: "Druid")
     }
 
-    @Test func druidPanel15LoadsReferencePanelOverrideOne() throws {
-        let yaml = try loadTemplateYAML(classKey: "druid")
-        let template = try TemplateLoader.load(yaml: yaml)
-        let panel15 = template.panels.first(where: { $0.n == 15 })
-
-        #expect(panel15?.referencePanel == 1)
-    }
-
-    @Test func druidPanel14LoadsReferencePanelOverrideOne() throws {
-        // ADR-0007: H-out triptych right bookend (panel 14) is also a mirror
-        // beat — same `reference_panel: "01"` override as panel 15 so the
-        // threshold step doesn't carry druid regalia.
-        let yaml = try loadTemplateYAML(classKey: "druid")
-        let template = try TemplateLoader.load(yaml: yaml)
-        let panel14 = template.panels.first(where: { $0.n == 14 })
-
-        #expect(panel14?.referencePanel == 1)
-    }
-
-    /// ADR-0007: druid is the only class on the new 15-panel arc until slice 17
-    /// ports the other five. Triptych panels 3, 4, 5 (P-in) and 12, 13, 14
-    /// (H-out) carry no `caption:` field per the Watchmen-style decision —
-    /// `PanelSpec.beat` falls through to `scene` for them.
-    private func assertDruidArcV2() throws {
-        let yaml = try loadTemplateYAML(classKey: "druid")
+    /// ADR-0007 15-panel arc, parameterized by class. Used by every class
+    /// disk-load test. Checks panel count, the (emotion, position) table per
+    /// panel, the cover requirement, and the two mirror-beat reference_panel
+    /// overrides on panels 14 and 15. Triptych panels 3, 4, 5 (P-in) and 12,
+    /// 13, 14 (H-out) carry no `caption:` field per the Watchmen-style
+    /// decision — `PanelSpec.beat` falls through to `scene` for them.
+    private func assertCanonicalArcV2(classKey: String, displayName: String) throws {
+        let yaml = try loadTemplateYAML(classKey: classKey)
         let template = try TemplateLoader.load(yaml: yaml)
 
-        #expect(template.classKey == "druid")
-        #expect(template.name == "Druid")
+        #expect(template.classKey == classKey)
+        #expect(template.name == displayName)
         #expect(template.panels.count == 15)
 
         let expected: [(Int, Emotion, Position)] = [
@@ -346,11 +329,11 @@ struct TemplateLoaderTests {
             (4,  .neutral,  .front),    // P-in middle (hand close-up, face out of frame)
             (5,  .joy,      .profile),  // P-in right bookend
             (6,  .joy,      .front),    // hero splash
-            (7,  .neutral,  .profile),  // forest splash (bird's-eye)
+            (7,  .neutral,  .profile),  // realm establishing splash (bird's-eye)
             (8,  .neutral,  .front),    // mentor + gift handoff
             (9,  .fear,     .front),    // obstacle
             (10, .fear,     .front),    // strain
-            (11, .neutral,  .front),    // kneeling cinematic
+            (11, .neutral,  .front),    // climactic insight close-up
             (12, .joy,      .profile),  // H-out left bookend
             (13, .neutral,  .front),    // H-out middle (hand close-up)
             (14, .joy,      .profile),  // H-out right bookend
@@ -363,44 +346,12 @@ struct TemplateLoaderTests {
             #expect(spec.position == position)
         }
 
-        #expect(template.cover.requirement.emotion == .neutral)
-        #expect(template.cover.requirement.position == .profile)
-        #expect(!template.cover.poseDirective.isEmpty)
-        #expect(template.cover.aspect == "3:4")
-    }
-
-    /// Pre-ADR-0007 12-panel arc. Slice-17 classes (warrior, wizard, bard,
-    /// healer, trickster) still match this until they're ported to 15 panels.
-    /// Once slice 17 lands this helper folds into `assertDruidArcV2` and the
-    /// 12-panel branch is deleted.
-    private func assertCanonicalArc(classKey: String, displayName: String) throws {
-        let yaml = try loadTemplateYAML(classKey: classKey)
-        let template = try TemplateLoader.load(yaml: yaml)
-
-        #expect(template.classKey == classKey)
-        #expect(template.name == displayName)
-        #expect(template.panels.count == 12)
-
-        let expected: [(Int, Emotion, Position)] = [
-            (1,  .neutral,  .front),
-            (2,  .surprise, .front),
-            (3,  .neutral,  .front),
-            (4,  .joy,      .front),
-            (5,  .neutral,  .profile),
-            (6,  .neutral,  .front),
-            (7,  .fear,     .front),
-            (8,  .fear,     .front),
-            (9,  .neutral,  .front),
-            (10, .joy,      .profile),
-            (11, .neutral,  .front),
-            (12, .joy,      .front),
-        ]
-        for (i, spec) in template.panels.enumerated() {
-            let (n, emotion, position) = expected[i]
-            #expect(spec.n == n)
-            #expect(spec.emotion == emotion)
-            #expect(spec.position == position)
-        }
+        // Mirror beats on panels 14 and 15 both chain off panel 01 so the
+        // threshold step and return splash don't drag class regalia in.
+        let panel14 = template.panels.first(where: { $0.n == 14 })
+        let panel15 = template.panels.first(where: { $0.n == 15 })
+        #expect(panel14?.referencePanel == 1)
+        #expect(panel15?.referencePanel == 1)
 
         #expect(template.cover.requirement.emotion == .neutral)
         #expect(template.cover.requirement.position == .profile)

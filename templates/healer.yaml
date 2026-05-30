@@ -1,5 +1,25 @@
-# Healer — clone of druid.yaml adapted for the Healer class.
-# See spec/design.md §3 (value), §4 (beats), §8 (prompt anatomy).
+# Healer — canonical 15-panel class arc template (ADR-0007).
+# Cloned from druid.yaml; class language preserved from the pre-ADR-0007
+# 12-panel arc where it fits (especially captions on new-P9, P10, P11).
+#
+# Tone (v2): D&D-campaign-narrator voice — punchy, situational, slightly
+# humorous, action-forward. Not mythic-Joseph-Campbell. Dice-table feel.
+#
+# Layout (ADR-0007):
+#   Act 1 / page 2: panels 1–6 — two squares, P-in triptych (panels 3–5),
+#                   hero splash. Captioned panels: 1, 2, 6. Triptych panels
+#                   3, 4, 5 are captionless (Watchmen-style).
+#   Act 2 / page 3: panels 7–11 — establishing splash, 3-up middle band,
+#                   close-up climax. All captioned.
+#   Act 3 / page 4: panels 12–15 — H-out triptych (panels 12–14), kitchen
+#                   return splash. Captioned panels: 15. Triptych panels
+#                   12, 13, 14 are captionless.
+#
+# Prop / through-line (ADR-0007): small wooden symbol on a leather cord.
+# Mentor guide hands it over GLOWING and haloed in cream-and-sage light at
+# panel 8. Glowing in panel 12 (H-out left bookend), visibly dimming in
+# panel 13 (H-out middle close-up), mundane in panel 14 (H-out right
+# bookend) and panel 15.
 
 class: healer
 display_name: Healer
@@ -19,101 +39,146 @@ tokens:
     - fear_image
     - quality_symbol
   class_specific:
-    - mentor_figure   # someone in their life they look up to; informs the guide design in panel 6
+    - mentor_figure   # someone in their life they look up to; informs the guide design in panel 8
 
 panels:
   - n: 1
     emotion: neutral
     position: front
-    scene: "{camper_name} in modern everyday clothes, standing in an ordinary contemporary setting, looking quietly attentive, soft natural daylight"
-    composition: "medium shot, eye-level, gentle expression"
-    caption: "Before the call, there was only the ordinary world."
-    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT fantasy armor or class regalia. The camper has not yet been transformed and is in their normal everyday clothes."
-    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the class hero card). Do NOT include any fantasy armor, weapons, accessories, or class-specific attire — the transformation has not happened yet. Plain modern everyday clothing only."
+    scene: "{camper_name} in modern everyday clothes, in an ordinary contemporary kitchen or living room on an unremarkable afternoon, surrounded by Tuesday-ish detail (a mug, sneakers by the door, ordinary light), looking quietly attentive"
+    composition: "intimate eye-level medium shot, camper centered in a SQUARE frame, ordinary domestic detail visible around them, calm balanced composition"
+    caption: "It was Tuesday. Nothing interesting was happening. Yet."
+    # Pre-transformation — peel the healer costume + hero ref off this panel
+    # the same way panel 15 does for the return-home beat. Without these
+    # overrides the Costume: line + STYLE_SUFFIX "match the second reference"
+    # cue drag healer regalia into a scene that's supposed to be everyday.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT healer regalia, NOT flowing robes. The camper has not yet been transformed and is in their normal Tuesday-afternoon clothes."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the healer hero card). Do NOT include any flowing cream or sage robes, herb pouches, stoppered vials, wooden symbol pendant, moccasin boots, or any other healer's regalia — the transformation has not happened yet. Plain modern everyday clothing only."
 
   - n: 2
     emotion: surprise
     position: front
-    scene: "{camper_name} sees an impossible thing — a wounded glowing creature limping out from {hometown_landmark}, leaving a soft trail of silver light, looking at them with pleading eyes"
-    composition: "wide shot, camper small in frame, wounded creature dominant"
-    caption: "But somewhere, something hurt, and was hoping for them."
+    scene: "a wounded glowing creature limps out from {hometown_landmark}, leaving a soft trail of silver light, looking down at {camper_name} with pleading eyes"
+    composition: "TALL PORTRAIT composition, wounded glowing creature dominating the upper two-thirds of the vertical frame, {camper_name} small at the bottom looking up, dramatic vertical negative space"
+    caption: "Somewhere something hurt, and was hoping for them."
 
   - n: 3
     emotion: neutral
-    position: front
-    scene: "{camper_name} kneeling toward the wounded creature as flowing cream robes materialize around them, half ordinary clothes and half healer's regalia, mid-transformation, soft amber light surrounding the moment"
-    composition: "three-quarter shot, gentle kneeling motion"
-    caption: "The first gesture was reaching out. They reached."
+    position: profile
+    scene: "{camper_name} in modern everyday clothes, mid-stride, stepping forward through a threshold of soft amber morning light, one foot in an ordinary doorway, the other already on a soft sanctuary path, expression caring-but-uncertain"
+    composition: "wide profile mid-stride, hero on the left third moving rightward, motion forward, the everyday giving way to amber light"
+    # Triptych panel — no caption (ADR-0007 Watchmen-style).
+    # P-in left bookend uses OLD-P1 face/clothing overrides so the transformation
+    # hasn't visibly started yet. STYLE_SUFFIX's "match the second reference" cue
+    # would otherwise pull healer regalia in before the triptych middle.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT healer regalia, NOT flowing robes. The transformation has not visibly started; they have only just begun stepping forward."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is mid-stride through a threshold from everyday into the magical. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing here. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference (everyday clothes), NOT to the SECOND reference (the healer hero card). Do NOT include any flowing cream or sage robes, herb pouches, vials, wooden symbol pendant, or any other healer's regalia — the transformation has not happened yet."
 
   - n: 4
-    emotion: joy
+    emotion: neutral
     position: front
-    scene: "{camper_name} in full healer regalia, heroic gentle stance in a sunlit grove, cradling the now-healed glowing creature in their arms, warm halo of light, gentle herbal magic swirling around them, full transformation reveal"
-    composition: "full body hero shot, slight low angle, soft cinematic lighting"
-    caption: "And the world remembered there were hands meant for mending."
+    scene: "extreme close-up of {camper_name}'s hand and forearm at the moment of transformation — soft sage-green and honey-amber light blooming across the knuckles, cream cloth beginning to materialize over the wrist, gentle herbal motes catching at the fingertips"
+    composition: "tight macro shot of one hand and forearm, shallow depth of field, face out of frame entirely, magical particles in focus"
+    # Triptych middle — no caption (ADR-0007). Hand-only framing means
+    # STYLE_SUFFIX face-fidelity language does not fight the composition;
+    # no overrides needed.
 
   - n: 5
-    emotion: neutral
-    position: profile
-    scene: "vast peaceful realm with hillside sanctuaries, distant healing springs steaming gently, herb gardens stretching to the horizon, {camper_name} walking a soft path, small in frame, world dominant"
-    composition: "extreme wide establishing shot, camper as small silhouette"
-    caption: "The world was full of small wounds and quiet patience."
-
-  - n: 6
-    emotion: neutral
-    position: front
-    scene: "{camper_name} meeting their guide — a figure inspired by {mentor_figure}, warm-eyed and kind — offering them a small healing vial and a knowing smile in a sunlit garden"
-    composition: "medium shot, two-figure framing, warm honey light"
-    caption: "The one they had always admired was simply waiting to be met."
-
-  - n: 7
-    emotion: fear
-    position: front
-    scene: "{camper_name} faces the challenge — {fear_image} — a wounded figure or being lashing out in pain and fear, claws or magic flailing, the obstacle being the being's own suffering, the healer standing carefully nearby"
-    composition: "medium shot, wounded suffering being dominating background, healer in foreground considering"
-    caption: "The wound was not what it seemed. The pain spoke first."
-
-  - n: 8
-    emotion: fear
-    position: front
-    scene: "{camper_name} attempting to fix the wound quickly — pressing a glowing hand forward in haste — the wounded being recoiling and lashing out, the healer pulling back hurt and frustrated"
-    composition: "dynamic action shot, recoil moment, hands held up"
-    caption: "Speed was not the same as care. Some hurts needed time."
-
-  - n: 9
-    emotion: neutral
-    position: front
-    scene: "{camper_name} kneeling at a respectful distance from the wounded being, hands open and resting on their own knees, simply present and listening with patient warm eyes, soft golden light slowly enveloping both of them as the being calms"
-    composition: "intimate medium shot, two-figure framing at distance, soft enveloping light"
-    caption: "The healer sat. The healer listened. The healer stayed."
-
-  - n: 10
     emotion: joy
     position: profile
-    scene: "{camper_name} now sitting beside the once-wounded being who is calm and luminous, no triumph on the healer's face — only quiet steady warmth, both figures softly glowing"
-    composition: "medium two-shot, peaceful aftermath, side by side"
-    caption: "Triumph wore the quiet shape of staying."
+    scene: "{camper_name} in full healer regalia, mid-stride, stepping out of the threshold light onto the sanctuary path on the far side, the everyday doorway dissolving behind, herb-pouch belt at the waist, wooden symbol pendant at the neck catching the new sunrise light"
+    composition: "wide profile mid-stride, hero moving rightward into the peaceful realm, motion forward, fantasy world opening on the right"
+    # Triptych right bookend — no caption (ADR-0007).
+    # Default chain handles the regalia: prior panel is the triptych middle
+    # (hand close-up) which doesn't carry costume, and the hero card ref
+    # anchors the full healer silhouette. No overrides needed.
+
+  - n: 6
+    emotion: joy
+    position: front
+    scene: "{camper_name} in full healer regalia, standing heroically in a sunlit grove in the middle of a vast peaceful realm, hands cupped before them holding soft warm golden light, a small luminous healed creature resting at their feet, sunrise light breaking through the canopy in sweeping rays, hillside sanctuaries stretching out behind"
+    composition: "WIDE CINEMATIC HERO SPLASH, full body but framed wide like a movie poster, slight low angle from below, sweeping landscape composition with dramatic sunrise sky on either side of the figure, hero centered with epic environment"
+    caption: "Class: Healer. Stats: locked. The world remembered hands meant for mending."
+
+  - n: 7
+    emotion: neutral
+    position: profile
+    scene: "a vast peaceful realm with hillside sanctuaries and distant healing springs steaming gently, {camper_name} a tiny silhouette on a soft path far below, herb gardens stretching to the horizon"
+    composition: "bird's-eye / high-angle aerial shot looking down at the peaceful realm, camper a small figure, world overwhelmingly dominant"
+    caption: "The map was big. The map is always big."
+
+  - n: 8
+    emotion: neutral
+    position: front
+    scene: "a warm-eyed guide inspired by {mentor_figure}, with kind features and gentle worn hands, sits across from {camper_name} in a sunlit garden, extending both hands forward to offer a small wooden symbol on a leather cord haloed in cream-and-sage light, soft golden light spilling outward from the gift, warm reverent honey-amber morning light"
+    composition: "intimate two-shot close, both faces in frame at eye-level, the gift centered between them, warm soft-focus herb-garden background, sense of a ceremonial handoff"
+    caption: "Guide handed over the quest gear. Probably important."
+
+  - n: 9
+    emotion: fear
+    position: front
+    scene: "{fear_image} — manifested as a wounded being lashing out in pain and fear across a clearing, claws or magic flailing, the obstacle being the being's own suffering; {camper_name} stands small in the foreground, looking at the obstacle with patient apprehension"
+    composition: "dramatic low angle from behind and below the camper, suffering being towering and filling most of the frame, camper small in lower-third"
+    caption: "The wound was not what it seemed. The pain spoke first."
+
+  - n: 10
+    emotion: fear
+    position: front
+    scene: "{camper_name}'s hands raised in haste with weakly-fizzling amber healing light, fingertips trembling forward toward the wounded being who recoils away, sweat on the brow, strain visible"
+    composition: "tight action mid-shot focused on hands, fizzling light, and lower face — close enough to see the strain, side-lit"
+    caption: "Speed was not the same as care. Some hurts needed time."
 
   - n: 11
     emotion: neutral
     position: front
-    scene: "{camper_name} in a sunrise meadow receiving a glowing {quality_symbol} from their {mentor_figure}-inspired guide, both figures haloed in warm pink-gold light, ceremonial stillness"
-    composition: "medium two-shot, ceremonial composition, vertical light"
-    caption: "What they gave away in care, no wound could ever take."
+    scene: "cinematic close-up of {camper_name}'s face, eyes open with patient steady warmth, soft cream-and-sage healing light reflected on the cheekbones from below, faint glowing herbal motes drifting past on both sides, the wounded being's softly calming form blurred at the edges of the wide frame"
+    composition: "WIDE CINEMATIC extreme close-up on the face centered in a horizontal letterbox frame, very shallow focus, intimate but cinematic — the kind of close-up a film would hold on"
+    caption: "The healer sat. The healer listened. The healer stayed."
 
   - n: 12
     emotion: joy
+    position: profile
+    scene: "{camper_name} in full healer regalia, mid-stride leaving the sunlit grove, the small wooden symbol on a leather cord haloed softly in cream-and-sage light at the neck, warm sunrise light fading behind, expression peaceful-but-aware"
+    composition: "wide profile mid-stride, hero on the left third moving rightward, the glowing symbol catching focus at the neck, motion forward, fantasy realm receding behind"
+    # Triptych left bookend — no caption (ADR-0007). Default chain works:
+    # prior panel (new-P11, healer regalia) + hero card pull the costume.
+
+  - n: 13
+    emotion: neutral
     position: front
-    scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but with a small wooden symbol on a cord at their neck, eyes soft and steady with new patience"
-    composition: "medium shot, eye-level, mirror of panel 1, soft warm smile"
-    caption: "Home was the same. Only they had changed."
-    # Mirror beat — return to everyday life. Chain off panel 01 (everyday
-    # clothes) instead of the default most-recent (panel 11, healer regalia)
-    # and override the "match previous costume" instruction so the model
-    # doesn't carry the cream-and-sage robes into the return-home scene.
+    scene: "extreme close-up of {camper_name}'s hand cradling the small wooden symbol on its leather cord at the exact instant the cream-and-sage halo visibly DIMS to ordinary wood-brown and ordinary cord, the magical glow fading out across the fingertips, a few last sage-green motes drifting away"
+    composition: "tight macro shot of one hand and the symbol, shallow depth of field, face out of frame entirely, focus pulled to the moment of transformation back to mundane"
+    # Triptych middle — no caption (ADR-0007). Hand-only framing means
+    # STYLE_SUFFIX face-fidelity language does not fight the composition;
+    # no overrides needed.
+
+  - n: 14
+    emotion: joy
+    position: profile
+    scene: "{camper_name} back in their modern everyday clothes, mid-stride at the threshold of their kitchen doorway, one foot on the porch, the other already inside, wearing the now-mundane small wooden symbol on a cord at the neck, ordinary afternoon light, faint gentle smile"
+    composition: "wide profile mid-stride, hero on the right third moving leftward into the everyday, motion forward (into the kitchen), fantasy realm fully gone behind"
+    # Triptych right bookend — no caption (ADR-0007).
+    # Mirror beat to new-P3 — return to everyday clothes. Chain off panel 01
+    # (everyday clothes) instead of the default most-recent (panel 13, hand
+    # close-up + the regalia chain), and override "match previous costume"
+    # so the model doesn't carry the cream-and-sage robes into the threshold.
     reference_panel: "01"
-    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT healer regalia. They may carry one small souvenir from the quest as a callback: a small wooden symbol on a cord at the neck."
-    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include flowing cream/sage robes, herb pouches, stoppered vials, leather belts, moccasin boots, or any other healer's regalia. Only the small wooden symbol on a cord as a callback from the quest."
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT healer regalia. They carry one small souvenir from the quest as a callback: a small wooden symbol on a leather cord at the neck. The symbol is mundane now (no glow)."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is at the threshold returning home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include flowing cream or sage robes, herb pouches, stoppered vials, leather belts with apothecary tools, moccasin boots, or any other healer's regalia. Only the small wooden symbol on a leather cord as a mundane callback from the quest."
+
+  - n: 15
+    emotion: joy
+    position: front
+    scene: "{camper_name} back in their modern everyday clothes, in the same ordinary kitchen as panel 1 — same mug on the counter, same window — but now wearing a small wooden symbol on a leather cord at the throat, the kitchen extending out wide on either side, eyes soft and steady with new patience, faint gentle smile"
+    composition: "WIDE CINEMATIC mirror of panel 1's framing but in a horizontal letterbox, eye-level, camper centered with the everyday environment extending on both sides — same kitchen, wider lens, balanced quiet composition"
+    caption: "Same Tuesday kitchen. Smaller world. Bigger healer."
+    # Mirror beat — return to everyday life. Chain off panel 01 (everyday
+    # clothes) instead of the default most-recent (panel 14, also everyday
+    # but profile mid-stride at a threshold). The override block was the
+    # OLD-P12 override; carries forward unchanged.
+    reference_panel: "01"
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT healer regalia. They may carry one small souvenir from the quest as a callback: a small wooden symbol on a leather cord at the neck."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include flowing cream or sage robes, herb pouches, stoppered vials, leather belts with apothecary tools, moccasin boots, or any other healer's regalia. Only the small wooden symbol on a leather cord as a callback from the quest."
 
 cover:
   emotion: neutral
@@ -121,15 +186,18 @@ cover:
   pose_directive: "heroic full-body portrait in full healer regalia, hands cupped before them holding soft warm golden light, a small luminous healed creature resting on their shoulder or at their feet, sunrise sky behind, generous empty sky at the top of the frame for title text overlay"
 
 fallbacks:
-  1:  "A young person in modern everyday clothes standing in a quiet outdoor setting, soft natural light, gentle expression"
+  1:  "A young person in modern everyday clothes in an ordinary contemporary kitchen, soft natural light, gentle expression"
   2:  "A wounded glowing magical creature limping from a doorway, trail of silver light, ethereal and tender"
-  3:  "A young figure kneeling as flowing cream robes materialize around them, soft amber light surrounding"
-  4:  "A healer in cream and sage robes cradling a glowing healed creature, sunlit grove, warm halo of light"
-  5:  "A vast peaceful realm with hillside sanctuaries and distant healing springs, a tiny figure walking a soft path"
-  6:  "A young healer meeting a warm-eyed mentor figure in a sunlit garden"
-  7:  "A wounded being lashing out in pain, a healer standing carefully nearby with hands held open"
-  8:  "A healer attempting to press a glowing hand forward in haste, a wounded being recoiling and lashing out"
-  9:  "A healer kneeling at a respectful distance from a wounded being, hands resting open, soft golden light enveloping both"
-  10: "A healer sitting beside a calm luminous once-wounded being, both softly glowing in peaceful aftermath"
-  11: "A healer receiving a glowing token from a kind mentor figure in a sunrise meadow"
-  12: "A young person back in modern clothes wearing a small wooden symbol on a cord, in an ordinary contemporary setting"
+  3:  "A young person in everyday clothes stepping through a threshold of amber morning light onto a sanctuary path, profile mid-stride"
+  4:  "Extreme close-up of a hand with cream-and-sage motes blooming on the knuckles, cream cloth materializing on the wrist"
+  5:  "A healer in cream-and-sage robes stepping out onto a sanctuary path, profile mid-stride, wooden symbol pendant catching sunrise light"
+  6:  "A healer in cream-and-sage robes standing in a sunlit grove holding warm golden light, healed creature at their feet, sunrise sky behind"
+  7:  "Bird's-eye view of a vast peaceful realm with hillside sanctuaries and distant healing springs, a tiny figure on a soft path"
+  8:  "Intimate two-shot of a healer and a warm-eyed guide in a sunlit garden, a glowing wooden symbol on a leather cord offered between them"
+  9:  "Low angle of a small healer figure standing near a wounded being lashing out in pain and fear"
+  10: "Tight close-up of hands raised with weakly-fizzling amber healing light, wounded being recoiling, strain visible"
+  11: "Extreme close-up of a serene face with eyes open in patient warmth, faint glowing herbal motes drifting past"
+  12: "A healer in full regalia walking out of a sunlit grove, glowing wooden symbol pendant at neck, profile mid-stride"
+  13: "Extreme close-up of a hand cradling a small wooden symbol on a leather cord, the cream-and-sage glow visibly fading to plain wood"
+  14: "A young person back in everyday clothes at a kitchen threshold mid-stride, mundane wooden symbol pendant at neck, faint smile"
+  15: "A young person back in modern clothes in the same kitchen, wearing a small wooden symbol on a cord, soft gentle smile"
