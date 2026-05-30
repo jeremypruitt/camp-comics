@@ -5,6 +5,12 @@ import CampComicsCore
 struct FirebaseAIPanelGenerator: PanelGenerator {
     static let modelName = "gemini-2.5-flash-image"
 
+    let billingMode: BillingMode
+
+    init(billingMode: BillingMode = .sponsored) {
+        self.billingMode = billingMode
+    }
+
     func generateQAPanel(prompt: String, photo: Data) async throws -> Data {
         try await callVertex(prompt: prompt,
                              references: [ImageReference(data: photo, mimeType: "image/jpeg")])

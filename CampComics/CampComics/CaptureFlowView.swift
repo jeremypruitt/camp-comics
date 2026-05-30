@@ -27,7 +27,7 @@ struct CaptureFlowView: View {
     init(player: PlayerRecord,
          template: ClassTemplate,
          store: PlayerStore,
-         generator: any PanelGenerator = FirebaseAIPanelGenerator()) {
+         generator: any PanelGenerator = FirebaseAIPanelGenerator(billingMode: BillingModeStore().current)) {
         self.player = player
         self.template = template
         self.store = store
