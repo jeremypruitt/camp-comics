@@ -1,13 +1,13 @@
 # Camp Comics
 
-Personalized 12-panel D&D-style comic generator for ~60 summer-camp **players** per week. Native iPhone app (in-progress migration) replaces the legacy Python pipeline; each player ends up with a printed comic by Day 5.
+Personalized 15-panel D&D-style comic generator for ~60 summer-camp **players** per week. Native iPhone app (in-progress migration) replaces the legacy Python pipeline; each player ends up with a printed comic by Day 5.
 
 ## Language
 
 ### Comic structure
 
 **Panel**:
-A numbered slot in the comic from 1 to 12. May be empty, in-progress, or filled. "Panel 7" refers to the slot, not the image.
+A numbered slot in the comic from 1 to 15. May be empty, in-progress, or filled. "Panel 7" refers to the slot, not the image.
 _Avoid_: "panel" as the artifact (say "panel 7's accepted image" or `panel_NN.png`).
 
 **PanelSpec**:
@@ -15,8 +15,8 @@ The YAML script entry for one panel — `caption`, `emotion`, `position`, option
 _Avoid_: "panel script", "panel definition".
 
 **Cover**:
-The 13th generated artifact, sibling to (not a kind of) panel. Has its own prompt skeleton and uses `[photo, hero]` references only.
-_Avoid_: "panel 13", "cover panel".
+The 16th generated artifact, sibling to (not a kind of) panel. Has its own prompt skeleton and uses `[photo, hero]` references only.
+_Avoid_: "panel 16", "cover panel".
 
 **PanelTarget**:
 Code-level discriminator for the shared review surface: `panel(n: Int, spec: PanelSpec) | cover(spec: CoverSpec)`. Parameterizes `PanelReviewView`, `PromptBuilder`, and `PhotoReferenceResolver` so panels and the cover share one code path. On-disk identity is a sibling enum `PanelTargetID` (`.panel(Int) | .cover`) — serialized as the string discriminator `"panel_07"` / `"cover"` in `_attempts.json` and used by `PlayerStore` to address files.
@@ -24,7 +24,7 @@ Code-level discriminator for the shared review surface: `panel(n: Int, spec: Pan
 ### Print layout
 
 **Comic**:
-The final printable artifact for one player — a PDF assembled from the player's 12 accepted panels + cover. On-disk: `Documents/players/player_NNN/comic.pdf`. Distinct from the *story* (the narrative encoded in the class template) and from any individual *panel* or *cover* (the source images that fill it).
+The final printable artifact for one player — a PDF assembled from the player's 15 accepted panels + cover. On-disk: `Documents/players/player_NNN/comic.pdf`. Distinct from the *story* (the narrative encoded in the class template) and from any individual *panel* or *cover* (the source images that fill it).
 _Avoid_: "book" (informal), "PDF" (technical artifact, not the named thing).
 
 **Page**:
@@ -32,12 +32,16 @@ One of the page-sized sections of the printed comic. v1 ships four pages — cov
 _Avoid_: "panel" (a panel is one cell on a page, not the whole page).
 
 **Act**:
-One of the three interior pages, each carrying a narrative beat from the class template — Act I (Ordinary → Call, panels 1–4), Act II (The Quest, panels 5–8), Act III (The Return, panels 9–12). Each act has its own asymmetric grid declared in CSS.
+One of the three interior pages, each carrying a narrative beat from the class template — Act I (Ordinary → Call, panels 1–6, page 2), Act II (The Quest, panels 7–11, page 3), Act III (The Return, panels 12–15, page 4). Each act has its own asymmetric grid declared in CSS. Act I and Act III each contain one **transition triptych** that bookends the quest.
 _Avoid_: "interior page" when you mean the narrative beat ("Act II" reads as story; "page 3" reads as the third sheet).
 
-**Diagonal pair**:
-The single cell on Act III that holds panels 10 and 11 along a shared diagonal seam, rather than placing them in two adjacent rectangular cells. A continuity device — the two beats share a moment that side-by-side rectangles would visually disconnect. The trapezoid masks are rendered via inline SVG `<clipPath>` on iOS (see ADR-0005), unlike the legacy WeasyPrint pipeline which bakes the alpha into intermediate PNGs.
-_Avoid_: "split panel" (suggests one panel was split, when these are two distinct `PanelSpec`s).
+**Transition triptych**:
+A three-panel row sharing one figure container with constant-width cream gaps along diagonal seams. Two per comic, symmetrically placed: **P-in** on page 2 (panels 3–5, transition INTO fantasy, parallelogram middle + trapezoid bookends, //// slashes) and **H-out** on page 4 (panels 12–14, transition BACK to everyday, hexagonal diamond-middle + pentagon bookends). The middle cell is a face-out-of-frame close-up on the **prop**; the bookends frame it narratively. Triptych panels emit no `<figcaption>` (Watchmen-style); adjacent on-page panels carry the captions. See ADR-0007.
+_Avoid_: "diagonal pair" (the OLD page-3 two-cell shape, superseded), "transition row" (loses the geometric "triptych" signal), "split panel" (suggests one panel was split, when these are three distinct `PanelSpec`s).
+
+**Prop / through-line**:
+The class-specific object that carries visual continuity through the second half of the comic. Handed over glowing at new-P8 (mentor gift, act-2 introduction), it appears glowing in the H-out left bookend (new-P12), visibly dims in the H-out middle close-up (new-P13), and lands mundane in the right bookend (new-P14) and the kitchen return splash (new-P15). Per-class props: druid sprig+pendant, warrior shield-pin, wizard notebook+crescent, bard music-note pendant, healer wooden symbol, trickster brass key.
+_Avoid_: "gift" (only describes the handoff moment, not the through-line role), "souvenir" (only describes the final mundane form).
 
 ### Generation loop
 
