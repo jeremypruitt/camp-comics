@@ -15,7 +15,7 @@ struct FirebaseAIPanelGenerator: PanelGenerator {
     }
 
     private func callVertex(prompt: String, references: [ImageReference]) async throws -> Data {
-        let ai = FirebaseAI.firebaseAI(backend: .vertexAI())
+        let ai = FirebaseAI.firebaseAI(backend: .googleAI())
         let model = ai.generativeModel(modelName: Self.modelName)
         var parts: [any Part] = references.map {
             InlineDataPart(data: $0.data, mimeType: $0.mimeType)
