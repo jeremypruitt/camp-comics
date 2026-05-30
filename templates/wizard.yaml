@@ -1,5 +1,25 @@
-# Wizard — clone of druid.yaml adapted for the Wizard class.
-# See spec/design.md §3 (value), §4 (beats), §8 (prompt anatomy).
+# Wizard — canonical 15-panel class arc template (ADR-0007).
+# Cloned from druid.yaml; class language preserved from the pre-ADR-0007
+# 12-panel arc where it fits (especially captions on new-P9, P10, P11).
+#
+# Tone (v2): D&D-campaign-narrator voice — punchy, situational, slightly
+# humorous, action-forward. Not mythic-Joseph-Campbell. Dice-table feel.
+#
+# Layout (ADR-0007):
+#   Act 1 / page 2: panels 1–6 — two squares, P-in triptych (panels 3–5),
+#                   hero splash. Captioned panels: 1, 2, 6. Triptych panels
+#                   3, 4, 5 are captionless (Watchmen-style).
+#   Act 2 / page 3: panels 7–11 — establishing splash, 3-up middle band,
+#                   close-up climax. All captioned.
+#   Act 3 / page 4: panels 12–15 — H-out triptych (panels 12–14), kitchen
+#                   return splash. Captioned panels: 15. Triptych panels
+#                   12, 13, 14 are captionless.
+#
+# Prop / through-line (ADR-0007): slim leather-bound notebook + small brass
+# crescent-moon pendant. Archmage hands them over at panel 8 with softly
+# illuminated runes on the cover and the crescent glowing. Glowing in panel
+# 12 (H-out left bookend), visibly dimming in panel 13 (H-out middle
+# close-up), mundane in panel 14 (H-out right bookend) and panel 15.
 
 class: wizard
 display_name: Wizard
@@ -19,101 +39,146 @@ tokens:
     - fear_image
     - quality_symbol
   class_specific:
-    - question_to_answer   # a real question they want answered; informs the puzzle in panel 7
+    - question_to_answer   # a real question they want answered; informs the puzzle in panel 9
 
 panels:
   - n: 1
     emotion: neutral
     position: front
-    scene: "{camper_name} in modern everyday clothes, standing in an ordinary contemporary setting, looking thoughtful and a little distracted, soft natural daylight"
-    composition: "medium shot, eye-level, curious expression"
-    caption: "Before the call, there was only the ordinary world."
-    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT fantasy armor or class regalia. The camper has not yet been transformed and is in their normal everyday clothes."
-    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the class hero card). Do NOT include any fantasy armor, weapons, accessories, or class-specific attire — the transformation has not happened yet. Plain modern everyday clothing only."
+    scene: "{camper_name} in modern everyday clothes, in an ordinary contemporary kitchen or living room on an unremarkable afternoon, surrounded by Tuesday-ish detail (a mug, sneakers by the door, ordinary light), looking thoughtful and a little distracted"
+    composition: "intimate eye-level medium shot, camper centered in a SQUARE frame, ordinary domestic detail visible around them, calm balanced composition"
+    caption: "It was Tuesday. Nothing interesting was happening. Yet."
+    # Pre-transformation — peel the wizard costume + hero ref off this panel
+    # the same way panel 15 does for the return-home beat. Without these
+    # overrides the Costume: line + STYLE_SUFFIX "match the second reference"
+    # cue drag wizard regalia into a scene that's supposed to be everyday.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT wizard regalia, NOT fantasy robes. The camper has not yet been transformed and is in their normal Tuesday-afternoon clothes."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the wizard hero card). Do NOT include any deep-blue scholar's robes, leather-bound spellbook, wooden staff with crystal, silver circlet, or any other wizard's regalia — the transformation has not happened yet. Plain modern everyday clothing only."
 
   - n: 2
     emotion: surprise
     position: front
-    scene: "{camper_name} sees an impossible thing — an ancient book floating out from {hometown_landmark}, pages turning in a wind that touches nothing else, a single sigil glowing on the open page"
-    composition: "wide shot, camper small in frame, glowing book dominant"
-    caption: "But the page had been turning, waiting to be read."
+    scene: "an ancient leather-bound book floats out from {hometown_landmark}, pages turning in a wind that touches nothing else, a single sigil glowing on the open page, looking down at {camper_name} like it had been waiting"
+    composition: "TALL PORTRAIT composition, glowing book dominating the upper two-thirds of the vertical frame, {camper_name} small at the bottom looking up, dramatic vertical negative space"
+    caption: "The page had been turning, waiting to be read."
 
   - n: 3
     emotion: neutral
-    position: front
-    scene: "{camper_name} stepping toward the book as deep-blue robes materialize around them, half ordinary clothes and half scholar's robes, mid-transformation, motes of arcane light orbiting them"
-    composition: "three-quarter shot, reverent stride toward the book"
-    caption: "The first word was the door. They spoke it."
+    position: profile
+    scene: "{camper_name} in modern everyday clothes, mid-stride, stepping forward through a threshold of cool indigo twilight, one foot in an ordinary doorway, the other already on a glowing path of arcane glyphs, expression curious-but-uncertain"
+    composition: "wide profile mid-stride, hero on the left third moving rightward, motion forward, the everyday giving way to twilight glyphs"
+    # Triptych panel — no caption (ADR-0007 Watchmen-style).
+    # P-in left bookend uses OLD-P1 face/clothing overrides so the transformation
+    # hasn't visibly started yet. STYLE_SUFFIX's "match the second reference" cue
+    # would otherwise pull wizard regalia in before the triptych middle.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT wizard regalia, NOT fantasy robes. The transformation has not visibly started; they have only just begun stepping forward."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is mid-stride through a threshold from everyday into the magical. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing here. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference (everyday clothes), NOT to the SECOND reference (the wizard hero card). Do NOT include any deep-blue scholar's robes, spellbook, staff, silver circlet, or any other wizard's regalia — the transformation has not happened yet."
 
   - n: 4
-    emotion: joy
+    emotion: neutral
     position: front
-    scene: "{camper_name} in full wizard regalia, heroic standing pose on the steps of an arcane library, staff raised, the crystal glowing soft blue, constellations swirling overhead, full transformation reveal"
-    composition: "full body hero shot, low angle, cinematic lighting"
-    caption: "And the stars rearranged themselves to greet them."
+    scene: "extreme close-up of {camper_name}'s hand and forearm at the moment of transformation — ink-black arcane runes blooming across the knuckles, deep-blue motes of light orbiting the wrist, indigo and brass sparks catching at the fingertips"
+    composition: "tight macro shot of one hand and forearm, shallow depth of field, face out of frame entirely, magical particles in focus"
+    # Triptych middle — no caption (ADR-0007). Hand-only framing means
+    # STYLE_SUFFIX face-fidelity language does not fight the composition;
+    # no overrides needed.
 
   - n: 5
-    emotion: neutral
-    position: profile
-    scene: "vast arcane realm with floating libraries, towers of books reaching into clouds, distant magical observatories, {camper_name} walking a path of glowing glyphs, small in frame, world dominant"
-    composition: "extreme wide establishing shot, camper as small silhouette"
-    caption: "The world was older than memory, full of unfinished sentences."
-
-  - n: 6
-    emotion: neutral
-    position: front
-    scene: "{camper_name} meeting an ancient archmage mentor — a wise figure with star-streaked hair and patient eyes — offering them an open book and gesturing for them to sit and read"
-    composition: "medium shot, two-figure framing, warm candlelight"
-    caption: "The mentor offered no answers, only better questions."
-
-  - n: 7
-    emotion: fear
-    position: front
-    scene: "{camper_name} faces the challenge — {fear_image} — manifested as an impossibly complex magical puzzle hanging in the air (it represents {question_to_answer}), glowing symbols beyond reach"
-    composition: "medium shot, puzzle dominating background, wizard in foreground considering it"
-    caption: "Some answers were not to be conjured. Only earned."
-
-  - n: 8
-    emotion: fear
-    position: front
-    scene: "{camper_name} attempting the showy spell — staff raised, blazing light, dramatic gesture — and the puzzle dissolves their spell without effect, the wizard breathless and disheveled"
-    composition: "dynamic action shot, spell sparks fizzling, wizard's hair wild"
-    caption: "Cleverness was not the same as wisdom. Yet."
-
-  - n: 9
-    emotion: neutral
-    position: front
-    scene: "{camper_name} sitting cross-legged on the ground with the spellbook open in their lap, reading by candlelight, the puzzle slowly resolving above them as understanding dawns, soft glow on their face"
-    composition: "intimate medium shot, candlelight study, quiet focus"
-    caption: "The wizard read. The wizard wondered. The wizard knew."
-
-  - n: 10
     emotion: joy
     position: profile
-    scene: "{camper_name} rising calmly with staff in hand, the puzzle now solved and dissolving into harmless motes of light, no triumph on their face — only quiet certainty"
-    composition: "medium shot, calm aftermath, motes of light around them"
-    caption: "Triumph wore the quiet shape of a question answered."
+    scene: "{camper_name} in full wizard regalia, mid-stride, stepping out of the threshold light onto the glowing glyph-path on the far side, the everyday doorway dissolving behind, slender wooden staff in hand, crystal catching the new indigo light"
+    composition: "wide profile mid-stride, hero moving rightward into the arcane realm, motion forward, fantasy world opening on the right"
+    # Triptych right bookend — no caption (ADR-0007).
+    # Default chain handles the regalia: prior panel is the triptych middle
+    # (hand close-up) which doesn't carry costume, and the hero card ref
+    # anchors the full wizard silhouette. No overrides needed.
+
+  - n: 6
+    emotion: joy
+    position: front
+    scene: "{camper_name} in full wizard regalia, standing heroically on the steps of an ancient arcane library in the middle of a vast twilit realm, staff raised, the crystal glowing soft blue, constellations swirling overhead, towers of books receding into the distance behind"
+    composition: "WIDE CINEMATIC HERO SPLASH, full body but framed wide like a movie poster, low angle from below, sweeping landscape composition with dramatic twilight sky on either side of the figure, hero centered with epic environment"
+    caption: "Class: Wizard. Stats: locked. The stars rearranged in welcome."
+
+  - n: 7
+    emotion: neutral
+    position: profile
+    scene: "a vast arcane realm with floating libraries and towers of books reaching into clouds, {camper_name} a tiny silhouette on a winding path of glowing glyphs far below, distant magical observatories on the horizon"
+    composition: "bird's-eye / high-angle aerial shot looking down at the arcane realm, camper a small figure, world overwhelmingly dominant"
+    caption: "The map was big. The map is always big."
+
+  - n: 8
+    emotion: neutral
+    position: front
+    scene: "an ancient archmage mentor with star-streaked hair and patient eyes sits across from {camper_name} in a candlelit study, the archmage extending both hands forward to offer a slim leather-bound notebook with softly illuminated arcane runes drifting across its cover and a small brass crescent-moon pendant glowing softly, indigo and brass light spilling outward from the gift, warm reverent candlelight"
+    composition: "intimate two-shot close, both faces in frame at eye-level, the gift centered between them, warm soft-focus library background, sense of a ceremonial handoff"
+    caption: "Archmage handed over the quest gear. Probably important."
+
+  - n: 9
+    emotion: fear
+    position: front
+    scene: "{fear_image} — manifested as an impossibly complex magical puzzle hanging in the air above a forest clearing (it represents {question_to_answer}), glowing symbols towering beyond reach; {camper_name} stands small in the foreground, looking up at the obstacle"
+    composition: "dramatic low angle from behind and below the camper, puzzle towering and filling most of the frame, camper small in lower-third"
+    caption: "Some answers were not to be conjured. Only earned."
+
+  - n: 10
+    emotion: fear
+    position: front
+    scene: "{camper_name}'s hands gripping the slender wooden staff white-knuckled, the crystal at its tip sparking weakly against the puzzle, sweat on the brow, hair disheveled, strain visible"
+    composition: "tight action mid-shot focused on hands, staff, and lower face — close enough to see the strain, side-lit"
+    caption: "Cleverness was not the same as wisdom. Yet."
 
   - n: 11
     emotion: neutral
     position: front
-    scene: "{camper_name} in a moonlit observatory receiving a glowing {quality_symbol} from the archmage mentor, both figures haloed in starlight, ceremonial stillness"
-    composition: "medium two-shot, ceremonial composition, vertical light"
-    caption: "The greatest spell they learned was the patience to learn."
+    scene: "cinematic close-up of {camper_name}'s face, eyes open with dawning understanding, brass-and-candle light reflected on the cheekbones from below, faint glowing sigils of a solving puzzle drifting past on both sides, ambient library details blurred at the edges of the wide frame"
+    composition: "WIDE CINEMATIC extreme close-up on the face centered in a horizontal letterbox frame, very shallow focus, intimate but cinematic — the kind of close-up a film would hold on"
+    caption: "The wizard read. The wizard wondered. The wizard knew."
 
   - n: 12
     emotion: joy
+    position: profile
+    scene: "{camper_name} in full wizard regalia, mid-stride leaving the glyph-path, a slim leather-bound notebook with softly illuminated runes drifting across its cover in one hand and a small brass crescent-moon pendant glowing softly at the neck, warm indigo twilight fading behind, expression peaceful-but-aware"
+    composition: "wide profile mid-stride, hero on the left third moving rightward, the glowing notebook and pendant catching focus, motion forward, fantasy realm receding behind"
+    # Triptych left bookend — no caption (ADR-0007). Default chain works:
+    # prior panel (new-P11, wizard regalia) + hero card pull the costume.
+
+  - n: 13
+    emotion: neutral
     position: front
-    scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but holding a slim leather-bound notebook, wearing a small brass pendant shaped like a crescent moon, eyes brighter with curiosity"
-    composition: "medium shot, eye-level, mirror of panel 1, faint thoughtful smile"
-    caption: "Home was the same. Only they had changed."
+    scene: "extreme close-up of {camper_name}'s hand cradling the slim leather-bound notebook and the brass crescent-moon pendant at the exact instant the runes on the notebook cover visibly DIM to ordinary ink and the crescent fades to plain antique brass, the magical glow fading out across the fingertips, a few last indigo motes drifting away"
+    composition: "tight macro shot of one hand and the prop, shallow depth of field, face out of frame entirely, focus pulled to the moment of transformation back to mundane"
+    # Triptych middle — no caption (ADR-0007). Hand-only framing means
+    # STYLE_SUFFIX face-fidelity language does not fight the composition;
+    # no overrides needed.
+
+  - n: 14
+    emotion: joy
+    position: profile
+    scene: "{camper_name} back in their modern everyday clothes, mid-stride at the threshold of their kitchen doorway, one foot on the porch, the other already inside, holding the now-mundane slim leather-bound notebook and wearing a small brass crescent-moon pendant at the neck, ordinary afternoon light, faint thoughtful smile"
+    composition: "wide profile mid-stride, hero on the right third moving leftward into the everyday, motion forward (into the kitchen), fantasy realm fully gone behind"
+    # Triptych right bookend — no caption (ADR-0007).
+    # Mirror beat to new-P3 — return to everyday clothes. Chain off panel 01
+    # (everyday clothes) instead of the default most-recent (panel 13, hand
+    # close-up + the regalia chain), and override "match previous costume"
+    # so the model doesn't carry the scholar's robes and staff into the threshold.
+    reference_panel: "01"
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT wizard regalia. They carry one small souvenir from the quest as a callback: a slim leather-bound notebook in hand and a small brass crescent-moon pendant at the neck. The notebook and pendant are mundane now (no glow)."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is at the threshold returning home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include deep-blue scholar's robes, leather-bound spellbook, wooden staff with crystal, silver circlet, or any other wizard's regalia. Only the slim leather-bound notebook and small brass crescent-moon pendant as mundane callbacks from the quest."
+
+  - n: 15
+    emotion: joy
+    position: front
+    scene: "{camper_name} back in their modern everyday clothes, in the same ordinary kitchen as panel 1 — same mug on the counter, same window — but now holding a slim leather-bound notebook and wearing a small brass crescent-moon pendant at the throat, the kitchen extending out wide on either side, eyes brighter with curiosity, faint thoughtful smile"
+    composition: "WIDE CINEMATIC mirror of panel 1's framing but in a horizontal letterbox, eye-level, camper centered with the everyday environment extending on both sides — same kitchen, wider lens, balanced quiet composition"
+    caption: "Same Tuesday kitchen. Smaller world. Bigger wizard."
     # Mirror beat — return to everyday life. Chain off panel 01 (everyday
-    # clothes) instead of the default most-recent (panel 11, wizard regalia)
-    # and override the "match previous costume" instruction so the model
-    # doesn't carry the scholar's robes and staff into the return-home scene.
+    # clothes) instead of the default most-recent (panel 14, also everyday
+    # but profile mid-stride at a threshold). The override block was the
+    # OLD-P12 override; carries forward unchanged.
     reference_panel: "01"
     costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT wizard regalia. They may carry one small souvenir from the quest as a callback: a slim leather-bound notebook in hand and a small brass crescent-moon pendant at the neck."
-    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include blue scholar's robes, leather-bound spellbook, wooden staff with crystal, silver circlet, or any other wizard's regalia. Only the slim leather-bound notebook and small brass crescent-moon pendant as callbacks from the quest."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include deep-blue scholar's robes, leather-bound spellbook, wooden staff with crystal, silver circlet, or any other wizard's regalia. Only the slim leather-bound notebook and small brass crescent-moon pendant as callbacks from the quest."
 
 cover:
   emotion: neutral
@@ -121,15 +186,18 @@ cover:
   pose_directive: "heroic full-body portrait in full wizard regalia, staff held diagonally with crystal glowing soft blue, spellbook open and floating beside them, constellations swirling overhead, generous empty sky at the top of the frame for title text overlay"
 
 fallbacks:
-  1:  "A young person in modern everyday clothes standing in a quiet outdoor setting, soft natural light, thoughtful expression"
+  1:  "A young person in modern everyday clothes in an ordinary contemporary kitchen, soft natural light, thoughtful expression"
   2:  "An ancient book floating in midair with pages turning in an unseen wind, a single glowing sigil, ethereal"
-  3:  "A young figure stepping into a swirl of arcane motes as deep-blue robes materialize around them"
-  4:  "A wizard in deep-blue robes standing heroically on library steps, staff raised, constellations swirling overhead"
-  5:  "A vast arcane realm with floating libraries and towers of books reaching into clouds, a tiny figure walking a path"
-  6:  "A young wizard meeting an ancient archmage mentor in a candlelit study"
-  7:  "A wizard facing an impossibly complex glowing magical puzzle hanging in midair"
-  8:  "A wizard attempting a showy spell that fizzles against a magical puzzle, hair wild"
-  9:  "A wizard sitting cross-legged reading a spellbook by candlelight, a puzzle resolving above them"
-  10: "A wizard rising calmly with staff in hand as a magical puzzle dissolves into motes of light"
-  11: "A wizard receiving a glowing token from an archmage mentor in a moonlit observatory"
-  12: "A young person back in modern clothes holding a slim leather notebook, in an ordinary contemporary setting"
+  3:  "A young person in everyday clothes stepping through a threshold of indigo twilight onto a glowing glyph-path, profile mid-stride"
+  4:  "Extreme close-up of a hand with ink-black arcane runes blooming on the knuckles, indigo motes orbiting the wrist"
+  5:  "A wizard in deep-blue robes stepping out onto a glyph-path, profile mid-stride, crystal staff catching twilight"
+  6:  "A wizard in deep-blue robes standing heroically on library steps, staff raised, constellations swirling overhead"
+  7:  "Bird's-eye view of a vast arcane realm with floating libraries and towers of books, a tiny figure on a glyph-path"
+  8:  "Intimate two-shot of a wizard and an archmage in a candlelit study, a glowing rune-notebook and brass crescent pendant offered between them"
+  9:  "Low angle of a small wizard figure looking up at a towering glowing magical puzzle hanging in midair"
+  10: "Tight close-up of hands gripping a wooden staff with the crystal sparking weakly, hair disheveled, strain visible"
+  11: "Extreme close-up of a serene face with eyes open in dawning understanding, faint glowing sigils drifting past"
+  12: "A wizard in full regalia walking out of an arcane realm, glowing rune-notebook and crescent pendant in hand, profile mid-stride"
+  13: "Extreme close-up of a hand cradling a leather notebook and brass crescent pendant, the runes visibly fading to ordinary ink"
+  14: "A young person back in everyday clothes at a kitchen threshold mid-stride, mundane notebook in hand, faint smile"
+  15: "A young person back in modern clothes in the same kitchen, holding a slim leather notebook with a small brass crescent pendant, faint thoughtful smile"

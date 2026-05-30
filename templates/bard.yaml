@@ -1,5 +1,25 @@
-# Bard — clone of druid.yaml adapted for the Bard class.
-# See spec/design.md §3 (value), §4 (beats), §8 (prompt anatomy).
+# Bard — canonical 15-panel class arc template (ADR-0007).
+# Cloned from druid.yaml; class language preserved from the pre-ADR-0007
+# 12-panel arc where it fits (especially captions on new-P9, P10, P11).
+#
+# Tone (v2): D&D-campaign-narrator voice — punchy, situational, slightly
+# humorous, action-forward. Not mythic-Joseph-Campbell. Dice-table feel.
+#
+# Layout (ADR-0007):
+#   Act 1 / page 2: panels 1–6 — two squares, P-in triptych (panels 3–5),
+#                   hero splash. Captioned panels: 1, 2, 6. Triptych panels
+#                   3, 4, 5 are captionless (Watchmen-style).
+#   Act 2 / page 3: panels 7–11 — establishing splash, 3-up middle band,
+#                   close-up climax. All captioned.
+#   Act 3 / page 4: panels 12–15 — H-out triptych (panels 12–14), kitchen
+#                   return splash. Captioned panels: 15. Triptych panels
+#                   12, 13, 14 are captionless.
+#
+# Prop / through-line (ADR-0007): small enameled music-note pendant on a cord.
+# Old bard hands it over GLOWING and ringing with soft golden light at panel 8.
+# Glowing in panel 12 (H-out left bookend), visibly dimming in panel 13
+# (H-out middle close-up), mundane in panel 14 (H-out right bookend) and
+# panel 15.
 
 class: bard
 display_name: Bard
@@ -25,95 +45,140 @@ panels:
   - n: 1
     emotion: neutral
     position: front
-    scene: "{camper_name} in modern everyday clothes, standing in an ordinary contemporary setting, looking thoughtful with quiet potential, soft natural daylight"
-    composition: "medium shot, eye-level, neutral expression with hint of warmth"
-    caption: "Before the call, there was only the ordinary world."
-    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT fantasy armor or class regalia. The camper has not yet been transformed and is in their normal everyday clothes."
-    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the class hero card). Do NOT include any fantasy armor, weapons, accessories, or class-specific attire — the transformation has not happened yet. Plain modern everyday clothing only."
+    scene: "{camper_name} in modern everyday clothes, in an ordinary contemporary kitchen or living room on an unremarkable afternoon, surrounded by Tuesday-ish detail (a mug, sneakers by the door, ordinary light), looking thoughtful with quiet potential"
+    composition: "intimate eye-level medium shot, camper centered in a SQUARE frame, ordinary domestic detail visible around them, calm balanced composition"
+    caption: "It was Tuesday. Nothing interesting was happening. Yet."
+    # Pre-transformation — peel the bard costume + hero ref off this panel
+    # the same way panel 15 does for the return-home beat. Without these
+    # overrides the Costume: line + STYLE_SUFFIX "match the second reference"
+    # cue drag bard regalia into a scene that's supposed to be everyday.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT bard regalia, NOT a traveling cloak or lute. The camper has not yet been transformed and is in their normal Tuesday-afternoon clothes."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the bard hero card). Do NOT include any traveling cloak, belted tunic, lute, satchel, traveling boots, or any other bard's regalia — the transformation has not happened yet. Plain modern everyday clothing only."
 
   - n: 2
     emotion: surprise
     position: front
-    scene: "{camper_name} hears music drifting impossibly from {hometown_landmark} — a single haunting note hanging in the air, a glowing trail of musical staves curling toward them like an invitation"
-    composition: "wide shot, camper small in frame, glowing music dominant"
-    caption: "But a song had been waiting, holding its first note."
+    scene: "music drifts impossibly from {hometown_landmark} — a single haunting note hanging in the air, a glowing trail of musical staves curling toward {camper_name} like an invitation, looking down at them as if a song had been waiting"
+    composition: "TALL PORTRAIT composition, glowing music dominating the upper two-thirds of the vertical frame, {camper_name} small at the bottom looking up, dramatic vertical negative space"
+    caption: "A song had been waiting, holding its first note."
 
   - n: 3
     emotion: neutral
-    position: front
-    scene: "{camper_name} stepping into the swirl of music as a colorful traveling cloak materializes around them, half ordinary clothes and half bard's regalia, mid-transformation, golden notes orbiting them"
-    composition: "three-quarter shot, dance-like stride into frame"
-    caption: "The first note was theirs to sing. They sang it."
+    position: profile
+    scene: "{camper_name} in modern everyday clothes, mid-stride, stepping forward through a threshold of warm golden firelight, one foot in an ordinary doorway, the other already on a roadside path lit by lantern-glow, expression hopeful-but-uncertain"
+    composition: "wide profile mid-stride, hero on the left third moving rightward, motion forward, the everyday giving way to firelight"
+    # Triptych panel — no caption (ADR-0007 Watchmen-style).
+    # P-in left bookend uses OLD-P1 face/clothing overrides so the transformation
+    # hasn't visibly started yet. STYLE_SUFFIX's "match the second reference" cue
+    # would otherwise pull bard regalia in before the triptych middle.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT bard regalia, NOT a traveling cloak or lute. The transformation has not visibly started; they have only just begun stepping forward."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is mid-stride through a threshold from everyday into the magical. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing here. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference (everyday clothes), NOT to the SECOND reference (the bard hero card). Do NOT include any traveling cloak, belted tunic, lute, satchel, or any other bard's regalia — the transformation has not happened yet."
 
   - n: 4
-    emotion: joy
+    emotion: neutral
     position: front
-    scene: "{camper_name} in full bard regalia, heroic stance on a roadside campfire stage, instrument raised, golden firelight glowing, an enraptured small crowd of travelers gathered in shadow, full transformation reveal"
-    composition: "full body hero shot, low angle, cinematic firelight"
-    caption: "And the road remembered every face it lit that night."
+    scene: "extreme close-up of {camper_name}'s hand and forearm at the moment of transformation — golden musical staves blooming across the knuckles, the warm contrasting lining of a cloak beginning to materialize over the wrist, golden notes catching at the fingertips"
+    composition: "tight macro shot of one hand and forearm, shallow depth of field, face out of frame entirely, magical particles in focus"
+    # Triptych middle — no caption (ADR-0007). Hand-only framing means
+    # STYLE_SUFFIX face-fidelity language does not fight the composition;
+    # no overrides needed.
 
   - n: 5
-    emotion: neutral
-    position: profile
-    scene: "vast lyrical realm with rolling hills, distant traveling caravans, music halls glowing on hilltops, {camper_name} walking a winding road, small in frame, world dominant"
-    composition: "extreme wide establishing shot, camper as small silhouette"
-    caption: "The world was full of unfinished songs and waiting ears."
-
-  - n: 6
-    emotion: neutral
-    position: front
-    scene: "{camper_name} meeting an old wandering bard mentor — a weathered figure with kind eyes and a battered instrument — gesturing for them to take a seat by a roadside fire"
-    composition: "medium shot, two-figure framing, warm firelight"
-    caption: "The old bard said: the song is true because it is yours."
-
-  - n: 7
-    emotion: fear
-    position: front
-    scene: "{camper_name} faces the challenge — {fear_image} — a village or gathering frozen in silent gray sorrow, voices stolen, the obstacle a great silence that swallows sound, the bard small before it"
-    composition: "wide shot, gray silent crowd dominating background, bard in foreground"
-    caption: "Silence had taken the village. Someone had to break it."
-
-  - n: 8
-    emotion: fear
-    position: front
-    scene: "{camper_name} attempting to perform a borrowed grand song or imitation of a famous tune — striking dramatic pose, instrument in hand — but the music falls flat against the silence, notes dissolving"
-    composition: "dynamic action shot, performance falling flat, awkward moment"
-    caption: "Other people's songs slid off the silence like rain off stone."
-
-  - n: 9
-    emotion: neutral
-    position: front
-    scene: "{camper_name} setting down the instrument and beginning their own work — {art_form} — performing or creating something honest and small and theirs, color and sound returning to the gray figures around them as they listen"
-    composition: "intimate medium shot, performance moment, color spreading outward"
-    caption: "Their own song, sung small and true, brought the colors back."
-
-  - n: 10
     emotion: joy
     position: profile
-    scene: "{camper_name} taking a small bow as the gathered crowd, now restored and colorful, listens in still warmth, no triumph on the bard's face — only quiet gratitude"
-    composition: "medium shot, calm aftermath, restored crowd listening"
-    caption: "Triumph wore the quiet shape of being heard."
+    scene: "{camper_name} in full bard regalia, mid-stride, stepping out of the threshold light onto the lantern-lit road on the far side, the everyday doorway dissolving behind, lute slung across the back, cloak lining flashing color in the new firelight"
+    composition: "wide profile mid-stride, hero moving rightward into the lyrical realm, motion forward, fantasy world opening on the right"
+    # Triptych right bookend — no caption (ADR-0007).
+    # Default chain handles the regalia: prior panel is the triptych middle
+    # (hand close-up) which doesn't carry costume, and the hero card ref
+    # anchors the full bard silhouette. No overrides needed.
+
+  - n: 6
+    emotion: joy
+    position: front
+    scene: "{camper_name} in full bard regalia, standing heroically on a roadside campfire stage in the middle of a vast lyrical realm, instrument raised mid-strum, golden firelight from below, sparks and musical staves spiraling upward, an enraptured small crowd of travelers gathered in shadow on either side, the wider road stretching out behind"
+    composition: "WIDE CINEMATIC HERO SPLASH, full body but framed wide like a movie poster, low angle from below, sweeping landscape composition with dramatic firelit sky on either side of the figure, hero centered with epic environment"
+    caption: "Class: Bard. Stats: locked. The road remembered every face it lit."
+
+  - n: 7
+    emotion: neutral
+    position: profile
+    scene: "a vast lyrical realm with rolling hills and distant traveling caravans, {camper_name} a tiny silhouette on a winding lantern-lit road far below, music halls glowing on distant hilltops"
+    composition: "bird's-eye / high-angle aerial shot looking down at the lyrical realm, camper a small figure, world overwhelmingly dominant"
+    caption: "The map was big. The map is always big."
+
+  - n: 8
+    emotion: neutral
+    position: front
+    scene: "an old wandering bard mentor with weathered hands and kind eyes sits across from {camper_name} at a roadside fire, the old bard extending both hands forward to offer a small enameled music-note pendant on a cord ringing with soft golden light, golden musical staves drifting outward from the gift, warm reverent firelight"
+    composition: "intimate two-shot close, both faces in frame at eye-level, the gift centered between them, warm soft-focus camp background, sense of a ceremonial handoff"
+    caption: "Old bard handed over the quest gear. Probably important."
+
+  - n: 9
+    emotion: fear
+    position: front
+    scene: "{fear_image} — manifested as a great silence that swallows sound, a village or gathering frozen in silent gray sorrow across a clearing, voices stolen; {camper_name} stands small in the foreground, looking up at the obstacle"
+    composition: "dramatic low angle from behind and below the camper, silence and gray crowd towering and filling most of the frame, camper small in lower-third"
+    caption: "Silence had taken the village. Someone had to break it."
+
+  - n: 10
+    emotion: fear
+    position: front
+    scene: "{camper_name}'s hands gripping the lute white-knuckled, performing a borrowed grand song or imitation of a famous tune — striking dramatic chords — and the notes falling flat against the silence, sweat on the brow, strain visible"
+    composition: "tight action mid-shot focused on hands, lute, and lower face — close enough to see the strain, side-lit"
+    caption: "Other people's songs slid off the silence like rain off stone."
 
   - n: 11
     emotion: neutral
     position: front
-    scene: "{camper_name} in a sunlit theater receiving a glowing {quality_symbol} from the old bard mentor, both figures haloed in warm gold light, ceremonial stillness, the instrument resting nearby"
-    composition: "medium two-shot, ceremonial composition, vertical light"
-    caption: "What the bard gave away, the bard kept forever."
+    scene: "cinematic close-up of {camper_name}'s face, eyes open with gentle certainty, golden firelight reflected on the cheekbones from below, the first faint glowing musical staves of {art_form} drifting up past on both sides, ambient details of color returning at the edges of the wide frame"
+    composition: "WIDE CINEMATIC extreme close-up on the face centered in a horizontal letterbox frame, very shallow focus, intimate but cinematic — the kind of close-up a film would hold on"
+    caption: "Their own song, sung small and true, brought the colors back."
 
   - n: 12
     emotion: joy
+    position: profile
+    scene: "{camper_name} in full bard regalia, mid-stride leaving the roadside camp, a small enameled music-note pendant on a cord ringing with soft golden light at the neck, warm sunset light fading behind, expression peaceful-but-aware"
+    composition: "wide profile mid-stride, hero on the left third moving rightward, the glowing pendant catching focus at the neck, motion forward, fantasy realm receding behind"
+    # Triptych left bookend — no caption (ADR-0007). Default chain works:
+    # prior panel (new-P11, bard regalia) + hero card pull the costume.
+
+  - n: 13
+    emotion: neutral
     position: front
-    scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but humming softly, wearing a small enameled music-note pendant on a cord, eyes alight with hidden melody"
-    composition: "medium shot, eye-level, mirror of panel 1, half-smile, soft hum"
-    caption: "Home was the same. Only they had changed."
+    scene: "extreme close-up of {camper_name}'s hand cradling the small enameled music-note pendant at the exact instant the soft golden light visibly DIMS to ordinary enamel and ordinary cord, the magical glow fading out across the fingertips, a few last golden musical motes drifting away"
+    composition: "tight macro shot of one hand and the pendant, shallow depth of field, face out of frame entirely, focus pulled to the moment of transformation back to mundane"
+    # Triptych middle — no caption (ADR-0007). Hand-only framing means
+    # STYLE_SUFFIX face-fidelity language does not fight the composition;
+    # no overrides needed.
+
+  - n: 14
+    emotion: joy
+    position: profile
+    scene: "{camper_name} back in their modern everyday clothes, mid-stride at the threshold of their kitchen doorway, one foot on the porch, the other already inside, wearing the now-mundane small enameled music-note pendant on a cord at the neck, ordinary afternoon light, faint humming smile"
+    composition: "wide profile mid-stride, hero on the right third moving leftward into the everyday, motion forward (into the kitchen), fantasy realm fully gone behind"
+    # Triptych right bookend — no caption (ADR-0007).
+    # Mirror beat to new-P3 — return to everyday clothes. Chain off panel 01
+    # (everyday clothes) instead of the default most-recent (panel 13, hand
+    # close-up + the regalia chain), and override "match previous costume"
+    # so the model doesn't carry the cloak and lute into the threshold.
+    reference_panel: "01"
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT bard regalia. They carry one small souvenir from the quest as a callback: a small enameled music-note pendant on a cord at the neck. The pendant is mundane now (no glow)."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is at the threshold returning home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include traveling cloak with contrasting lining, belted tunic, lute or any other stringed instrument, satchel of notebooks, traveling boots, or any other bard's regalia. Only the small enameled music-note pendant on a cord as a mundane callback from the quest."
+
+  - n: 15
+    emotion: joy
+    position: front
+    scene: "{camper_name} back in their modern everyday clothes, in the same ordinary kitchen as panel 1 — same mug on the counter, same window — but now wearing a small enameled music-note pendant on a cord at the throat, humming softly, the kitchen extending out wide on either side, eyes alight with hidden melody"
+    composition: "WIDE CINEMATIC mirror of panel 1's framing but in a horizontal letterbox, eye-level, camper centered with the everyday environment extending on both sides — same kitchen, wider lens, balanced quiet composition"
+    caption: "Same Tuesday kitchen. Smaller world. Bigger bard."
     # Mirror beat — return to everyday life. Chain off panel 01 (everyday
-    # clothes) instead of the default most-recent (panel 11, bard regalia)
-    # and override the "match previous costume" instruction so the model
-    # doesn't carry the traveling cloak and lute into the return-home scene.
+    # clothes) instead of the default most-recent (panel 14, also everyday
+    # but profile mid-stride at a threshold). The override block was the
+    # OLD-P12 override; carries forward unchanged.
     reference_panel: "01"
     costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT bard regalia. They may carry one small souvenir from the quest as a callback: a small enameled music-note pendant on a cord at the neck."
-    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include traveling cloak with contrasting lining, belted tunic in earth tones, lute or any other stringed instrument, satchel of notebooks, traveling boots, or any other bard's regalia. Only the small enameled music-note pendant on a cord as a callback from the quest."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include traveling cloak with contrasting lining, belted tunic, lute or any other stringed instrument, satchel of notebooks, traveling boots, or any other bard's regalia. Only the small enameled music-note pendant on a cord as a callback from the quest."
 
 cover:
   emotion: neutral
@@ -121,15 +186,18 @@ cover:
   pose_directive: "heroic full-body portrait in full bard regalia, instrument raised mid-strum, colorful cloak swirling, golden firelight from below, sparks and musical staves spiraling upward, generous empty sky at the top of the frame for title text overlay"
 
 fallbacks:
-  1:  "A young person in modern everyday clothes standing in a quiet outdoor setting, soft natural light, hint of quiet warmth"
+  1:  "A young person in modern everyday clothes in an ordinary contemporary kitchen, soft natural light, hint of quiet warmth"
   2:  "A glowing trail of musical staves curling through the air on a hillside at sunset, single haunting note hanging"
-  3:  "A young figure stepping into a swirl of golden musical notes as a colorful cloak materializes"
-  4:  "A bard in colorful regalia standing on a roadside stage with instrument raised, firelight glowing, crowd in shadow"
-  5:  "A vast lyrical realm with rolling hills and distant traveling caravans, a tiny figure walking a winding road"
-  6:  "A young bard meeting an old wandering bard mentor at a roadside fire"
-  7:  "A village or gathering frozen in silent gray sorrow, a bard standing small before the silence"
-  8:  "A bard attempting a grand performance that falls flat against silence, notes dissolving"
-  9:  "A bard performing their own honest work as color and sound return to gray figures around them"
-  10: "A bard taking a small bow as a restored colorful crowd listens"
-  11: "A bard receiving a glowing token from an old bard mentor in a sunlit theater"
-  12: "A young person back in modern clothes humming softly, wearing a music-note pendant, in an ordinary contemporary setting"
+  3:  "A young person in everyday clothes stepping through a threshold of warm golden firelight onto a lantern-lit road, profile mid-stride"
+  4:  "Extreme close-up of a hand with golden musical staves blooming on the knuckles, contrasting cloak lining materializing"
+  5:  "A bard in colorful regalia stepping onto a lantern-lit road, profile mid-stride, lute slung across back catching firelight"
+  6:  "A bard in colorful regalia standing on a roadside stage with instrument raised, firelight glowing, crowd in shadow, low-angle hero shot"
+  7:  "Bird's-eye view of a vast lyrical realm with rolling hills and distant traveling caravans, a tiny figure on a winding road"
+  8:  "Intimate two-shot of a bard and an old wandering bard mentor at a roadside fire, a glowing enameled music-note pendant offered between them"
+  9:  "Low angle of a small bard figure looking up at a great gray silence swallowing a frozen village"
+  10: "Tight close-up of hands gripping a lute with dramatic chords struck, notes dissolving against silence, sweat and strain visible"
+  11: "Extreme close-up of a serene face with eyes open in gentle certainty, glowing musical staves drifting past on both sides"
+  12: "A bard in full regalia walking out of a roadside camp, glowing music-note pendant at neck, profile mid-stride"
+  13: "Extreme close-up of a hand cradling an enameled music-note pendant, the golden glow visibly fading to ordinary enamel"
+  14: "A young person back in everyday clothes at a kitchen threshold mid-stride, mundane music-note pendant at neck, faint smile"
+  15: "A young person back in modern clothes in the same kitchen, wearing a small music-note pendant, humming softly"

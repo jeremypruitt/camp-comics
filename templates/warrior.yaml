@@ -1,5 +1,25 @@
-# Warrior — clone of druid.yaml adapted for the Warrior class.
-# See spec/design.md §3 (value), §4 (beats), §8 (prompt anatomy).
+# Warrior — canonical 15-panel class arc template (ADR-0007).
+# Cloned from druid.yaml; class language preserved from the pre-ADR-0007
+# 12-panel arc where it fits (especially captions on new-P9, P10, P11).
+#
+# Tone (v2): D&D-campaign-narrator voice — punchy, situational, slightly
+# humorous, action-forward. Not mythic-Joseph-Campbell. Dice-table feel.
+#
+# Layout (ADR-0007):
+#   Act 1 / page 2: panels 1–6 — two squares, P-in triptych (panels 3–5),
+#                   hero splash. Captioned panels: 1, 2, 6. Triptych panels
+#                   3, 4, 5 are captionless (Watchmen-style).
+#   Act 2 / page 3: panels 7–11 — establishing splash, 3-up middle band,
+#                   close-up climax. All captioned.
+#   Act 3 / page 4: panels 12–15 — H-out triptych (panels 12–14), kitchen
+#                   return splash. Captioned panels: 15. Triptych panels
+#                   12, 13, 14 are captionless.
+#
+# Prop / through-line (ADR-0007): small pewter shield-shaped pin.
+# Veteran hands it over GLOWING with steel-blue runes at panel 8.
+# Carries through act 2 in some panels. Glowing in panel 12 (H-out left
+# bookend), visibly dimming in panel 13 (H-out middle close-up), mundane
+# in panel 14 (H-out right bookend) and panel 15.
 
 class: warrior
 display_name: Warrior
@@ -25,111 +45,159 @@ panels:
   - n: 1
     emotion: neutral
     position: front
-    scene: "{camper_name} in modern everyday clothes, standing in an ordinary contemporary setting, looking unremarkable but solid, soft natural daylight"
-    composition: "medium shot, eye-level, neutral expression"
-    caption: "Before the call, there was only the ordinary world."
-    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT fantasy armor or class regalia. The camper has not yet been transformed and is in their normal everyday clothes."
-    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the class hero card). Do NOT include any fantasy armor, weapons, accessories, or class-specific attire — the transformation has not happened yet. Plain modern everyday clothing only."
+    scene: "{camper_name} in modern everyday clothes, in an ordinary contemporary kitchen or living room on an unremarkable afternoon, surrounded by Tuesday-ish detail (a mug, sneakers by the door, ordinary light)"
+    composition: "intimate eye-level medium shot, camper centered in a SQUARE frame, ordinary domestic detail visible around them, calm balanced composition"
+    caption: "It was Tuesday. Nothing interesting was happening. Yet."
+    # Pre-transformation — peel the warrior costume + hero ref off this panel
+    # the same way panel 15 does for the return-home beat. Without these
+    # overrides the Costume: line + STYLE_SUFFIX "match the second reference"
+    # cue drag warrior regalia into a scene that's supposed to be everyday.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT warrior regalia, NOT fantasy armor. The camper has not yet been transformed and is in their normal Tuesday-afternoon clothes."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is in their pre-transformation everyday state. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing in this panel. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference too, NOT to the SECOND reference (the warrior hero card). Do NOT include any polished chainmail, sleeveless tabard, leather pauldrons, broadsword, round shield, or any other warrior's regalia — the transformation has not happened yet. Plain modern everyday clothing only."
 
   - n: 2
     emotion: surprise
     position: front
-    scene: "{camper_name} hears a distant horn call rolling out from {hometown_landmark}, a battle standard unfurling itself in the wind, a glow on the horizon"
-    composition: "wide shot, camper small in frame, banner and horizon dominant"
-    caption: "But somewhere, a horn was calling their name."
+    scene: "a distant horn call rolls out from {hometown_landmark} and a battle standard unfurls itself in the wind above the horizon, glowing softly, looking down at {camper_name} like an answer waiting to be claimed"
+    composition: "TALL PORTRAIT composition, magical banner and dramatic sky dominating the upper two-thirds of the vertical frame, {camper_name} small at the bottom looking up, dramatic vertical negative space"
+    caption: "Somewhere a horn was calling their name."
 
   - n: 3
     emotion: neutral
-    position: front
-    scene: "{camper_name} stepping forward as armor materializes around them piece by piece, half ordinary clothes and half plate and chainmail, mid-transformation, sparks of forge-light around them"
-    composition: "three-quarter shot, forward stride into frame"
-    caption: "Each step became an oath. Each oath became armor."
+    position: profile
+    scene: "{camper_name} in modern everyday clothes, mid-stride, stepping forward through a threshold of soft dawn light, one foot in an ordinary doorway, the other already on a marching road, expression resolute-but-uncertain"
+    composition: "wide profile mid-stride, hero on the left third moving rightward, motion forward, the everyday giving way to the battle road"
+    # Triptych panel — no caption (ADR-0007 Watchmen-style).
+    # P-in left bookend uses OLD-P1 face/clothing overrides so the transformation
+    # hasn't visibly started yet. STYLE_SUFFIX's "match the second reference" cue
+    # would otherwise pull warrior regalia in before the triptych middle.
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper is wearing in the FIRST reference image (their photograph). NOT warrior regalia, NOT fantasy armor. The transformation has not visibly started; they have only just begun stepping forward."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is mid-stride through a threshold from everyday into the magical. The FIRST reference image (the camper's photograph) is the canonical source for BOTH face AND clothing here. PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Match clothing exactly to the FIRST reference (everyday clothes), NOT to the SECOND reference (the warrior hero card). Do NOT include any polished chainmail, sleeveless tabard, leather pauldrons, broadsword, round shield, or any other warrior's regalia — the transformation has not happened yet."
 
   - n: 4
-    emotion: joy
+    emotion: neutral
     position: front
-    scene: "{camper_name} in full warrior regalia, heroic stance atop a ridge at dawn, broadsword planted point-down before them, shield on arm, banner snapping in the wind behind, full transformation reveal"
-    composition: "full body hero shot, low angle, cinematic lighting"
-    caption: "And the watchtowers lit, one by one, in answer."
+    scene: "extreme close-up of {camper_name}'s hand and forearm at the moment of transformation — steel-blue rune-light forming across the knuckles, polished chainmail beginning to materialize over the wrist, forge-light sparks catching at the fingertips"
+    composition: "tight macro shot of one hand and forearm, shallow depth of field, face out of frame entirely, magical particles in focus"
+    # Triptych middle — no caption (ADR-0007). Hand-only framing means
+    # STYLE_SUFFIX face-fidelity language does not fight the composition;
+    # no overrides needed.
 
   - n: 5
-    emotion: neutral
-    position: profile
-    scene: "vast embattled realm with distant fortresses, smoke on the horizon, a marching road winding toward conflict, {camper_name} walking the road, small in frame, world dominant"
-    composition: "extreme wide establishing shot, camper as small silhouette"
-    caption: "The road was long, and many had walked it before."
-
-  - n: 6
-    emotion: neutral
-    position: front
-    scene: "{camper_name} meeting an old battle-scarred mentor — a veteran with kind eyes and worn armor — laying a hand on the warrior's shoulder, an unspoken understanding passing between them"
-    composition: "medium shot, two-figure framing, warm dawn light"
-    caption: "The veteran spoke not of victories, but of those they had saved."
-
-  - n: 7
-    emotion: fear
-    position: front
-    scene: "{camper_name} faces the challenge — {fear_image} — towering and menacing across a valley, threatening {someone_to_protect} behind the warrior, who stands resolute between threat and innocent"
-    composition: "wide shot, obstacle dominating background, warrior in foreground guarding"
-    caption: "The road forked: become the threat, or become the wall."
-
-  - n: 8
-    emotion: fear
-    position: front
-    scene: "{camper_name} attempting to defeat the threat with brute strength alone — sword raised, charging in — and being overwhelmed, knocked back, breathless"
-    composition: "dynamic action shot, struggle visible, warrior off-balance"
-    caption: "Strength used for its own sake had a short reach."
-
-  - n: 9
-    emotion: neutral
-    position: front
-    scene: "{camper_name} standing braced with shield raised high, planted firmly between the threat and {someone_to_protect}, taking the blow on the shield, no sword swung — only protection, eyes calm and certain"
-    composition: "medium shot, shield-bearing pose, defensive heroic"
-    caption: "The shield was the answer. Not the sword. Never the sword."
-
-  - n: 10
     emotion: joy
     position: profile
-    scene: "{camper_name} lowering the shield as the threat retreats or dissolves, no triumph on their face — only quiet steadiness, those they protected gathering safely behind them"
-    composition: "medium shot, calm aftermath, protected figures visible"
-    caption: "Triumph wore the quiet shape of a held line."
+    scene: "{camper_name} in full warrior regalia, mid-stride, stepping out of the threshold light onto the marching road on the far side, the everyday doorway dissolving behind, broadsword at the hip, round shield on the back catching the new dawn light"
+    composition: "wide profile mid-stride, hero moving rightward into the battle realm, motion forward, embattled world opening on the right"
+    # Triptych right bookend — no caption (ADR-0007).
+    # Default chain handles the regalia: prior panel is the triptych middle
+    # (hand close-up) which doesn't carry costume, and the hero card ref
+    # anchors the full warrior silhouette. No overrides needed.
+
+  - n: 6
+    emotion: joy
+    position: front
+    scene: "{camper_name} in full warrior regalia, standing heroically on a ridge at dawn in the middle of a vast embattled realm, broadsword planted point-down before them, shield on arm, banner snapping in the wind behind, sweeping landscape stretching out behind, distant watchtowers lighting one by one in answer"
+    composition: "WIDE CINEMATIC HERO SPLASH, full body but framed wide like a movie poster, low angle from below, sweeping landscape composition with dramatic dawn sky on either side of the figure, hero centered with epic environment"
+    caption: "Class: Warrior. Stats: locked. The watchtowers lit in answer."
+
+  - n: 7
+    emotion: neutral
+    position: profile
+    scene: "a vast embattled realm with distant fortresses and smoke on the horizon, {camper_name} a tiny silhouette on a marching road far below, banners distant in the haze"
+    composition: "bird's-eye / high-angle aerial shot looking down at the embattled realm, camper a small figure, world overwhelmingly dominant"
+    caption: "The map was big. The map is always big."
+
+  - n: 8
+    emotion: neutral
+    position: front
+    scene: "an old battle-scarred veteran mentor with kind eyes and worn armor sits across from {camper_name} at a soldiers' fire, the veteran extending both hands forward to offer a small pewter shield-shaped pin etched with steel-blue runes glowing softly, steel-blue and warm gold light spilling outward from the gift, warm reverent firelight"
+    composition: "intimate two-shot close, both faces in frame at eye-level, the gift centered between them, warm soft-focus camp background, sense of a ceremonial handoff"
+    caption: "Veteran handed over the quest gear. Probably important."
+
+  - n: 9
+    emotion: fear
+    position: front
+    scene: "{fear_image} — massive and impassable across a valley, threatening {someone_to_protect} behind {camper_name}; the warrior stands small in the foreground, looking up at the obstacle"
+    composition: "dramatic low angle from behind and below the camper, obstacle towering and filling most of the frame, camper small in lower-third"
+    caption: "The road forked: become the threat, or become the wall."
+
+  - n: 10
+    emotion: fear
+    position: front
+    scene: "{camper_name}'s hands gripping the broadsword white-knuckled, charging the threat alone, the blade swung wide — and being overwhelmed, knocked back, sweat on the brow, strain visible"
+    composition: "tight action mid-shot focused on hands, sword, and lower face — close enough to see the strain, side-lit"
+    caption: "Strength used for its own sake had a short reach."
 
   - n: 11
     emotion: neutral
     position: front
-    scene: "{camper_name} in a sunlit courtyard receiving a glowing {quality_symbol} from the veteran mentor, both figures haloed in dawn light, ceremonial stillness, the banner above them"
-    composition: "medium two-shot, ceremonial composition, vertical light"
-    caption: "The greatest sword they ever carried was never drawn."
+    scene: "cinematic close-up of {camper_name}'s face, eyes open and calm-certain, the upper edge of a raised round shield catching steel-blue rune-light at the bottom of the frame, dawn light striking the cheekbones from one side, ambient battle motion blurred at the edges of the wide frame"
+    composition: "WIDE CINEMATIC extreme close-up on the face centered in a horizontal letterbox frame, very shallow focus, intimate but cinematic — the kind of close-up a film would hold on"
+    caption: "The shield was the answer. Not the sword. Never the sword."
 
   - n: 12
     emotion: joy
+    position: profile
+    scene: "{camper_name} in full warrior regalia, mid-stride leaving the embattled road, the small pewter shield-pin etched with steel-blue runes glowing softly on the chest, dawn light fading behind, expression peaceful-but-aware"
+    composition: "wide profile mid-stride, hero on the left third moving rightward, the glowing pin catching focus on the chest, motion forward, fantasy realm receding behind"
+    # Triptych left bookend — no caption (ADR-0007). Default chain works:
+    # prior panel (new-P11, warrior regalia) + hero card pull the costume.
+
+  - n: 13
+    emotion: neutral
     position: front
-    scene: "{camper_name} back in their modern everyday clothes in the same ordinary contemporary setting as panel 1 — but standing a little taller, wearing a small pewter pin shaped like a shield on their chest, gaze level and steady"
-    composition: "medium shot, eye-level, mirror of panel 1, calm strength"
-    caption: "Home was the same. Only they had changed."
+    scene: "extreme close-up of {camper_name}'s hand cradling the small pewter shield-shaped pin at the exact instant the steel-blue rune-light visibly DIMS to ordinary pewter gray, the magical glow fading out across the fingertips, a few last steel-blue motes drifting away"
+    composition: "tight macro shot of one hand and the pin, shallow depth of field, face out of frame entirely, focus pulled to the moment of transformation back to mundane"
+    # Triptych middle — no caption (ADR-0007). Hand-only framing means
+    # STYLE_SUFFIX face-fidelity language does not fight the composition;
+    # no overrides needed.
+
+  - n: 14
+    emotion: joy
+    position: profile
+    scene: "{camper_name} back in their modern everyday clothes, mid-stride at the threshold of their kitchen doorway, one foot on the porch, the other already inside, wearing the now-mundane small pewter shield-shaped pin on their chest, ordinary afternoon light, faint knowing smile"
+    composition: "wide profile mid-stride, hero on the right third moving leftward into the everyday, motion forward (into the kitchen), fantasy realm fully gone behind"
+    # Triptych right bookend — no caption (ADR-0007).
+    # Mirror beat to new-P3 — return to everyday clothes. Chain off panel 01
+    # (everyday clothes) instead of the default most-recent (panel 13, hand
+    # close-up + the regalia chain), and override "match previous costume"
+    # so the model doesn't carry the chainmail and tabard into the threshold.
+    reference_panel: "01"
+    costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT warrior regalia. They carry one small souvenir from the quest as a callback: a small pewter shield-shaped pin on the chest. The pin is mundane now (no glow)."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper is at the threshold returning home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include polished chainmail, sleeveless tabard, leather pauldrons, broadsword, round shield, traveling boots, or any other warrior's regalia. Only the small pewter shield-shaped pin on the chest as a mundane callback from the quest."
+
+  - n: 15
+    emotion: joy
+    position: front
+    scene: "{camper_name} back in their modern everyday clothes, in the same ordinary kitchen as panel 1 — same mug on the counter, same window — but now wearing a small pewter shield-shaped pin on their chest, the kitchen extending out wide on either side, gaze level and steady, faint knowing smile"
+    composition: "WIDE CINEMATIC mirror of panel 1's framing but in a horizontal letterbox, eye-level, camper centered with the everyday environment extending on both sides — same kitchen, wider lens, balanced quiet composition"
+    caption: "Same Tuesday kitchen. Smaller world. Bigger warrior."
     # Mirror beat — return to everyday life. Chain off panel 01 (everyday
-    # clothes) instead of the default most-recent (panel 11, warrior regalia)
-    # and override the "match previous costume" instruction so the model
-    # doesn't carry the chainmail and tabard into the return-home scene.
+    # clothes) instead of the default most-recent (panel 14, also everyday
+    # but profile mid-stride at a threshold). The override block was the
+    # OLD-P12 override; carries forward unchanged.
     reference_panel: "01"
     costume_override: "ordinary modern everyday clothes — exactly the casual contemporary outfit the camper wore in Panel 01 (the third reference image). NOT warrior regalia. They may carry one small souvenir from the quest as a callback: a small pewter shield-shaped pin on the chest."
-    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include polished chainmail, sleeveless tabard, leather pauldrons, broadsword, round shield, traveling boots, or any other warrior's regalia. Only the small pewter shield-shaped pin on the chest as a callback from the quest."
+    style_override: "OVERRIDE FOR THIS PANEL ONLY: the camper has returned home. They are back in their original modern everyday clothes that match the FIRST reference image (photograph) and the THIRD reference image (Panel 01, their everyday self at the start). PRESERVE facial structure, eye color and shape, nose, jawline, mouth, skin tone, hair color, and hairstyle EXACTLY as in the FIRST reference — face fidelity is non-negotiable. Do NOT include polished chainmail, sleeveless tabard, leather pauldrons, broadsword, round shield, traveling boots, or any other warrior's regalia. Only the small pewter shield-shaped pin as a callback from the quest."
 
 cover:
   emotion: neutral
   position: profile
-  pose_directive: "heroic full-body portrait in full warrior regalia, sword planted point-down before them, shield on arm, banner snapping behind, dawn light breaking on the horizon, generous empty sky at the top of the frame for title text overlay"
+  pose_directive: "heroic full-body portrait in full warrior regalia, dramatic action stance, broadsword planted point-down before them, shield on arm, banner snapping behind, dawn light breaking on the horizon, generous empty sky at the top of the frame for title text overlay"
 
 fallbacks:
-  1:  "A young person in modern everyday clothes standing in a quiet outdoor setting, solid posture, soft natural light"
-  2:  "A glowing battle standard unfurling itself in the wind on a hilltop at dawn, distant horn call atmosphere"
-  3:  "A young figure stepping forward as armor materializes around them, half-transformed into a warrior, forge sparks swirling"
-  4:  "A warrior in full plate and chainmail standing heroically on a ridge at dawn, sword planted before them, banner behind"
-  5:  "A vast embattled realm with distant fortresses and smoke on the horizon, a tiny figure walking a marching road"
-  6:  "A young warrior meeting a battle-scarred veteran mentor in a sunlit camp"
-  7:  "A warrior standing braced between an innocent figure and a looming menacing threat across a valley"
-  8:  "A warrior attempting to charge a magical threat with sword raised, being knocked back, off-balance"
-  9:  "A warrior with shield raised high, planted between a threat and those they protect, taking the blow on the shield"
-  10: "A warrior lowering the shield as a dissolved threat retreats, calm and steady"
-  11: "A warrior receiving a glowing pin or token from a veteran mentor in a sunlit courtyard"
-  12: "A young person back in modern clothes wearing a small shield-shaped pin, in an ordinary contemporary setting, standing tall"
+  1:  "A young person in modern everyday clothes in an ordinary contemporary kitchen, soft natural light"
+  2:  "A glowing battle standard unfurling itself in the wind on a hilltop at dawn, ethereal horn-call atmosphere"
+  3:  "A young person in everyday clothes stepping through a threshold of dawn light onto a marching road, profile mid-stride"
+  4:  "Extreme close-up of a hand with steel-blue runes forming on the knuckles, chainmail materializing, forge sparks"
+  5:  "A warrior in full regalia stepping out onto a battle road, profile mid-stride, shield on back catching dawn light"
+  6:  "A warrior in full regalia standing heroically on a ridge at dawn, sword planted point-down before them, banner behind, low-angle hero shot"
+  7:  "Bird's-eye view of a vast embattled realm with distant fortresses and a tiny figure on a marching road far below"
+  8:  "Intimate two-shot of a warrior and a battle-scarred veteran, a glowing pewter shield-pin with steel-blue runes offered between them"
+  9:  "Low angle of a small warrior figure looking up at a towering magical threat blocking a valley"
+  10: "Tight close-up of hands gripping a broadsword with charging strain, sweat and effort visible, knocked off-balance"
+  11: "Extreme close-up of a serene face with eyes open and calm-certain, raised shield edge catching steel-blue rune-light"
+  12: "A warrior in full regalia walking out of a battle road, glowing shield-pin on chest, profile mid-stride"
+  13: "Extreme close-up of a hand cradling a pewter shield-pin, the steel-blue glow visibly fading to ordinary pewter gray"
+  14: "A young person back in everyday clothes at a kitchen threshold mid-stride, mundane shield-pin on chest, faint smile"
+  15: "A young person back in modern clothes in the same kitchen, wearing a small pewter shield-pin, faint smile"
