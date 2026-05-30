@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseAuth
 import FirebaseCore
 import CampComicsCore
 
@@ -11,6 +12,9 @@ struct CampComicsApp: App {
 
     init() {
         FirebaseApp.configure()
+        if Auth.auth().currentUser == nil {
+            Task { try? await Auth.auth().signInAnonymously() }
+        }
         do {
             store = try PlayerStore(root: PlayerStore.documentsRoot())
         } catch {

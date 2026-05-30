@@ -89,6 +89,7 @@ struct EmptyRoster: View {
 
 struct QuestCardHeader: View {
     let onAdd: () -> Void
+    var trialRemaining: Int? = nil
     private let p = ThemePalette.questCard
     private let theme: ThemeKind = .questCard
 
@@ -129,6 +130,13 @@ struct QuestCardHeader: View {
                     .font(theme.captionFont(12))
                     .italic()
                     .foregroundStyle(p.inkSecondary)
+                if let remaining = trialRemaining {
+                    Text(trialChipCopy(remaining: remaining))
+                        .font(theme.captionFont(10))
+                        .tracking(2)
+                        .foregroundStyle(p.accent.opacity(0.85))
+                        .padding(.top, 2)
+                }
             }
 
             QuestCardRule(color: p.accent)
@@ -136,6 +144,11 @@ struct QuestCardHeader: View {
         .padding(.horizontal, 22)
         .padding(.top, 56)
         .padding(.bottom, 8)
+    }
+
+    private func trialChipCopy(remaining: Int) -> String {
+        let noun = remaining == 1 ? "COMIC" : "COMICS"
+        return "\(remaining) FREE \(noun) REMAINING"
     }
 }
 

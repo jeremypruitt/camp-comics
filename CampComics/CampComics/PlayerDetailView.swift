@@ -12,6 +12,7 @@ struct PlayerDetailView: View {
     let template: ClassTemplate
     let store: PlayerStore
     let generator: any PanelGenerator
+    let trialBackend: any SponsoredTrialBackend
 
     @State private var showingReview = false
     @State private var previewItem: PreviewItem?
@@ -21,11 +22,13 @@ struct PlayerDetailView: View {
     init(player: PlayerRecord,
          template: ClassTemplate,
          store: PlayerStore,
-         generator: any PanelGenerator = FirebaseAIPanelGenerator(billingMode: BillingModeStore().current)) {
+         generator: any PanelGenerator = FirebaseAIPanelGenerator(billingMode: BillingModeStore().current),
+         trialBackend: any SponsoredTrialBackend = FirestoreSponsoredTrialBackend()) {
         self.player = player
         self.template = template
         self.store = store
         self.generator = generator
+        self.trialBackend = trialBackend
     }
 
     var body: some View {
@@ -132,6 +135,11 @@ struct PlayerDetailView: View {
                                                    template: template,
                                                    store: store)
             previewItem = PreviewItem(url: url)
+            if BillingModeStore().current == .sponsored {
+                let backend = trialBackend
+                let playerId = player.id
+                Task { try? await backend.recordFinalized(playerId: playerId) }
+            }
         } catch {
             renderError = "PDF render failed: \(error.localizedDescription)"
         }
