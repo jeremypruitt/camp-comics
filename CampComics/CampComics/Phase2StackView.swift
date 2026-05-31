@@ -2,6 +2,51 @@ import SwiftUI
 import UIKit
 import CampComicsCore
 
+/// Translate a generation error into a one-line operator-friendly message.
+/// The raw `String(describing: error)` for a wrapped Firebase/URL error is
+/// developer ergonomics — operators get "network glitch" or "rate limited",
+/// not `internalError(underlying: NSURLErrorDomain Code=-1005...)`.
+private func friendlyErrorMessage(_ error: Error) -> String {
+    if let g = error as? PanelGeneratorError {
+        switch g {
+        case .noImageReturned:
+            return "The model returned no image. Try Re-prompt with different wording, or Defer."
+        case .throttled:
+            return "Rate limited. Wait a few seconds and Retry."
+        case .underlying(let inner):
+            return humanizeRawErrorString(inner)
+        }
+    }
+    let nsErr = error as NSError
+    if nsErr.domain == NSURLErrorDomain {
+        return urlErrorMessage(code: nsErr.code)
+    }
+    return humanizeRawErrorString(String(describing: error))
+}
+
+private func humanizeRawErrorString(_ raw: String) -> String {
+    if raw.contains("NSURLErrorDomain") {
+        for code in [-1005, -1009, -1001, -1003, -1004, -1011] where raw.contains("Code=\(code)") {
+            return urlErrorMessage(code: code)
+        }
+        return "Network glitch. Tap Retry."
+    }
+    if raw.lowercased().contains("safety") || raw.lowercased().contains("blocked") {
+        return "The model refused this prompt. Try Re-prompt with different wording."
+    }
+    return "Generation failed. Tap Retry, or Defer to come back later."
+}
+
+private func urlErrorMessage(code: Int) -> String {
+    switch code {
+    case -1005, -1009: return "Network connection lost. Tap Retry."
+    case -1001:        return "Request timed out. Tap Retry."
+    case -1003, -1004: return "Couldn't reach the server. Tap Retry."
+    case -1011:        return "Server returned an error. Tap Retry."
+    default:           return "Network glitch. Tap Retry."
+    }
+}
+
 /// ADR-0009 Phase 2 surface. Hosts a `GenerationQueue` worker pool that pulls
 /// panels 2..N + cover in story order and generates them under adaptive K, and
 /// layers slice-E's per-panel review gallery on top: every head panel can have
@@ -277,7 +322,7 @@ struct Phase2StackView: View {
         do {
             try store.demoteAcceptedToCandidate(playerId: player.id, target: id)
         } catch {
-            lastError = String(describing: error)
+            lastError = friendlyErrorMessage(error)
             return
         }
         jumpHead(to: id)
@@ -331,7 +376,7 @@ struct Phase2StackView: View {
                     // current head; otherwise persist the deferred marker so
                     // the grid stays in `.failed` for next time.
                     if headTarget.id == id || headUnitContains(id: id) {
-                        failedHeadMessage = String(describing: error)
+                        failedHeadMessage = friendlyErrorMessage(error)
                     } else {
                         try? store.markDeferred(playerId: player.id, target: id)
                     }
@@ -446,10 +491,14 @@ struct Phase2StackView: View {
 
     @ViewBuilder
     private var cardBody: some View {
+        // Camp Comics invariant (feedback-failures-never-penalize-user): no
+        // failed-card branch here. The queue auto-retries transparently, so
+        // an in-flight panel just stays as the placeholder card until a
+        // candidate lands. True terminal failures (extremely rare after 7
+        // queue retries) leave the panel uncreated; the operator can re-
+        // trigger from the grid if they care.
         if isAllDone {
             doneCard
-        } else if isHeadFailed {
-            failedCard
         } else {
             switch headUnit {
             case .single:
@@ -850,17 +899,16 @@ struct Phase2StackView: View {
                         case .throttled:
                             refreshBudget()
                         case .failed(let id, let message):
-                            // Head failure surfaces the failed card right now;
-                            // behind-head failures persist via the on-disk
-                            // `.failed` marker so they resurface when their
-                            // turn comes (see `isHeadFailed`).
-                            if id == headTarget.id {
-                                failedHeadMessage = message
-                                headTick &+= 1
-                            } else {
-                                try? store.markDeferred(playerId: player.id, target: id)
-                                headTick &+= 1
-                            }
+                            // Camp Comics invariant (feedback-failures-never-
+                            // penalize-user): background failures don't reach
+                            // the user as actionable. The queue already
+                            // auto-retried 7× with exponential backoff before
+                            // emitting `.failed`. We log + nudge the view to
+                            // re-render, but the panel sits as not-yet-
+                            // generated and the operator can re-trigger from
+                            // the grid if they care.
+                            NSLog("Camp Comics: terminal panel failure after queue retries — id=%@ message=%@", String(describing: id), message)
+                            headTick &+= 1
                             refreshBudget()
                         }
                     }
@@ -1048,7 +1096,7 @@ struct Phase2StackView: View {
                                           target: head.id,
                                           candidateIndex: visible.index)
             } catch {
-                lastError = String(describing: error)
+                lastError = friendlyErrorMessage(error)
                 withAnimation(.spring) { swipeOffset = .zero }
                 return
             }
@@ -1114,7 +1162,7 @@ struct Phase2StackView: View {
                 await MainActor.run {
                     // Slice H: surface a failed card (with Retry/Defer) for
                     // this head instead of the tiny "lastError" banner.
-                    failedHeadMessage = String(describing: error)
+                    failedHeadMessage = friendlyErrorMessage(error)
                     refreshHead()
                     refreshBudget()
                 }
@@ -1152,7 +1200,7 @@ struct Phase2StackView: View {
                                           store: store,
                                           choices: choices)
             } catch {
-                lastError = String(describing: error)
+                lastError = friendlyErrorMessage(error)
                 withAnimation(.spring) { swipeOffset = .zero }
                 return
             }
@@ -1331,7 +1379,7 @@ struct Phase2StackView: View {
                     // is the documented content-policy bounce recovery — a
                     // failed Re-prompt drops back to the same Retry/Defer
                     // affordances, with Defer being the final out.
-                    failedHeadMessage = String(describing: error)
+                    failedHeadMessage = friendlyErrorMessage(error)
                     refreshHead()
                     refreshBudget()
                 }
@@ -1377,7 +1425,7 @@ struct Phase2StackView: View {
                 return
             } catch {
                 await MainActor.run {
-                    failedHeadMessage = String(describing: error)
+                    failedHeadMessage = friendlyErrorMessage(error)
                     refreshHead()
                     refreshBudget()
                 }

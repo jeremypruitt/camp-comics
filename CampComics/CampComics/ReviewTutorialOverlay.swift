@@ -21,7 +21,6 @@ struct ReviewTutorialOverlay: View {
     @State private var hintIndex: Int = 0
 
     var body: some View {
-        let p = theme.palette
         ZStack {
             // Dim backdrop — tap or drag anywhere outside the "Got it" button
             // dismisses. Drag dismissal must not block the underlying swipe
@@ -34,23 +33,26 @@ struct ReviewTutorialOverlay: View {
                     DragGesture(minimumDistance: 10).onEnded { _ in onDismiss() }
                 )
 
+            // Foreground is hard-coded white because the backdrop is always a
+            // dark scrim — using the theme's `paper` color would render dark
+            // text on dark backdrop in dark mode (invisible).
             VStack(spacing: 24) {
                 Spacer()
 
                 Text("Swipe to review")
                     .font(theme.displayFont(28))
-                    .foregroundStyle(p.paper)
+                    .foregroundStyle(Color.white)
 
                 if let hint = currentHint {
                     Text(hint.title)
                         .font(theme.headingFont(18))
-                        .foregroundStyle(p.paper.opacity(0.95))
+                        .foregroundStyle(Color.white.opacity(0.95))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
 
                     Text(hint.detail)
                         .font(theme.captionFont(14))
-                        .foregroundStyle(p.paper.opacity(0.75))
+                        .foregroundStyle(Color.white.opacity(0.75))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 48)
                 }
@@ -63,11 +65,11 @@ struct ReviewTutorialOverlay: View {
                 Button(action: onDismiss) {
                     Text("Got it")
                         .font(theme.headingFont(16))
-                        .foregroundStyle(p.paper)
+                        .foregroundStyle(Color.white)
                         .padding(.horizontal, 32)
                         .padding(.vertical, 12)
                         .background(
-                            Capsule().stroke(p.paper, lineWidth: 1.4)
+                            Capsule().stroke(Color.white, lineWidth: 1.4)
                         )
                 }
                 .buttonStyle(.plain)
