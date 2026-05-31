@@ -33,6 +33,11 @@ struct Phase2StackView: View {
     @State private var swipeOffset: CGSize = .zero
     @State private var queueTask: Task<Void, Never>?
     @State private var rerollTask: Task<Void, Never>?
+    /// Slice G (#67): set during an in-flight atomic triptych Re-roll /
+    /// Re-prompt — three concurrent sub-panel generations under one parent.
+    /// Bound to `triptychRerollTask` rather than `rerollTask` so the per-panel
+    /// gating logic stays a clean "single in-flight" check for single units.
+    @State private var triptychRerollTask: Task<Void, Never>?
     @State private var headTick: Int = 0
     @State private var budget: GenerationBudget
     @State private var lastError: String?
@@ -72,6 +77,7 @@ struct Phase2StackView: View {
         .onDisappear {
             queueTask?.cancel()
             rerollTask?.cancel()
+            triptychRerollTask?.cancel()
         }
         .sheet(isPresented: $showExhaustionModal) {
             exhaustionModal
@@ -81,7 +87,13 @@ struct Phase2StackView: View {
                 assembledPrompt: assembledPromptForHead,
                 onApply: { addendum in
                     showRepromptSheet = false
-                    commitRepromptHead(addendum: addendum)
+                    // Slice G: triptych Re-prompt fans the shared addendum
+                    // out to all 3 sub-panels; single-unit Re-prompt stays
+                    // on the slice-F single-target path.
+                    switch headUnit {
+                    case .triptych: commitRepromptTriptych(addendum: addendum)
+                    case .single: commitRepromptHead(addendum: addendum)
+                    }
                 },
                 onCancel: { showRepromptSheet = false }
             )
@@ -115,11 +127,52 @@ struct Phase2StackView: View {
     private var cardBody: some View {
         if isAllDone {
             doneCard
-        } else if let visible, let image = loadImage(visible.url) {
-            candidateCard(candidate: visible, image: image)
+        } else {
+            switch headUnit {
+            case .single:
+                if let visible, let image = loadImage(visible.url) {
+                    candidateCard(candidate: visible, image: image)
+                } else {
+                    placeholderCard
+                }
+            case .triptych(let trip):
+                triptychCardBody(trip: trip)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func triptychCardBody(trip: PanelTriptych) -> some View {
+        // Slice G (#67) AC: super-card waits for all 3 sub-panels to have a
+        // candidate before rendering. While any is in flight or queued, the
+        // card stays in placeholder state.
+        if let images = triptychImages(trip: trip) {
+            triptychCard(trip: trip, images: images)
         } else {
             placeholderCard
         }
+    }
+
+    /// Loads the latest candidate for each of the triptych's three sub-panels.
+    /// Returns nil if any sub-panel has no candidate yet (placeholder shows).
+    private func triptychImages(trip: PanelTriptych) -> [UIImage]? {
+        var out: [UIImage] = []
+        for id in trip.subTargetIDs {
+            let candidates = store.listCandidates(playerId: player.id, target: id)
+            // Prefer the newest candidate as the "currently visible" frame.
+            // If the sub-panel was already accepted in a prior session (we
+            // jumped back into the stack), fall back to the accepted PNG.
+            if let newest = candidates.max(by: { $0.index < $1.index }),
+               let img = loadImage(newest.url) {
+                out.append(img)
+            } else if let bytes = store.loadPanel(playerId: player.id, target: id),
+                      let img = UIImage(data: bytes) {
+                out.append(img)
+            } else {
+                return nil
+            }
+        }
+        return out
     }
 
     private var placeholderCard: some View {
@@ -140,8 +193,7 @@ struct Phase2StackView: View {
     }
 
     private func candidateCard(candidate: PanelCandidate, image: UIImage) -> some View {
-        let p = theme.palette
-        return VStack(spacing: 10) {
+        VStack(spacing: 10) {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
@@ -163,6 +215,71 @@ struct Phase2StackView: View {
             galleryFooter(candidate: candidate)
         }
         .padding(.horizontal)
+    }
+
+    /// Slice G (#67): one composited super-card for a P-in or H-out triptych.
+    /// Renders the three sub-panel images through `TriptychCardView`'s
+    /// clip-path shapes (a SwiftUI rendition of the ADR-0007 print layout) and
+    /// hooks the same swipe + long-press gestures as the single-panel card —
+    /// but the commits route to the atomic triptych helpers below.
+    private func triptychCard(trip: PanelTriptych, images: [UIImage]) -> some View {
+        VStack(spacing: 10) {
+            TriptychCardView(kind: trip.kind, images: images)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .offset(swipeOffset)
+                .rotationEffect(.degrees(Double(swipeOffset.width / 20)))
+                .overlay(alignment: .topTrailing) { acceptBadge }
+                .overlay(alignment: .topLeading) { rerollBadge }
+                .gesture(triptychStackGesture)
+                .simultaneousGesture(
+                    LongPressGesture(minimumDuration: 0.5)
+                        .onEnded { _ in openRepromptSheet() }
+                )
+            triptychFooter(trip: trip)
+        }
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private func triptychFooter(trip: PanelTriptych) -> some View {
+        let p = theme.palette
+        let label = trip.kind == .pIn ? "Triptych — panels 3, 4, 5"
+                                       : "Triptych — panels 12, 13, 14"
+        HStack(spacing: 10) {
+            Text(label)
+                .font(theme.captionFont(12))
+                .foregroundStyle(p.inkSecondary)
+            Spacer()
+            Text("Re-roll spends 3")
+                .font(theme.captionFont(12))
+                .foregroundStyle(p.inkSecondary)
+        }
+        .padding(.top, 4)
+    }
+
+    /// Triptych gestures: only swipe-left / swipe-right / long-press are
+    /// meaningful — gallery cycling (swipe-up/down) is intentionally disabled
+    /// because the ADR-0007 design treats the three sub-panels as one
+    /// composition, so "cycle this one sub-panel" doesn't have a coherent UX.
+    private var triptychStackGesture: some Gesture {
+        DragGesture()
+            .onChanged { swipeOffset = $0.translation }
+            .onEnded { value in
+                let t = value.translation
+                let absX = abs(t.width)
+                let absY = abs(t.height)
+                if absX > absY {
+                    if t.width > 120 {
+                        commitAcceptTriptych()
+                    } else if t.width < -120 {
+                        commitRerollTriptych()
+                    } else {
+                        withAnimation(.spring) { swipeOffset = .zero }
+                    }
+                } else {
+                    withAnimation(.spring) { swipeOffset = .zero }
+                }
+            }
     }
 
     @ViewBuilder
@@ -281,9 +398,16 @@ struct Phase2StackView: View {
 
     private var headerText: String {
         guard !isAllDone else { return "Phase 2 — complete" }
-        switch headTarget {
-        case .panel(let n, _): return "Panel \(n) of \(targets.count + 1)"
-        case .cover: return "Cover"
+        let totalPanels = targets.count // panels 2..N + cover
+        switch headUnit {
+        case .single(let target):
+            switch target {
+            case .panel(let n, _): return "Panel \(n) of \(totalPanels)"
+            case .cover: return "Cover"
+            }
+        case .triptych(let trip):
+            let nums = trip.kind.subPanelNumbers
+            return "Panels \(nums[0])–\(nums[2]) (triptych)"
         }
     }
 
@@ -320,8 +444,16 @@ struct Phase2StackView: View {
                     await MainActor.run {
                         switch event {
                         case .completed(let id):
-                            if id == headTarget.id { refreshHead() }
-                            else { headTick &+= 1 }
+                            // Triptych head: any of its three sub-panels
+                            // landing on disk is "head moved" because the
+                            // composited card re-renders when all three have
+                            // candidates. The single-unit branch matches on
+                            // exact head target id.
+                            if headUnitContains(id: id) {
+                                refreshHead()
+                            } else {
+                                headTick &+= 1
+                            }
                             refreshBudget()
                         case .throttled, .failed:
                             refreshBudget()
@@ -430,31 +562,62 @@ struct Phase2StackView: View {
     // MARK: - Head + budget refresh
 
     private func refreshHead() {
+        // Auto-advance past any review unit whose work is fully accepted on
+        // disk (re-entry path: triptych accepted in a prior session, or single
+        // panel accepted by another surface). Bounded by `units.count`.
+        while headIndex < units.count, isUnitFullyAccepted(units[headIndex]) {
+            headIndex += 1
+        }
         if isAllDone {
             gallery = []
             cursor = .forNewHead(count: 0)
             return
         }
-        let head = headTarget
-        let newGallery = store.listCandidates(playerId: player.id, target: head.id)
-        let wasEmpty = gallery.isEmpty
-        let grew = newGallery.count > gallery.count
-        gallery = newGallery
-        // Cursor rules:
-        // - empty → empty (placeholder card renders)
-        // - just-appeared first candidate → start at 0
-        // - re-roll appended a new candidate → jump to newest (slice E)
-        // - regular tick with same count → keep operator's cursor where it is
-        if newGallery.isEmpty {
+        switch headUnit {
+        case .single(let head):
+            let newGallery = store.listCandidates(playerId: player.id, target: head.id)
+            let wasEmpty = gallery.isEmpty
+            let grew = newGallery.count > gallery.count
+            gallery = newGallery
+            // Cursor rules:
+            // - empty → empty (placeholder card renders)
+            // - just-appeared first candidate → start at 0
+            // - re-roll appended a new candidate → jump to newest (slice E)
+            // - regular tick with same count → keep operator's cursor where it is
+            if newGallery.isEmpty {
+                cursor = .forNewHead(count: 0)
+            } else if wasEmpty {
+                cursor = .forNewHead(count: newGallery.count)
+            } else if grew {
+                cursor = .afterAppend(count: newGallery.count)
+            } else {
+                cursor = GalleryCursor(index: cursor.index, count: newGallery.count)
+            }
+        case .triptych:
+            // Triptychs don't use the single-unit `gallery` / `cursor` state —
+            // `triptychImages` reads from disk on every render. Clear the
+            // single-unit state so a stale tail from a prior unit doesn't
+            // bleed through if the operator navigates back.
+            gallery = []
             cursor = .forNewHead(count: 0)
-        } else if wasEmpty {
-            cursor = .forNewHead(count: newGallery.count)
-        } else if grew {
-            cursor = .afterAppend(count: newGallery.count)
-        } else {
-            cursor = GalleryCursor(index: cursor.index, count: newGallery.count)
         }
         headTick &+= 1
+    }
+
+    private func isUnitFullyAccepted(_ unit: ReviewUnit) -> Bool {
+        switch unit {
+        case .single(let target):
+            return store.hasPanel(playerId: player.id, target: target.id)
+        case .triptych(let trip):
+            return trip.allSubPanelsAccepted(playerId: player.id, store: store)
+        }
+    }
+
+    private func headUnitContains(id: PanelTargetID) -> Bool {
+        switch headUnit {
+        case .single(let target): return target.id == id
+        case .triptych(let trip): return trip.subTargetIDs.contains(id)
+        }
     }
 
     private func refreshBudget() {
@@ -550,15 +713,161 @@ struct Phase2StackView: View {
         cursor = forward ? cursor.advanced() : cursor.retreated()
     }
 
-    /// Slice F: long-press on the head card. Exhausted budget bounces to the
-    /// same exhaustion modal as swipe-left Re-roll (per AC). Rolling Re-roll
-    /// task in flight blocks new Re-prompts the same way.
-    private func openRepromptSheet() {
-        guard !budget.isExhausted else {
+    // MARK: - Slice G (#67) — atomic triptych commits
+
+    /// Atomic Accept: writes all three `panel_NN.png` files in one transaction.
+    /// On success, the stack advances past the whole triptych in one step.
+    private func commitAcceptTriptych() {
+        guard case .triptych(let trip) = headUnit else { return }
+        if !trip.allSubPanelsAccepted(playerId: player.id, store: store) {
+            // Build choices: newest candidate index per sub-panel (the one
+            // currently displayed in the super-card).
+            var choices: [PanelTargetID: Int] = [:]
+            for id in trip.subTargetIDs {
+                let candidates = store.listCandidates(playerId: player.id, target: id)
+                guard let newest = candidates.max(by: { $0.index < $1.index }) else {
+                    // Should be unreachable — the super-card only renders once
+                    // every sub-panel has a candidate. Bounce defensively.
+                    withAnimation(.spring) { swipeOffset = .zero }
+                    return
+                }
+                choices[id] = newest.index
+            }
+            do {
+                try trip.acceptAtomically(playerId: player.id,
+                                          store: store,
+                                          choices: choices)
+            } catch {
+                lastError = String(describing: error)
+                withAnimation(.spring) { swipeOffset = .zero }
+                return
+            }
+        }
+        withAnimation(.easeOut(duration: 0.2)) {
+            swipeOffset = CGSize(width: 600, height: 0)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            swipeOffset = .zero
+            headIndex += 1
+            refreshHead()
+            refreshBudget()
+        }
+    }
+
+    /// Atomic Re-roll: spawns three concurrent `runOneAppendingCandidate`
+    /// tasks (one per sub-panel) under one parent. Spends 3 budget calls
+    /// (each sub-panel debits 1 when its task completes). The super-card
+    /// re-renders with the newest-of-three composition once all three tasks
+    /// finish. Bounces if budget is exhausted or any roll task is in flight.
+    private func commitRerollTriptych() {
+        guard case .triptych(let trip) = headUnit else { return }
+        guard budget.remaining >= PanelTriptych.budgetCost else {
+            withAnimation(.spring) { swipeOffset = .zero }
             showExhaustionModal = true
             return
         }
-        guard rerollTask == nil else { return }
+        guard triptychRerollTask == nil, rerollTask == nil else {
+            withAnimation(.spring) { swipeOffset = .zero }
+            return
+        }
+        withAnimation(.easeOut(duration: 0.2)) {
+            swipeOffset = CGSize(width: -600, height: 0)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            swipeOffset = .zero
+            // Force the super-card into placeholder state until every
+            // sub-panel has a new candidate (atomic "all-3-or-spinner" rule).
+            // We don't have a separate "in-flight" flag for triptychs because
+            // the placeholder check is naturally driven by
+            // `triptychImages` returning nil while sub-galleries refresh.
+            headTick &+= 1
+        }
+        triptychRerollTask = launchTriptychRoll(trip: trip, addendum: nil)
+    }
+
+    /// Atomic Re-prompt: same as Re-roll but threads a shared addendum into
+    /// each sub-panel's prompt builder. Per ADR-0009 the addendum applies
+    /// uniformly to all three sub-panels.
+    private func commitRepromptTriptych(addendum: String) {
+        let trimmed = addendum.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard case .triptych(let trip) = headUnit else { return }
+        guard budget.remaining >= PanelTriptych.budgetCost else {
+            showExhaustionModal = true
+            return
+        }
+        guard triptychRerollTask == nil, rerollTask == nil else { return }
+        headTick &+= 1
+        triptychRerollTask = launchTriptychRoll(trip: trip, addendum: trimmed)
+    }
+
+    /// Shared launcher for Re-roll + Re-prompt. Runs three sub-panel
+    /// generations concurrently under one parent task; budget is debited
+    /// per-sub-panel inside `runOneAppendingCandidate` (so 3 sub-panels
+    /// completing = 3 debits = `PanelTriptych.budgetCost`).
+    private func launchTriptychRoll(trip: PanelTriptych,
+                                    addendum: String?) -> Task<Void, Never> {
+        let playerId = player.id
+        let template = template
+        let store = store
+        let generator = generator
+        return Task {
+            defer {
+                Task { @MainActor in
+                    triptychRerollTask = nil
+                    refreshHead()
+                    refreshBudget()
+                }
+            }
+            await withTaskGroup(of: Result<Void, Error>.self) { group in
+                for sub in trip.subTargets {
+                    group.addTask {
+                        do {
+                            try await Self.runOneAppendingCandidate(target: sub,
+                                                                    playerId: playerId,
+                                                                    template: template,
+                                                                    store: store,
+                                                                    generator: generator,
+                                                                    addendum: addendum)
+                            return .success(())
+                        } catch is CancellationError {
+                            return .success(())
+                        } catch {
+                            return .failure(error)
+                        }
+                    }
+                }
+                var firstError: Error?
+                for await result in group {
+                    if case .failure(let err) = result, firstError == nil {
+                        firstError = err
+                    }
+                }
+                if let firstError {
+                    await MainActor.run {
+                        lastError = String(describing: firstError)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Slice F: long-press on the head card. Exhausted budget bounces to the
+    /// same exhaustion modal as swipe-left Re-roll (per AC). Rolling Re-roll
+    /// task in flight blocks new Re-prompts the same way. Slice G: triptych
+    /// heads need 3 budget calls available (not just 1) and also gate on the
+    /// triptych roll task.
+    private func openRepromptSheet() {
+        let neededBudget: Int
+        switch headUnit {
+        case .triptych: neededBudget = PanelTriptych.budgetCost
+        case .single: neededBudget = 1
+        }
+        guard budget.remaining >= neededBudget else {
+            showExhaustionModal = true
+            return
+        }
+        guard rerollTask == nil, triptychRerollTask == nil else { return }
         showRepromptSheet = true
     }
 
@@ -613,17 +922,31 @@ struct Phase2StackView: View {
 
     /// Read-only context shown at the top of the Re-prompt sheet so the
     /// operator can see what they're appending to. Built fresh each open;
-    /// not stored.
+    /// not stored. Triptych heads concatenate all three sub-panel prompts
+    /// with a separator so the addendum's "applies to all 3" semantic is
+    /// visible.
     private var assembledPromptForHead: String {
-        PromptBuilder.buildPrompt(for: headTarget,
-                                  template: template,
-                                  tokens: ["camper_name": player.playerName])
+        switch headUnit {
+        case .single(let target):
+            return PromptBuilder.buildPrompt(for: target,
+                                             template: template,
+                                             tokens: ["camper_name": player.playerName])
+        case .triptych(let trip):
+            return trip.subTargets.enumerated().map { (i, sub) -> String in
+                let body = PromptBuilder.buildPrompt(for: sub,
+                                                     template: template,
+                                                     tokens: ["camper_name": player.playerName])
+                return "— Sub-panel \(i + 1) of 3 —\n\(body)"
+            }.joined(separator: "\n\n")
+        }
     }
 
     // MARK: - Targets
 
-    /// Story-ordered targets for Phase 2: panels 2..N then the cover. Panel 1
-    /// is excluded because Phase 1 already finalized it.
+    /// Flat story-ordered targets for Phase 2: panels 2..N then the cover.
+    /// Panel 1 is excluded because Phase 1 already finalized it. The queue
+    /// generator pulls from this list — it's intentionally NOT grouped into
+    /// triptychs because each sub-panel is still an independent API call.
     private var targets: [PanelTarget] {
         var out: [PanelTarget] = template.panels
             .filter { $0.n != 1 }
@@ -633,12 +956,35 @@ struct Phase2StackView: View {
         return out
     }
 
+    /// Slice G (#67) review units — same panels as `targets`, but with the
+    /// P-in (panels 3–5) and H-out (panels 12–14) sub-panels collapsed into
+    /// `.triptych` super-units. The head walks these units one at a time.
+    private var units: [ReviewUnit] {
+        ReviewUnit.phase2Units(from: template)
+    }
+
+    /// `.single` head's underlying target (used by single-unit code paths).
+    /// Falls back to the last target's id when out of range so prompt-builder
+    /// helpers that read `headTarget` after all-done don't crash; the
+    /// `isAllDone` gate keeps them from rendering anyway.
     private var headTarget: PanelTarget {
-        targets[min(headIndex, targets.count - 1)]
+        if case .single(let target) = headUnit { return target }
+        // For triptych heads, code paths that genuinely need a `PanelTarget`
+        // (assembled-prompt context display) shouldn't reach here — the
+        // triptych branches have their own helpers. Return the first sub-target
+        // as a defensive default.
+        if case .triptych(let trip) = headUnit, let first = trip.subTargets.first {
+            return first
+        }
+        return targets[max(0, min(headIndex, targets.count - 1))]
+    }
+
+    private var headUnit: ReviewUnit {
+        units[min(headIndex, units.count - 1)]
     }
 
     private var isAllDone: Bool {
-        headIndex >= targets.count
+        headIndex >= units.count
     }
 
     private var visible: PanelCandidate? {

@@ -300,7 +300,11 @@ public struct PlayerStore: Sendable {
         try data.write(to: attemptsURL(playerId: playerId), options: .atomic)
     }
 
-    private func clearCandidates(playerId: String, target: PanelTargetID) throws {
+    /// Wipes `_candidates/{NN or cover}/` for one target. Public so triptych
+    /// atomic Accept (slice G / #67) can clear the three sub-panel galleries
+    /// after a coordinated three-write commit; the existing `acceptCandidate`
+    /// path keeps using this internally for single-panel accepts.
+    public func clearCandidates(playerId: String, target: PanelTargetID) throws {
         let dir = candidatesDir(for: playerId, target: target)
         if FileManager.default.fileExists(atPath: dir.path) {
             try FileManager.default.removeItem(at: dir)
