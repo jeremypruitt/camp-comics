@@ -90,17 +90,37 @@ struct EmptyRoster: View {
 struct QuestCardHeader: View {
     let onAdd: () -> Void
     var trialRemaining: Int? = nil
+    var onSettings: (() -> Void)? = nil
     private let p = ThemePalette.questCard
     private let theme: ThemeKind = .questCard
 
     var body: some View {
         VStack(spacing: 14) {
-            HStack(spacing: 0) {
+            HStack(spacing: 12) {
                 Text("ADV. PARTY · VOL. I")
                     .font(theme.captionFont(10))
                     .tracking(4)
                     .foregroundStyle(p.accent)
                 Spacer()
+                if let onSettings {
+                    Button(action: onSettings) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(p.accent)
+                            .padding(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 2)
+                                    .stroke(p.accent, lineWidth: 0.9)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 2)
+                                    .stroke(p.accent.opacity(0.55), lineWidth: 0.6)
+                                    .padding(-3)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Settings")
+                }
                 Button(action: onAdd) {
                     HStack(spacing: 6) {
                         Image(systemName: "plus")
