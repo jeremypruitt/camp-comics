@@ -33,6 +33,11 @@ struct PanelReviewView: View {
     /// Read at `body` build time so chip + gate respond to mid-comic flips
     /// (the exhaustion modal's Switch-to-BYO action is one such flip).
     @State private var billingMode: BillingMode = BillingModeStore().current
+    /// Set when Accept on a panel-1 candidate trips the cascade-warn predicate
+    /// (slice J / #70). Non-nil drives `.confirmationDialog` presentation; the
+    /// stored index is the candidate to accept on Continue. Cleared on Cancel
+    /// so the operator stays on the candidate they were reviewing.
+    @State private var pendingPanel1AcceptIndex: Int?
     @Environment(\.dismiss) private var dismiss
 
     /// Fallback wait when the model 429s without a parseable retry-after.
@@ -147,6 +152,22 @@ struct PanelReviewView: View {
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+        }
+        .confirmationDialog(
+            "Panel 1 anchors the continuity of every other panel. The new look won't auto-propagate. Re-roll downstream panels from the grid if anything looks off.",
+            isPresented: Binding(get: { pendingPanel1AcceptIndex != nil },
+                                 set: { if !$0 { pendingPanel1AcceptIndex = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Continue") {
+                if let idx = pendingPanel1AcceptIndex {
+                    pendingPanel1AcceptIndex = nil
+                    finalizePanel1Accept(candidateIndex: idx)
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                pendingPanel1AcceptIndex = nil
+            }
         }
         .sheet(isPresented: $showingGrid) {
             NavigationStack {
@@ -627,10 +648,26 @@ struct PanelReviewView: View {
 
     private func commitAccept() {
         guard let candidate = selectedCandidate else { return }
+        if currentTarget.id == .panel(1),
+           Panel1CascadeWarning.shouldWarn(playerId: player.id,
+                                           acceptingCandidateIndex: candidate.index,
+                                           store: store,
+                                           panelCount: template.panels.count) {
+            pendingPanel1AcceptIndex = candidate.index
+            return
+        }
+        finalizePanel1Accept(candidateIndex: candidate.index)
+    }
+
+    /// Final Accept commit, shared by the unguarded path and the cascade-warn
+    /// Continue button. Splits out so the dialog's Continue can reach the same
+    /// `store.acceptCandidate` + `advance()` sequence without re-running the
+    /// guard.
+    private func finalizePanel1Accept(candidateIndex: Int) {
         do {
             try store.acceptCandidate(playerId: player.id,
                                       target: currentTarget.id,
-                                      candidateIndex: candidate.index)
+                                      candidateIndex: candidateIndex)
             advance()
         } catch {
             lastError = String(describing: error)
