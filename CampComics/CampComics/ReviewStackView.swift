@@ -28,6 +28,9 @@ struct ReviewStackView: View {
     /// the Phase 1 surface with downstream work already on disk could trigger
     /// it, and the gate keeps the rule uniform across surfaces.
     @State private var pendingPanel1AcceptIndex: Int?
+    @State private var showingTutorial: Bool = false
+
+    private let onboardingStore = OnboardingOverlayStore()
 
     private enum Phase: Equatable {
         case generatingPhase1
@@ -74,6 +77,11 @@ struct ReviewStackView: View {
             } else if pendingTask == nil, case .generatingPhase1 = phase {
                 startPanel1Generation()
             }
+            // First-launch tutorial. Same flag-gate semantics as the swipe
+            // surface: if you're in `ReviewStackView` at all, you're new.
+            if !onboardingStore.hasSeen {
+                showingTutorial = true
+            }
         }
         .onDisappear { pendingTask?.cancel() }
         .confirmationDialog(
@@ -91,6 +99,15 @@ struct ReviewStackView: View {
             Button("Cancel", role: .cancel) {
                 pendingPanel1AcceptIndex = nil
                 withAnimation(.spring) { swipeOffset = .zero }
+            }
+        }
+        .overlay {
+            if showingTutorial {
+                ReviewTutorialOverlay(hints: OverlayHint.allCases) {
+                    onboardingStore.hasSeen = true
+                    withAnimation(.easeOut(duration: 0.2)) { showingTutorial = false }
+                }
+                .transition(.opacity)
             }
         }
     }

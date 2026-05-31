@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var statuses: [String: PlayerStatus] = [:]
     @State private var activePlayer: PlayerRecord?
     @State private var showingIntake = false
+    @State private var showingSettings = false
     @State private var trial: SponsoredTrial = .empty
 
     private let trialBackend: any SponsoredTrialBackend = FirestoreSponsoredTrialBackend()
@@ -23,7 +24,8 @@ struct ContentView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         QuestCardHeader(onAdd: { showingIntake = true },
-                                        trialRemaining: trialChipValue)
+                                        trialRemaining: trialChipValue,
+                                        onSettings: { showingSettings = true })
                         rosterBody
                         Spacer(minLength: 140)
                     }
@@ -46,6 +48,10 @@ struct ContentView: View {
                     }
                     .environment(\.themeKind, theme)
                 }
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
+                    .environment(\.themeKind, theme)
             }
             .navigationDestination(item: $activePlayer) { player in
                 let template = BundledTemplates.template(forClassKey: player.classKey)
