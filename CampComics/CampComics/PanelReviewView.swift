@@ -28,7 +28,7 @@ struct PanelReviewView: View {
     @State private var showingMissingPhotoCapture: Bool = false
     @State private var showingGrid: Bool = false
     @State private var showingReprompt: Bool = false
-    @State private var budget: GenerationBudget = .empty
+    @State private var budget: GenerationBudget
     @State private var showingExhaustionModal: Bool = false
     /// Read at `body` build time so chip + gate respond to mid-comic flips
     /// (the exhaustion modal's Switch-to-BYO action is one such flip).
@@ -53,6 +53,8 @@ struct PanelReviewView: View {
         _review = State(initialValue: PanelReviewState.hydrate(playerId: player.id,
                                                                target: startAt.id,
                                                                store: store))
+        _budget = State(initialValue: store.generationBudget(playerId: player.id,
+                                                             panelCount: template.panels.count))
     }
 
     var body: some View {
@@ -214,11 +216,13 @@ struct PanelReviewView: View {
         return card.contextMenu {
             Button("Drain to 1 re-roll (DEBUG)") {
                 try? store.setGenerationBudget(playerId: player.id,
-                                               GenerationBudget(spent: GenerationBudget.limit - 1))
+                                               GenerationBudget(spent: budget.limit - 1,
+                                                                panelCount: template.panels.count))
                 refreshBudget()
             }
-            Button("Refill to \(GenerationBudget.limit) (DEBUG)") {
-                try? store.setGenerationBudget(playerId: player.id, .empty)
+            Button("Refill to \(budget.limit) (DEBUG)") {
+                try? store.setGenerationBudget(playerId: player.id,
+                                               .empty(panelCount: template.panels.count))
                 refreshBudget()
             }
             Button("Flip mode to sponsored (DEBUG)") {
@@ -679,7 +683,8 @@ struct PanelReviewView: View {
     }
 
     private func refreshBudget() {
-        budget = store.generationBudget(playerId: player.id)
+        budget = store.generationBudget(playerId: player.id,
+                                        panelCount: template.panels.count)
     }
 
     private func reloadCurrentTarget() {

@@ -247,14 +247,19 @@ public struct PlayerStore: Sendable {
 
     // MARK: - Per-comic generation budget (slice 23)
 
-    /// Lazy: returns `.empty` when the JSON file is absent, so a freshly
-    /// created player has the full 32-call budget without us having to write
+    /// Lazy: returns `.empty(panelCount:)` when the JSON file is absent, so a
+    /// freshly created player has the full budget without us having to write
     /// the file on player creation. Persisted at
-    /// `players/NNN/generation_budget.json`.
-    public func generationBudget(playerId: String) -> GenerationBudget {
+    /// `players/NNN/generation_budget.json`. `limit` is always recomputed from
+    /// the caller-supplied `panelCount` per ADR-0009 so a template change
+    /// re-sizes the budget without rewriting disk.
+    public func generationBudget(playerId: String, panelCount: Int) -> GenerationBudget {
         let url = generationBudgetURL(playerId: playerId)
-        guard let data = try? Data(contentsOf: url) else { return .empty }
-        return (try? JSONDecoder().decode(GenerationBudget.self, from: data)) ?? .empty
+        guard let data = try? Data(contentsOf: url),
+              let stored = try? JSONDecoder().decode(GenerationBudget.self, from: data) else {
+            return .empty(panelCount: panelCount)
+        }
+        return GenerationBudget(spent: stored.spent, panelCount: panelCount)
     }
 
     public func setGenerationBudget(playerId: String, _ budget: GenerationBudget) throws {

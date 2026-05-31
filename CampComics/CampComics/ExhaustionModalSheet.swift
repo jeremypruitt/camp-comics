@@ -29,7 +29,7 @@ struct ExhaustionModalSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("This comic has used all \(GenerationBudget.limit) sponsored generation calls. Pick how to keep going.")
+                    Text("This comic has used all \(GenerationBudget.limit(panelCount: template.panels.count)) sponsored generation calls. Pick how to keep going.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
 
