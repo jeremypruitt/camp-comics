@@ -33,7 +33,9 @@ struct PhotoReferenceResolverTests {
         #expect(plan.outOfOrder == false)
     }
 
-    @Test func inOrderPanelChainsOffMostRecentAccepted() throws {
+    @Test func panelNAnchorsOnPanel1WhenPanel1Accepted() throws {
+        // Slice B (ADR-0009): every panel 2..15 + cover anchors on panel 1, not
+        // its immediate predecessor. Drops the chained "telephone" drift.
         let (store, playerId) = try makeStore()
         try acceptPanels(playerId: playerId, store: store, ns: [1, 2])
 
@@ -41,14 +43,14 @@ struct PhotoReferenceResolverTests {
                                                      playerId: playerId,
                                                      store: store)
 
-        #expect(plan.slots == [.photo, .hero, .panel(n: 2)])
+        #expect(plan.slots == [.photo, .hero, .panel(n: 1)])
         #expect(plan.outOfOrder == false)
     }
 
-    @Test func gapInAcceptanceTriggersOutOfOrder() throws {
-        // Slice 11a: with Skip gone, an unfinalized earlier panel is always
-        // genuinely out-of-order. Panel 4 with 1+2 accepted but 3 unfinished
-        // can't chain — the resolver drops to [photo, hero] + flag.
+    @Test func gapsBetweenPanel1AndNNoLongerBlockAnchor() throws {
+        // Slice B (ADR-0009): the chained predecessor rule is gone, so a gap
+        // between panel 1 and panel N is no longer a special case. Panel 4
+        // with only 1+2 accepted still anchors on panel 1.
         let (store, playerId) = try makeStore()
         try acceptPanels(playerId: playerId, store: store, ns: [1, 2])
 
@@ -56,8 +58,8 @@ struct PhotoReferenceResolverTests {
                                                      playerId: playerId,
                                                      store: store)
 
-        #expect(plan.slots == [.photo, .hero])
-        #expect(plan.outOfOrder == true)
+        #expect(plan.slots == [.photo, .hero, .panel(n: 1)])
+        #expect(plan.outOfOrder == false)
     }
 
     @Test func unfinishedEarlierPanelTriggersOutOfOrder() throws {
@@ -106,18 +108,19 @@ struct PhotoReferenceResolverTests {
         #expect(plan.outOfOrder == false)
     }
 
-    @Test func multiGapAcceptanceStillTriggersOutOfOrder() throws {
-        // Slice 11a: without Skip, panels 4 and 5 being unfinished is genuine
-        // out-of-order. The chip fires; no continuity panel is substituted.
+    @Test func lateStackPanelStillAnchorsOnPanel1() throws {
+        // Slice B (ADR-0009): panel 15 with only panel 1 accepted still
+        // anchors on panel 1 — the batch worker pool can start any panel
+        // the moment phase 1 finishes, without waiting on predecessors.
         let (store, playerId) = try makeStore()
-        try acceptPanels(playerId: playerId, store: store, ns: [1, 2, 3])
+        try acceptPanels(playerId: playerId, store: store, ns: [1])
 
-        let plan = PhotoReferenceResolver.references(for: panel(n: 6),
+        let plan = PhotoReferenceResolver.references(for: panel(n: 15),
                                                      playerId: playerId,
                                                      store: store)
 
-        #expect(plan.slots == [.photo, .hero])
-        #expect(plan.outOfOrder == true)
+        #expect(plan.slots == [.photo, .hero, .panel(n: 1)])
+        #expect(plan.outOfOrder == false)
     }
 
     @Test func coverGetsPhotoAndHeroNeverContinuity() throws {
