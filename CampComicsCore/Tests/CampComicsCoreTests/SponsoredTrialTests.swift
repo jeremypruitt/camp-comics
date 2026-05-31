@@ -69,4 +69,29 @@ struct SponsoredTrialBackendTests {
         #expect(trial.finalizedPlayerIds == ["player_001"])
         #expect(trial.remaining == 1)
     }
+
+    // ADR-0009 shifts the spend moment from finalize → "Start campaign".
+    // `spend(playerId:)` is the new vocabulary the swipe surface calls; the
+    // default protocol impl routes through `recordFinalized` so legacy backends
+    // pick it up automatically and a Start→PDF round trip stays idempotent.
+    @Test func spendThenFinalizeIsIdempotent() async throws {
+        let backend = InMemorySponsoredTrialBackend()
+
+        try await backend.spend(playerId: "player_001")
+        try await backend.recordFinalized(playerId: "player_001")
+        let trial = try await backend.fetch()
+
+        #expect(trial.finalizedPlayerIds == ["player_001"])
+        #expect(trial.remaining == 1)
+    }
+
+    @Test func twoSpendsExhaustTheTrial() async throws {
+        let backend = InMemorySponsoredTrialBackend()
+
+        try await backend.spend(playerId: "player_001")
+        try await backend.spend(playerId: "player_002")
+        let trial = try await backend.fetch()
+
+        #expect(trial.isExhausted)
+    }
 }
