@@ -30,13 +30,19 @@ public enum PlayerStoreError: Error, Equatable {
 /// One candidate in a panel's review gallery: the on-disk PNG plus the integer
 /// index used to address it for `acceptCandidate`. Indices are dense (0, 1, 2…)
 /// in save order and survive across re-roll cancels until Accept clears them.
+/// `generatedAt` is the filesystem creation timestamp of the PNG (the moment
+/// `savePendingCandidate` wrote it), surfaced for the slice-E per-candidate
+/// timestamp label on the review card. Nil only if the file attributes were
+/// unreadable, which in practice never happens for a candidate we just listed.
 public struct PanelCandidate: Equatable, Sendable {
     public let index: Int
     public let url: URL
+    public let generatedAt: Date?
 
-    public init(index: Int, url: URL) {
+    public init(index: Int, url: URL, generatedAt: Date? = nil) {
         self.index = index
         self.url = url
+        self.generatedAt = generatedAt
     }
 }
 
@@ -188,7 +194,7 @@ public struct PlayerStore: Sendable {
         let index = nextCandidateIndex(in: dir)
         let url = candidateURL(playerId: playerId, target: target, index: index)
         try pngData.write(to: url, options: .atomic)
-        return PanelCandidate(index: index, url: url)
+        return PanelCandidate(index: index, url: url, generatedAt: fileCreatedAt(url))
     }
 
     public func listCandidates(playerId: String, target: PanelTargetID) -> [PanelCandidate] {
@@ -198,9 +204,16 @@ public struct PlayerStore: Sendable {
         return entries
             .compactMap { url -> PanelCandidate? in
                 guard let index = Int(url.deletingPathExtension().lastPathComponent) else { return nil }
-                return PanelCandidate(index: index, url: url)
+                return PanelCandidate(index: index, url: url, generatedAt: fileCreatedAt(url))
             }
             .sorted { $0.index < $1.index }
+    }
+
+    private func fileCreatedAt(_ url: URL) -> Date? {
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) else {
+            return nil
+        }
+        return (attrs[.creationDate] as? Date) ?? (attrs[.modificationDate] as? Date)
     }
 
     /// Promote one candidate to `panel_NN.png` / `cover.png` and discard the
