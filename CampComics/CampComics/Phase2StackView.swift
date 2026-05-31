@@ -37,6 +37,7 @@ struct Phase2StackView: View {
     @State private var budget: GenerationBudget
     @State private var lastError: String?
     @State private var showExhaustionModal: Bool = false
+    @State private var showRepromptSheet: Bool = false
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -74,6 +75,18 @@ struct Phase2StackView: View {
         }
         .sheet(isPresented: $showExhaustionModal) {
             exhaustionModal
+        }
+        .sheet(isPresented: $showRepromptSheet) {
+            RepromptAddendumSheet(
+                assembledPrompt: assembledPromptForHead,
+                onApply: { addendum in
+                    showRepromptSheet = false
+                    commitRepromptHead(addendum: addendum)
+                },
+                onCancel: { showRepromptSheet = false }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -138,6 +151,15 @@ struct Phase2StackView: View {
                 .overlay(alignment: .topTrailing) { acceptBadge }
                 .overlay(alignment: .topLeading) { rerollBadge }
                 .gesture(stackGesture)
+                // Slice F: long-press → Re-prompt sheet. `.simultaneousGesture`
+                // so the LongPress arms in parallel with the drag — a drag
+                // wins because it changes translation first; a still hold
+                // wins by elapsing the 0.5s minimumDuration. Exhausted
+                // budget no-ops (see commitRepromptHead).
+                .simultaneousGesture(
+                    LongPressGesture(minimumDuration: 0.5)
+                        .onEnded { _ in openRepromptSheet() }
+                )
             galleryFooter(candidate: candidate)
         }
         .padding(.horizontal)
@@ -331,11 +353,16 @@ struct Phase2StackView: View {
     /// `hasPanel` guard is skipped because the head panel is by definition not
     /// yet accepted (Accept advances the stack). Decrements budget on success
     /// the same way the queue's worker does.
+    ///
+    /// Slice F (#66): `addendum` threads through to `PromptBuilder.buildPrompt`
+    /// for Re-prompt (long-press). Re-roll still passes nil — the addendum is
+    /// per-press, not persisted.
     static func runOneAppendingCandidate(target: PanelTarget,
                                          playerId: String,
                                          template: ClassTemplate,
                                          store: PlayerStore,
-                                         generator: any PanelGenerator) async throws {
+                                         generator: any PanelGenerator,
+                                         addendum: String? = nil) async throws {
         guard let photoData = store.loadPhoto(playerId: playerId,
                                               requirement: target.requirement) else {
             throw PanelGeneratorError.underlying("Missing reference photo for \(target.diskName).")
@@ -352,7 +379,8 @@ struct Phase2StackView: View {
         }
         let prompt = PromptBuilder.buildPrompt(for: target,
                                                template: template,
-                                               tokens: ["camper_name": playerNameLookup(playerId: playerId, store: store)])
+                                               tokens: ["camper_name": playerNameLookup(playerId: playerId, store: store)],
+                                               addendum: addendum)
         let pngData = try await generator.generatePanel(prompt: prompt, references: references)
         let saved = try store.savePendingCandidate(playerId: playerId,
                                                    target: target.id,
@@ -522,6 +550,76 @@ struct Phase2StackView: View {
         cursor = forward ? cursor.advanced() : cursor.retreated()
     }
 
+    /// Slice F: long-press on the head card. Exhausted budget bounces to the
+    /// same exhaustion modal as swipe-left Re-roll (per AC). Rolling Re-roll
+    /// task in flight blocks new Re-prompts the same way.
+    private func openRepromptSheet() {
+        guard !budget.isExhausted else {
+            showExhaustionModal = true
+            return
+        }
+        guard rerollTask == nil else { return }
+        showRepromptSheet = true
+    }
+
+    /// Slice F: Apply from the sheet. Spends 1 budget, fires the same
+    /// `runOneAppendingCandidate` worker Re-roll uses (with the addendum
+    /// threaded through to PromptBuilder), lands the new candidate in the
+    /// gallery as newest. Empty addendum is treated as a no-op by the Apply
+    /// button's `.disabled`, but we defend in depth here too.
+    private func commitRepromptHead(addendum: String) {
+        let trimmed = addendum.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard !budget.isExhausted else {
+            showExhaustionModal = true
+            return
+        }
+        guard rerollTask == nil else { return }
+        let head = headTarget
+        let playerId = player.id
+        let template = template
+        let store = store
+        let generator = generator
+        // Clear visible so placeholder ("Re-rolling…") shows while in flight.
+        // Re-uses the Re-roll spinner copy because the UX is identical from
+        // the operator's perspective — one extra candidate is being generated.
+        gallery = []
+        cursor = .forNewHead(count: 0)
+        headTick &+= 1
+        rerollTask = Task {
+            defer { rerollTask = nil }
+            do {
+                try await Self.runOneAppendingCandidate(target: head,
+                                                        playerId: playerId,
+                                                        template: template,
+                                                        store: store,
+                                                        generator: generator,
+                                                        addendum: trimmed)
+                await MainActor.run {
+                    refreshHead()
+                    refreshBudget()
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await MainActor.run {
+                    lastError = String(describing: error)
+                    refreshHead()
+                    refreshBudget()
+                }
+            }
+        }
+    }
+
+    /// Read-only context shown at the top of the Re-prompt sheet so the
+    /// operator can see what they're appending to. Built fresh each open;
+    /// not stored.
+    private var assembledPromptForHead: String {
+        PromptBuilder.buildPrompt(for: headTarget,
+                                  template: template,
+                                  tokens: ["camper_name": player.playerName])
+    }
+
     // MARK: - Targets
 
     /// Story-ordered targets for Phase 2: panels 2..N then the cover. Panel 1
@@ -563,6 +661,82 @@ struct Phase2StackView: View {
         f.timeStyle = .short
         return f
     }()
+}
+
+/// Slice F (#66): long-press Re-prompt editor. Shows the fully assembled
+/// prompt (read-only context) above a writable Addendum `TextEditor`. Apply
+/// returns the addendum to the caller; the caller appends it after the
+/// assembled prompt with a blank-line separator and fires generation. The
+/// addendum is per-press — the field starts empty on every open (no
+/// `@AppStorage`, no caller-held draft) because in practice corrective
+/// addenda ("less smoke", "the prop should be visible") are one-shot and
+/// persisting them would silently bias every Re-roll on the panel.
+///
+/// This sheet is distinct from `RepromptSheet` in `PanelReviewView.swift`,
+/// which edits the preamble in place (slice 11c, panel-loop UX). The new
+/// swipe-review surface deliberately leaves the assembled prompt locked and
+/// only appends the addendum, per ADR-0009 (and the slice F issue spec).
+private struct RepromptAddendumSheet: View {
+    @Environment(\.themeKind) private var theme
+    let assembledPrompt: String
+    let onApply: (String) -> Void
+    let onCancel: () -> Void
+
+    @State private var addendum: String = ""
+
+    private var trimmedIsEmpty: Bool {
+        addendum.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        let p = theme.palette
+        return NavigationStack {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Assembled prompt")
+                    .font(theme.captionFont(12))
+                    .foregroundStyle(p.inkSecondary)
+                ScrollView {
+                    Text(assembledPrompt)
+                        .font(.callout.monospaced())
+                        .foregroundStyle(p.inkSecondary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                }
+                .frame(maxHeight: 200)
+                .background(Color(.secondarySystemGroupedBackground),
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                Text("Addendum")
+                    .font(theme.captionFont(12))
+                    .foregroundStyle(p.inkSecondary)
+                TextEditor(text: $addendum)
+                    .font(.body)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(Color(.secondarySystemGroupedBackground),
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .frame(minHeight: 140)
+                Text("Appended after the assembled prompt. Spends 1 generation.")
+                    .font(theme.captionFont(12))
+                    .foregroundStyle(p.inkSecondary)
+                Spacer(minLength: 0)
+            }
+            .padding()
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Re-prompt")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Apply") { onApply(addendum) }
+                        .disabled(trimmedIsEmpty)
+                }
+            }
+        }
+    }
 }
 
 /// Slice E: row of dots beneath the head card, one per candidate, filled at

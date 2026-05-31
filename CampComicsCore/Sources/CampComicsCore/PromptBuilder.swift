@@ -76,15 +76,26 @@ public enum PromptBuilder {
     /// Unified entry (slice 11b): dispatches to `buildPanelPrompt` for panel
     /// targets and `buildCoverPrompt` for the cover. Callers in the review
     /// loop hold a `PanelTarget` so they don't have to switch on the case.
+    ///
+    /// Slice F (#66): an optional `addendum` is appended after the fully
+    /// assembled prompt — including STYLE_SUFFIX and aspect — separated by a
+    /// blank line. Recency wins on the model side, so corrective phrases
+    /// ("include a torch") land after the style guidance. The addendum is
+    /// per-press: callers never persist it. Whitespace-only / nil → no-op.
     public static func buildPrompt(for target: PanelTarget,
                                    template: ClassTemplate,
-                                   tokens: [String: String]) -> String {
+                                   tokens: [String: String],
+                                   addendum: String? = nil) -> String {
+        let base: String
         switch target {
         case .panel(_, let spec):
-            return buildPanelPrompt(spec: spec, template: template, tokens: tokens)
+            base = buildPanelPrompt(spec: spec, template: template, tokens: tokens)
         case .cover(let spec):
-            return buildCoverPrompt(spec: spec, template: template, tokens: tokens)
+            base = buildCoverPrompt(spec: spec, template: template, tokens: tokens)
         }
+        guard let trimmed = addendum?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else { return base }
+        return base + "\n\n" + trimmed
     }
 
     /// Direct port of _legacy/scripts/generate.py:assemble_cover_prompt

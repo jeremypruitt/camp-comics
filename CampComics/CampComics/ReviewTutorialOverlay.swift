@@ -127,10 +127,12 @@ struct ReviewTutorialOverlay: View {
 /// - `.triptychAtomic`   (Slice G)
 enum OverlayHint: CaseIterable, Hashable {
     case acceptSwipeRight
+    case reprompt
 
     var title: String {
         switch self {
         case .acceptSwipeRight: return "Swipe right to accept"
+        case .reprompt: return "Long-press to re-prompt"
         }
     }
 
@@ -138,18 +140,25 @@ enum OverlayHint: CaseIterable, Hashable {
         switch self {
         case .acceptSwipeRight:
             return "Like a panel? Flick it to the right. The next one in the stack slides up."
+        case .reprompt:
+            return "Hold the card to add a corrective note. The model rolls a fresh take with your addendum."
         }
     }
 
     var startOffset: CGSize {
         switch self {
         case .acceptSwipeRight: return CGSize(width: -80, height: 0)
+        // Re-prompt's "ghost finger" sits still — the gesture is a hold, not
+        // a drag — so start and end overlap and the only visible affordance
+        // is the opacity pulse.
+        case .reprompt: return .zero
         }
     }
 
     var endOffset: CGSize {
         switch self {
         case .acceptSwipeRight: return CGSize(width: 80, height: 0)
+        case .reprompt: return .zero
         }
     }
 }

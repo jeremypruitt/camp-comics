@@ -241,6 +241,98 @@ struct PromptBuilderTests {
         #expect(PromptBuilder.panelAspectRatios[14] == "16:9")
     }
 
+    @Test func addendumAppendsAfterAssembledPrompt() {
+        // Slice F: Re-prompt appends a freeform addendum after the fully
+        // assembled prompt (after STYLE_SUFFIX + aspect). The model treats the
+        // tail as the most-recent instruction, so corrective phrases like
+        // "include a torch" land last. Spec: prompt = assembled + "\n\n" + add.
+        let spec = PanelSpec(n: 1, beat: "Tuesday.",
+                             scene: "Alex stands in a kitchen",
+                             composition: "intimate medium shot, centered",
+                             emotion: .neutral, position: .front)
+        let assembled = PromptBuilder.buildPrompt(
+            for: .panel(n: 1, spec: spec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"]
+        )
+        let withAddendum = PromptBuilder.buildPrompt(
+            for: .panel(n: 1, spec: spec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"],
+            addendum: "include a torch"
+        )
+        #expect(withAddendum == assembled + "\n\ninclude a torch")
+    }
+
+    @Test func emptyAddendumIsNoOp() {
+        // Whitespace-only or nil addendum must not change the prompt — the
+        // long-press path should bounce empty Apply earlier, but defense in
+        // depth keeps this contract narrow.
+        let spec = PanelSpec(n: 1, beat: "Tuesday.",
+                             scene: "Alex stands in a kitchen",
+                             composition: "intimate medium shot, centered",
+                             emotion: .neutral, position: .front)
+        let plain = PromptBuilder.buildPrompt(
+            for: .panel(n: 1, spec: spec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"]
+        )
+        let nilAdd = PromptBuilder.buildPrompt(
+            for: .panel(n: 1, spec: spec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"],
+            addendum: nil
+        )
+        let emptyAdd = PromptBuilder.buildPrompt(
+            for: .panel(n: 1, spec: spec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"],
+            addendum: "   \n  "
+        )
+        #expect(nilAdd == plain)
+        #expect(emptyAdd == plain)
+    }
+
+    @Test func addendumIsTrimmedBeforeAppending() {
+        // Surrounding whitespace on the addendum is operator slop, not signal.
+        // Trim so the prompt suffix is stable for both "torch" and "  torch  ".
+        let spec = PanelSpec(n: 1, beat: "Tuesday.",
+                             scene: "Alex stands in a kitchen",
+                             composition: "intimate medium shot, centered",
+                             emotion: .neutral, position: .front)
+        let assembled = PromptBuilder.buildPrompt(
+            for: .panel(n: 1, spec: spec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"]
+        )
+        let withAddendum = PromptBuilder.buildPrompt(
+            for: .panel(n: 1, spec: spec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"],
+            addendum: "  include a torch  \n"
+        )
+        #expect(withAddendum == assembled + "\n\ninclude a torch")
+    }
+
+    @Test func addendumAppliesToCoverToo() {
+        // Re-prompt on the cover head card uses the same path; ensure the
+        // tail-append works for the .cover case too.
+        let coverSpec = CoverSpec(emotion: .neutral, position: .profile,
+                                  poseDirective: "heroic full-body portrait in full druid regalia")
+        let assembled = PromptBuilder.buildPrompt(
+            for: .cover(spec: coverSpec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"]
+        )
+        let withAddendum = PromptBuilder.buildPrompt(
+            for: .cover(spec: coverSpec),
+            template: Self.druidTemplate,
+            tokens: ["camper_name": "Alex"],
+            addendum: "include a wolf companion at the hero's side"
+        )
+        #expect(withAddendum == assembled + "\n\ninclude a wolf companion at the hero's side")
+    }
+
     @Test func panelTargetEntryMatchesPanelPromptForPanelCase() {
         // The unified buildPrompt(for: PanelTarget) entry produces the same
         // text as the existing panel-only path for the .panel(n:spec:) case.
