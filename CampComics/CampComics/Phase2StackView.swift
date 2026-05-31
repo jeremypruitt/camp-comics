@@ -43,6 +43,13 @@ struct Phase2StackView: View {
     @State private var lastError: String?
     @State private var showExhaustionModal: Bool = false
     @State private var showRepromptSheet: Bool = false
+    /// Slice H (#68): failure message for the current head. Set when the queue
+    /// emits `.failed(headTargetID, message)` or when an ad-hoc Re-roll /
+    /// Re-prompt task throws. Drives the failed-card render; cleared on
+    /// Retry, Defer, and head advance. Behind-head failures persist via the
+    /// on-disk `.failed` marker and resurface as a failed card when the
+    /// stack reaches them (with no message).
+    @State private var failedHeadMessage: String?
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -127,6 +134,8 @@ struct Phase2StackView: View {
     private var cardBody: some View {
         if isAllDone {
             doneCard
+        } else if isHeadFailed {
+            failedCard
         } else {
             switch headUnit {
             case .single:
@@ -173,6 +182,15 @@ struct Phase2StackView: View {
             }
         }
         return out
+    }
+
+    /// Slice H: a head shows the failed card when either (a) we got a runtime
+    /// failure for this exact head, or (b) the head has a persisted `.failed`
+    /// marker on disk (a behind-head failure that survived to its turn, or a
+    /// prior session's deferred panel returned to).
+    private var isHeadFailed: Bool {
+        if failedHeadMessage != nil { return true }
+        return store.isDeferred(playerId: player.id, target: headTarget.id)
     }
 
     private var placeholderCard: some View {
@@ -369,6 +387,66 @@ struct Phase2StackView: View {
         .padding(.horizontal)
     }
 
+    /// Slice H (#68): Failed-card surface for a head whose generation threw
+    /// (queue-side or ad-hoc Re-roll/Re-prompt). Retry kicks off another
+    /// generation against the head (spends a budget call on success, same as
+    /// any other generation); Defer writes the `.failed` marker and advances
+    /// the stack so the operator can come back later from the grid (slice I).
+    /// Long-press anywhere on the card opens the Re-prompt sheet — the
+    /// documented content-policy-bounce recovery path. Defer is intentionally
+    /// styled as a less-prominent secondary button so the operator's reflex
+    /// stays "try again" first.
+    private var failedCard: some View {
+        let p = theme.palette
+        return ThemedCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(failedCardTitle)
+                    .font(theme.headingFont(18))
+                    .foregroundStyle(p.inkPrimary)
+                if let failedHeadMessage {
+                    Text(failedHeadMessage)
+                        .font(theme.captionFont(12))
+                        .foregroundStyle(p.danger)
+                        .lineLimit(4)
+                } else {
+                    Text("This panel didn't generate. Retry, long-press to add an addendum, or defer to come back later from the grid.")
+                        .font(theme.captionFont(12))
+                        .foregroundStyle(p.inkSecondary)
+                }
+                ThemedPrimaryButton("Retry", systemImage: "arrow.clockwise") {
+                    commitRetryHead()
+                }
+                Button(action: commitDeferHead) {
+                    Text("Defer for now")
+                        .font(theme.captionFont(12))
+                        .tracking(2)
+                        .textCase(.uppercase)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .foregroundStyle(p.inkSecondary)
+                        .overlay(
+                            Capsule().stroke(p.inkSecondary.opacity(0.4), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal)
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onEnded { _ in openRepromptSheet() }
+        )
+    }
+
+    private var failedCardTitle: String {
+        switch headTarget {
+        case .panel(let n, _): return "Panel \(n) didn't generate"
+        case .cover: return "Cover didn't generate"
+        }
+    }
+
     private var exhaustionModal: some View {
         // Mirrors slice 23's existing modal copy/affordances — kept inline here
         // because the surface owner (Phase2StackView) is its only call site for
@@ -455,7 +533,20 @@ struct Phase2StackView: View {
                                 headTick &+= 1
                             }
                             refreshBudget()
-                        case .throttled, .failed:
+                        case .throttled:
+                            refreshBudget()
+                        case .failed(let id, let message):
+                            // Head failure surfaces the failed card right now;
+                            // behind-head failures persist via the on-disk
+                            // `.failed` marker so they resurface when their
+                            // turn comes (see `isHeadFailed`).
+                            if id == headTarget.id {
+                                failedHeadMessage = message
+                                headTick &+= 1
+                            } else {
+                                try? store.markDeferred(playerId: player.id, target: id)
+                                headTick &+= 1
+                            }
                             refreshBudget()
                         }
                     }
@@ -474,6 +565,11 @@ struct Phase2StackView: View {
                        store: PlayerStore,
                        generator: any PanelGenerator) async throws {
         if store.hasPanel(playerId: playerId, target: target.id) { return }
+        // Slice H (#68): a deferred panel must not auto-regenerate on session
+        // start — the operator chose to skip it; auto-retrying would burn
+        // budget silently. The explicit Retry button on the failed card is
+        // the only way back in (or slice I's grid escape hatch).
+        if store.isDeferred(playerId: playerId, target: target.id) { return }
         try await runOneAppendingCandidate(target: target,
                                            playerId: playerId,
                                            template: template,
@@ -649,6 +745,7 @@ struct Phase2StackView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             swipeOffset = .zero
             headIndex += 1
+            failedHeadMessage = nil
             refreshHead()
             refreshBudget()
         }
@@ -693,6 +790,7 @@ struct Phase2StackView: View {
                                                         store: store,
                                                         generator: generator)
                 await MainActor.run {
+                    failedHeadMessage = nil
                     refreshHead()
                     refreshBudget()
                 }
@@ -700,7 +798,9 @@ struct Phase2StackView: View {
                 return
             } catch {
                 await MainActor.run {
-                    lastError = String(describing: error)
+                    // Slice H: surface a failed card (with Retry/Defer) for
+                    // this head instead of the tiny "lastError" banner.
+                    failedHeadMessage = String(describing: error)
                     refreshHead()
                     refreshBudget()
                 }
@@ -905,6 +1005,7 @@ struct Phase2StackView: View {
                                                         generator: generator,
                                                         addendum: trimmed)
                 await MainActor.run {
+                    failedHeadMessage = nil
                     refreshHead()
                     refreshBudget()
                 }
@@ -912,11 +1013,80 @@ struct Phase2StackView: View {
                 return
             } catch {
                 await MainActor.run {
-                    lastError = String(describing: error)
+                    // Slice H: same failed-card surface as Re-roll. Re-prompt
+                    // is the documented content-policy bounce recovery — a
+                    // failed Re-prompt drops back to the same Retry/Defer
+                    // affordances, with Defer being the final out.
+                    failedHeadMessage = String(describing: error)
                     refreshHead()
                     refreshBudget()
                 }
             }
+        }
+    }
+
+    // MARK: - Slice H (#68) — failed-card actions
+
+    /// Retry: re-fire the same `runOneAppendingCandidate` worker Re-roll uses.
+    /// Spends one budget call on success (failures don't decrement, same
+    /// semantics as Re-roll). On success the new candidate lands in the
+    /// gallery and the failed card is replaced with the regular review card.
+    private func commitRetryHead() {
+        guard !budget.isExhausted else {
+            showExhaustionModal = true
+            return
+        }
+        guard rerollTask == nil else { return }
+        let head = headTarget
+        let playerId = player.id
+        let template = template
+        let store = store
+        let generator = generator
+        failedHeadMessage = nil
+        gallery = []
+        cursor = .forNewHead(count: 0)
+        headTick &+= 1
+        rerollTask = Task {
+            defer { rerollTask = nil }
+            do {
+                try await Self.runOneAppendingCandidate(target: head,
+                                                        playerId: playerId,
+                                                        template: template,
+                                                        store: store,
+                                                        generator: generator)
+                await MainActor.run {
+                    failedHeadMessage = nil
+                    refreshHead()
+                    refreshBudget()
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await MainActor.run {
+                    failedHeadMessage = String(describing: error)
+                    refreshHead()
+                    refreshBudget()
+                }
+            }
+        }
+    }
+
+    /// Defer: write the `.failed` sentinel for this head (so the grid pill
+    /// reads "deferred" and `PlayerStatus` counts it as resolved), then
+    /// advance the stack. Per ADR-0009 the operator can come back from the
+    /// grid (slice I — #69) to retry later, but for now we just move on.
+    private func commitDeferHead() {
+        let head = headTarget
+        try? store.markDeferred(playerId: player.id, target: head.id)
+        withAnimation(.easeOut(duration: 0.2)) {
+            swipeOffset = CGSize(width: 600, height: 0)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            swipeOffset = .zero
+            headIndex += 1
+            failedHeadMessage = nil
+            refreshHead()
+            refreshBudget()
         }
     }
 

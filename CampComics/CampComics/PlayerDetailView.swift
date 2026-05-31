@@ -19,6 +19,10 @@ struct PlayerDetailView: View {
     @State private var previewItem: PreviewItem?
     @State private var isRendering = false
     @State private var renderError: String?
+    /// Slice H (#68): set when "Generate PDF" is tapped while one or more
+    /// panels are deferred. Surfaces the empty-cell confirm before the render
+    /// kicks off so the operator doesn't accidentally finalize a hole.
+    @State private var pendingDeferredFinalize: [String] = []
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -77,6 +81,31 @@ struct PlayerDetailView: View {
         .sheet(item: $previewItem) { item in
             PDFPreview(url: item.url)
         }
+        .confirmationDialog(
+            deferredFinalizeMessage,
+            isPresented: Binding(get: { !pendingDeferredFinalize.isEmpty },
+                                 set: { if !$0 { pendingDeferredFinalize = [] } }),
+            titleVisibility: .visible
+        ) {
+            Button("Generate anyway") {
+                pendingDeferredFinalize = []
+                Task { await generatePDF() }
+            }
+            Button("Cancel", role: .cancel) {
+                pendingDeferredFinalize = []
+            }
+        }
+    }
+
+    /// Slice H (#68): copy mirrors the issue spec — singular shape when one
+    /// panel is deferred, plural when multiple. Cover is named explicitly.
+    private var deferredFinalizeMessage: String {
+        let names = pendingDeferredFinalize
+        if names.count == 1 {
+            return "\(names[0]) has no image — your comic will have an empty cell. Generate anyway?"
+        }
+        let joined = names.joined(separator: ", ")
+        return "\(joined) have no images — your comic will have empty cells. Generate anyway?"
     }
 
     // MARK: - Subviews
@@ -136,8 +165,29 @@ struct PlayerDetailView: View {
             isLoading: isRendering,
             isEnabled: !isRendering
         ) {
-            Task { await generatePDF() }
+            // Slice H (#68): if any panel is deferred, surface the empty-cell
+            // confirm first. The confirm's "Generate anyway" runs the same
+            // `generatePDF()` body below.
+            let deferredNames = deferredTargetNames()
+            if deferredNames.isEmpty {
+                Task { await generatePDF() }
+            } else {
+                pendingDeferredFinalize = deferredNames
+            }
         }
+    }
+
+    /// Slice H: human-readable names of every deferred target in story order
+    /// ("Panel 7", "Cover"). Empty list = no deferred panels → no confirm.
+    private func deferredTargetNames() -> [String] {
+        var names: [String] = []
+        for panel in template.panels where store.isDeferred(playerId: player.id, target: .panel(panel.n)) {
+            names.append("Panel \(panel.n)")
+        }
+        if store.isDeferred(playerId: player.id, target: .cover) {
+            names.append("Cover")
+        }
+        return names
     }
 
     private var progressTitle: String { "Campaign Log" }

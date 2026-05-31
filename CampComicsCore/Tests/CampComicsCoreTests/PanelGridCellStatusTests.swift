@@ -158,6 +158,57 @@ struct PanelGridCellStatusTests {
         #expect(status == .unstarted)
     }
 
+    @Test func panelWithDeferMarkerYieldsFailed() throws {
+        // Slice H: a deferred panel persists a `.failed` sentinel under
+        // `_candidates/{stem}/`. The grid surfaces it as `.failed` so the
+        // operator can return from the grid and retry from `PanelReviewView`.
+        let (store, _) = try makeStore()
+        let template = makeTemplate()
+        let player = try store.create(playerName: "Alex", characterName: "",
+                                      classKey: "druid")
+        let target = PanelTarget.panel(n: 1, spec: template.panels[0])
+        try capturePhoto(for: target, playerId: player.id, store: store)
+        try store.markDeferred(playerId: player.id, target: target.id)
+
+        let status = PanelGridCellStatus.derive(target: target,
+                                                playerId: player.id,
+                                                store: store)
+        #expect(status == .failed)
+    }
+
+    @Test func coverWithDeferMarkerYieldsFailed() throws {
+        let (store, _) = try makeStore()
+        let template = makeTemplate()
+        let player = try store.create(playerName: "Alex", characterName: "",
+                                      classKey: "druid")
+        let target = PanelTarget.cover(spec: template.cover)
+        try capturePhoto(for: target, playerId: player.id, store: store)
+        try store.markDeferred(playerId: player.id, target: target.id)
+
+        let status = PanelGridCellStatus.derive(target: target,
+                                                playerId: player.id,
+                                                store: store)
+        #expect(status == .failed)
+    }
+
+    @Test func acceptedWinnerBeatsLingeringDeferMarker() throws {
+        // Defensive: if an accepted panel.png coexists with a stale `.failed`
+        // marker (shouldn't happen — accept clears the gallery dir — but
+        // belt-and-braces), the accepted winner wins the priority.
+        let (store, _) = try makeStore()
+        let template = makeTemplate()
+        let player = try store.create(playerName: "Alex", characterName: "",
+                                      classKey: "druid")
+        let target = PanelTarget.panel(n: 1, spec: template.panels[0])
+        try store.savePanel(playerId: player.id, target: target.id, pngData: pngStub)
+        try store.markDeferred(playerId: player.id, target: target.id)
+
+        let status = PanelGridCellStatus.derive(target: target,
+                                                playerId: player.id,
+                                                store: store)
+        #expect(status == .accepted)
+    }
+
     @Test func winnerOnDiskBeatsLingeringCandidates() throws {
         // After Accept the winner is saved but `_candidates/` is not pruned;
         // both exist on disk. The grid must report `.accepted`, not `.reviewing`,

@@ -194,6 +194,9 @@ public struct PlayerStore: Sendable {
         let index = nextCandidateIndex(in: dir)
         let url = candidateURL(playerId: playerId, target: target, index: index)
         try pngData.write(to: url, options: .atomic)
+        // A landed Retry candidate ends the deferred state — drop the marker
+        // so the grid stops reporting `.failed` for this target.
+        try unmarkDeferred(playerId: playerId, target: target)
         return PanelCandidate(index: index, url: url, generatedAt: fileCreatedAt(url))
     }
 
@@ -233,6 +236,32 @@ public struct PlayerStore: Sendable {
         if FileManager.default.fileExists(atPath: url.path) {
             try FileManager.default.removeItem(at: url)
         }
+    }
+
+    // MARK: - Defer marker (slice H — ADR-0009 failed-card recovery)
+
+    /// Write a zero-byte `.failed` sentinel under `panels/_candidates/{stem}/`.
+    /// Co-locating with the gallery means `acceptCandidate`'s `removeItem` on
+    /// the gallery dir auto-clears the marker on retry-and-accept; ditto a
+    /// later `savePendingCandidate` (the Retry path's first landing) prunes
+    /// the marker so a cell never reports both `.failed` and `.reviewing`.
+    public func markDeferred(playerId: String, target: PanelTargetID) throws {
+        let dir = candidatesDir(for: playerId, target: target)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data().write(to: deferMarkerURL(playerId: playerId, target: target),
+                         options: .atomic)
+    }
+
+    public func unmarkDeferred(playerId: String, target: PanelTargetID) throws {
+        let url = deferMarkerURL(playerId: playerId, target: target)
+        if FileManager.default.fileExists(atPath: url.path) {
+            try FileManager.default.removeItem(at: url)
+        }
+    }
+
+    public func isDeferred(playerId: String, target: PanelTargetID) -> Bool {
+        FileManager.default.fileExists(
+            atPath: deferMarkerURL(playerId: playerId, target: target).path)
     }
 
     /// Re-roll-after-accept (design memo #3). Moves `panel_NN.png` / `cover.png`
@@ -410,6 +439,15 @@ public struct PlayerStore: Sendable {
     private func candidateURL(playerId: String, target: PanelTargetID, index: Int) -> URL {
         candidatesDir(for: playerId, target: target)
             .appendingPathComponent(String(format: "%03d.png", index))
+    }
+
+    /// Slice H: a zero-byte sentinel co-located with the gallery so a wipe of
+    /// the gallery dir (acceptCandidate) auto-clears it. Filename starts with
+    /// a dot so `listCandidates`/`nextCandidateIndex` ignore it via the
+    /// existing `Int(stem)` filter.
+    private func deferMarkerURL(playerId: String, target: PanelTargetID) -> URL {
+        candidatesDir(for: playerId, target: target)
+            .appendingPathComponent(".failed")
     }
 
     private func nextCandidateIndex(in dir: URL) -> Int {

@@ -19,13 +19,17 @@ public enum PlayerStatus: Equatable, Sendable {
         let captured = store.capturedRequirements(playerId: playerId)
         var needsPhoto = false
         for panel in template.panels {
-            if store.hasPanel(playerId: playerId, target: .panel(panel.n)) {
+            // Slice H: a deferred panel counts as "resolved" so the operator
+            // can finalize with empty cells (ADR-0009 failed-card recovery).
+            if store.hasPanel(playerId: playerId, target: .panel(panel.n))
+                || store.isDeferred(playerId: playerId, target: .panel(panel.n)) {
                 done += 1
             } else if !captured.contains(panel.requirement) {
                 needsPhoto = true
             }
         }
-        if store.hasPanel(playerId: playerId, target: .cover) {
+        if store.hasPanel(playerId: playerId, target: .cover)
+            || store.isDeferred(playerId: playerId, target: .cover) {
             done += 1
         } else if !captured.contains(template.cover.requirement) {
             needsPhoto = true
