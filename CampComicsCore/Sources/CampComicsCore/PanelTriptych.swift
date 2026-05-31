@@ -158,6 +158,47 @@ public enum ReviewUnit: Equatable, Sendable {
     case single(PanelTarget)
     case triptych(PanelTriptych)
 
+    /// Slice I (#69): true when every unit has reached a terminal disk state —
+    /// either accepted (`panel_NN.png` on disk) or deferred (`.failed`
+    /// sentinel). For triptychs every sub-panel must be individually resolved;
+    /// mixed accepted+deferred across sub-panels is allowed. Drives the grid
+    /// sheet's auto-presentation: when the last unaccepted unit lands in a
+    /// terminal state, the operator gets the grid + Generate-PDF CTA without
+    /// having to hunt for the toolbar.
+    public static func allTerminal(units: [ReviewUnit],
+                                   playerId: String,
+                                   store: PlayerStore) -> Bool {
+        units.allSatisfy { unit in
+            switch unit {
+            case .single(let target):
+                return store.hasPanel(playerId: playerId, target: target.id)
+                    || store.isDeferred(playerId: playerId, target: target.id)
+            case .triptych(let trip):
+                return trip.subTargetIDs.allSatisfy { id in
+                    store.hasPanel(playerId: playerId, target: id)
+                        || store.isDeferred(playerId: playerId, target: id)
+                }
+            }
+        }
+    }
+
+    /// Slice I (#69): index of the unit containing `targetID`, or nil if the
+    /// id isn't owned by any Phase-2 unit (e.g. panel 1, which Phase 1 owns).
+    /// Drives jump-to-panel from the grid: the operator taps a cell, we look
+    /// up its unit, and the stack head re-positions to that index.
+    public static func unitIndex(for targetID: PanelTargetID,
+                                 in units: [ReviewUnit]) -> Int? {
+        for (i, unit) in units.enumerated() {
+            switch unit {
+            case .single(let target):
+                if target.id == targetID { return i }
+            case .triptych(let trip):
+                if trip.subTargetIDs.contains(targetID) { return i }
+            }
+        }
+        return nil
+    }
+
     /// Story-ordered build: panels 2..N then cover, with the two triptychs
     /// collapsed into single units. Panel 1 is excluded (Phase 1 owns it).
     public static func phase2Units(from template: ClassTemplate) -> [ReviewUnit] {

@@ -296,4 +296,99 @@ struct ReviewUnitTests {
             }
         }
     }
+
+    // MARK: - Slice I (#69) — grid jump-to-head + completion predicate
+
+    @Test func unitIndexForSinglePanelFindsItsOwnUnit() {
+        let units = ReviewUnit.phase2Units(from: makeTemplate())
+        // Panel 2 is at index 0 in Phase-2 (panel 1 is excluded).
+        #expect(ReviewUnit.unitIndex(for: .panel(2), in: units) == 0)
+        // Panel 6 is at index 2 (after panel 2 + P-in triptych).
+        #expect(ReviewUnit.unitIndex(for: .panel(6), in: units) == 2)
+        // Cover is the last unit (index 10 in an 11-unit list).
+        #expect(ReviewUnit.unitIndex(for: .cover, in: units) == 10)
+    }
+
+    @Test func unitIndexForTriptychSubPanelReturnsTheTriptychUnit() {
+        let units = ReviewUnit.phase2Units(from: makeTemplate())
+        // P-in triptych is at index 1; any of panels 3/4/5 must map there.
+        #expect(ReviewUnit.unitIndex(for: .panel(3), in: units) == 1)
+        #expect(ReviewUnit.unitIndex(for: .panel(4), in: units) == 1)
+        #expect(ReviewUnit.unitIndex(for: .panel(5), in: units) == 1)
+        // H-out triptych is at index 8.
+        #expect(ReviewUnit.unitIndex(for: .panel(12), in: units) == 8)
+        #expect(ReviewUnit.unitIndex(for: .panel(14), in: units) == 8)
+    }
+
+    @Test func unitIndexForPanel1IsNilBecausePhase1OwnsIt() {
+        let units = ReviewUnit.phase2Units(from: makeTemplate())
+        // Panel 1 isn't a Phase-2 unit; tapping it in the grid is a no-op
+        // from the swipe surface's perspective.
+        #expect(ReviewUnit.unitIndex(for: .panel(1), in: units) == nil)
+    }
+
+    // MARK: - Slice I (#69) — allTerminal: drives grid auto-presentation
+
+    private func makeStoreForTerminal() throws -> (PlayerStore, String) {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("camp-comics-review-unit-terminal-\(UUID().uuidString)",
+                                    isDirectory: true)
+        let store = try PlayerStore(root: root)
+        let player = try store.create(playerName: "Alex", characterName: "",
+                                      classKey: "druid")
+        return (store, player.id)
+    }
+
+    private func acceptAll(units: [ReviewUnit], playerId: String, store: PlayerStore) throws {
+        let png = Data([0x89, 0x50, 0x4E, 0x47])
+        for unit in units {
+            switch unit {
+            case .single(let target):
+                try store.savePanel(playerId: playerId, target: target.id, pngData: png)
+            case .triptych(let trip):
+                for id in trip.subTargetIDs {
+                    try store.savePanel(playerId: playerId, target: id, pngData: png)
+                }
+            }
+        }
+    }
+
+    @Test func allTerminalIsFalseWhenNothingOnDisk() throws {
+        let (store, playerId) = try makeStoreForTerminal()
+        let units = ReviewUnit.phase2Units(from: makeTemplate())
+        #expect(ReviewUnit.allTerminal(units: units, playerId: playerId, store: store) == false)
+    }
+
+    @Test func allTerminalIsTrueWhenEveryUnitAcceptedOnDisk() throws {
+        let (store, playerId) = try makeStoreForTerminal()
+        let units = ReviewUnit.phase2Units(from: makeTemplate())
+        try acceptAll(units: units, playerId: playerId, store: store)
+        #expect(ReviewUnit.allTerminal(units: units, playerId: playerId, store: store) == true)
+    }
+
+    @Test func allTerminalCountsDeferredAsResolvedForSinglePanels() throws {
+        let (store, playerId) = try makeStoreForTerminal()
+        let units = ReviewUnit.phase2Units(from: makeTemplate())
+        // Accept everything, then delete panel 6's PNG and mark it deferred —
+        // a deferred single counts as terminal per ADR-0009 failed-card recovery.
+        try acceptAll(units: units, playerId: playerId, store: store)
+        try store.deletePanel(playerId: playerId, target: .panel(6))
+        try store.markDeferred(playerId: playerId, target: .panel(6))
+        #expect(ReviewUnit.allTerminal(units: units, playerId: playerId, store: store) == true)
+    }
+
+    @Test func allTerminalRequiresEveryTriptychSubPanelResolved() throws {
+        let (store, playerId) = try makeStoreForTerminal()
+        let units = ReviewUnit.phase2Units(from: makeTemplate())
+        // Accept everything except panel 4 (the middle of the P-in triptych).
+        try acceptAll(units: units, playerId: playerId, store: store)
+        try store.deletePanel(playerId: playerId, target: .panel(4))
+        // With one sub-panel still pending, the triptych is not terminal.
+        #expect(ReviewUnit.allTerminal(units: units, playerId: playerId, store: store) == false)
+        // Defer it — now the whole triptych is terminal again (mixed
+        // accepted+deferred across sub-panels is allowed; per-sub-panel
+        // resolution is what matters for the completion gate).
+        try store.markDeferred(playerId: playerId, target: .panel(4))
+        #expect(ReviewUnit.allTerminal(units: units, playerId: playerId, store: store) == true)
+    }
 }

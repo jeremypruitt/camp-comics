@@ -50,15 +50,44 @@ struct Phase2StackView: View {
     /// on-disk `.failed` marker and resurface as a failed card when the
     /// stack reaches them (with no message).
     @State private var failedHeadMessage: String?
+    /// Slice I (#69): grid sheet visibility. Tapped via the toolbar grid icon
+    /// (mid-flight escape hatch) or auto-presented when every Phase-2 unit
+    /// reaches a terminal disk state (accepted or deferred).
+    @State private var showingGrid: Bool = false
+    /// Slice I (#69): one-shot guard so the grid auto-presents only once per
+    /// session. The operator can dismiss it (e.g. to re-roll a panel) and
+    /// re-summon it from the toolbar without it re-springing every headTick.
+    @State private var autoPresentedGrid: Bool = false
+    /// Slice I (#69): set when an Accepted cell is tapped from the grid —
+    /// surfaces a confirm before demoting the accepted PNG back into the
+    /// candidate gallery.
+    @State private var pendingAcceptedDemoteID: PanelTargetID?
+    /// Slice I (#69): set when a Deferred (Failed) cell is tapped — surfaces
+    /// a Retry confirm before unmarking the sentinel and re-enqueueing.
+    @State private var pendingDeferredRetryID: PanelTargetID?
+    /// Slice I (#69): ad-hoc target re-generation task (Retry-from-grid).
+    /// Distinct from `rerollTask` because the target may not be the current
+    /// head — the operator could trigger a re-generation for a panel they
+    /// jumped to but haven't reviewed yet.
+    @State private var gridRetryTask: Task<Void, Never>?
+    /// Slice I (#69): PDF preview presented after the grid's Generate-PDF CTA
+    /// finishes rendering. Uses the same `PreviewItem` + `PDFPreview` pair as
+    /// `PlayerDetailView`.
+    @State private var pdfPreviewItem: PreviewItem?
+    @State private var isRenderingPDF: Bool = false
+    @State private var pendingDeferredFinalize: [String] = []
+    let trialBackend: any SponsoredTrialBackend
 
     init(player: PlayerRecord,
          template: ClassTemplate,
          store: PlayerStore,
-         generator: any PanelGenerator) {
+         generator: any PanelGenerator,
+         trialBackend: any SponsoredTrialBackend = FirestoreSponsoredTrialBackend()) {
         self.player = player
         self.template = template
         self.store = store
         self.generator = generator
+        self.trialBackend = trialBackend
         _budget = State(initialValue: store.generationBudget(playerId: player.id,
                                                              panelCount: template.panels.count))
     }
@@ -79,15 +108,71 @@ struct Phase2StackView: View {
         .padding(.vertical)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { budgetChip }
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    showingGrid = true
+                } label: {
+                    Image(systemName: "square.grid.3x3")
+                }
+                .accessibilityLabel("Open panel grid")
+            }
         }
         .onAppear { startQueueIfNeeded() }
         .onDisappear {
             queueTask?.cancel()
             rerollTask?.cancel()
             triptychRerollTask?.cancel()
+            gridRetryTask?.cancel()
         }
+        .onChange(of: headTick) { _, _ in maybeAutoPresentGrid() }
         .sheet(isPresented: $showExhaustionModal) {
             exhaustionModal
+        }
+        .sheet(isPresented: $showingGrid) {
+            gridSheet
+        }
+        .sheet(item: $pdfPreviewItem) { item in
+            PDFPreview(url: item.url)
+        }
+        .confirmationDialog(
+            acceptedDemoteMessage,
+            isPresented: Binding(get: { pendingAcceptedDemoteID != nil },
+                                 set: { if !$0 { pendingAcceptedDemoteID = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Re-roll") {
+                if let id = pendingAcceptedDemoteID {
+                    pendingAcceptedDemoteID = nil
+                    performAcceptedDemote(id: id)
+                }
+            }
+            Button("Cancel", role: .cancel) { pendingAcceptedDemoteID = nil }
+        }
+        .confirmationDialog(
+            deferredRetryMessage,
+            isPresented: Binding(get: { pendingDeferredRetryID != nil },
+                                 set: { if !$0 { pendingDeferredRetryID = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Retry") {
+                if let id = pendingDeferredRetryID {
+                    pendingDeferredRetryID = nil
+                    performDeferredRetry(id: id)
+                }
+            }
+            Button("Cancel", role: .cancel) { pendingDeferredRetryID = nil }
+        }
+        .confirmationDialog(
+            deferredFinalizeMessage,
+            isPresented: Binding(get: { !pendingDeferredFinalize.isEmpty },
+                                 set: { if !$0 { pendingDeferredFinalize = [] } }),
+            titleVisibility: .visible
+        ) {
+            Button("Generate anyway") {
+                pendingDeferredFinalize = []
+                Task { await generatePDF() }
+            }
+            Button("Cancel", role: .cancel) { pendingDeferredFinalize = [] }
         }
         .sheet(isPresented: $showRepromptSheet) {
             RepromptAddendumSheet(
@@ -106,6 +191,235 @@ struct Phase2StackView: View {
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+        }
+    }
+
+    // MARK: - Slice I (#69) — grid sheet + auto-present + cell-tap routing
+
+    private var gridSheet: some View {
+        NavigationStack {
+            PanelGridView(
+                player: player,
+                template: template,
+                store: store,
+                onSelect: handleGridSelect,
+                onGeneratePDF: { onGeneratePDFTapped() },
+                generatePDFLabel: "Generate PDF",
+                isGeneratingPDF: isRenderingPDF
+            )
+            .navigationTitle("Grid")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { showingGrid = false }
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func maybeAutoPresentGrid() {
+        guard !autoPresentedGrid else { return }
+        guard !showingGrid else { return }
+        guard ReviewUnit.allTerminal(units: units, playerId: player.id, store: store) else {
+            return
+        }
+        autoPresentedGrid = true
+        showingGrid = true
+    }
+
+    /// Slice I (#69): route a grid cell tap by the cell's disk-derived status.
+    /// Accepted → demote-confirm; deferred → retry-confirm; unstarted/reviewing
+    /// → jump head silently (the operator just wants to see that panel in the
+    /// stack). `.missingPhoto` is unreachable on the swipe surface because
+    /// every panel has its photo by the time Phase 2 starts, but we treat it
+    /// the same as unstarted (silent jump) defensively.
+    private func handleGridSelect(targetID: PanelTargetID) {
+        guard let target = lookupTarget(id: targetID) else { return }
+        let status = PanelGridCellStatus.derive(target: target,
+                                                playerId: player.id,
+                                                store: store)
+        switch status {
+        case .accepted:
+            pendingAcceptedDemoteID = targetID
+        case .failed:
+            pendingDeferredRetryID = targetID
+        case .reviewing, .unstarted, .missingPhoto:
+            jumpHead(to: targetID)
+            showingGrid = false
+        }
+    }
+
+    private var acceptedDemoteMessage: String {
+        guard let id = pendingAcceptedDemoteID else { return "" }
+        return "Re-roll \(humanLabel(for: id))? The current accepted image will return to the gallery as candidate #1."
+    }
+
+    private var deferredRetryMessage: String {
+        guard let id = pendingDeferredRetryID else { return "" }
+        return "Retry \(humanLabel(for: id))? The previous failure marker will be cleared and the panel will re-generate."
+    }
+
+    private func humanLabel(for id: PanelTargetID) -> String {
+        switch id {
+        case .panel(let n): return "panel \(n)"
+        case .cover: return "the cover"
+        }
+    }
+
+    /// Demote-then-jump: writes the accepted PNG back into the candidate dir
+    /// as index 0 (operator's prior choice stays visible) and re-positions the
+    /// head. The operator can swipe-left to spend a new Re-roll or swipe-right
+    /// to re-accept the demoted image; we don't auto-fire a generation because
+    /// the issue spec routes that decision through the existing swipe gesture.
+    private func performAcceptedDemote(id: PanelTargetID) {
+        do {
+            try store.demoteAcceptedToCandidate(playerId: player.id, target: id)
+        } catch {
+            lastError = String(describing: error)
+            return
+        }
+        jumpHead(to: id)
+        showingGrid = false
+    }
+
+    /// Retry-from-grid: clears the `.failed` sentinel, jumps the head to the
+    /// containing unit, and fires a single ad-hoc generation for that target.
+    /// For triptych sub-panels, only the tapped sub-panel re-generates — the
+    /// other two sub-panels (which might already be accepted or deferred) are
+    /// untouched. Once the new candidate lands, the triptych super-card
+    /// re-renders automatically per slice G.
+    private func performDeferredRetry(id: PanelTargetID) {
+        try? store.unmarkDeferred(playerId: player.id, target: id)
+        jumpHead(to: id)
+        showingGrid = false
+        guard !budget.isExhausted else {
+            showExhaustionModal = true
+            return
+        }
+        guard let target = lookupTarget(id: id) else { return }
+        gridRetryTask?.cancel()
+        let playerId = player.id
+        let template = template
+        let store = store
+        let generator = generator
+        gridRetryTask = Task {
+            defer {
+                Task { @MainActor in
+                    gridRetryTask = nil
+                    refreshHead()
+                    refreshBudget()
+                }
+            }
+            do {
+                try await Self.runOneAppendingCandidate(target: target,
+                                                        playerId: playerId,
+                                                        template: template,
+                                                        store: store,
+                                                        generator: generator)
+                await MainActor.run {
+                    failedHeadMessage = nil
+                    refreshHead()
+                    refreshBudget()
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await MainActor.run {
+                    // Surface the failure on the head card if this id is the
+                    // current head; otherwise persist the deferred marker so
+                    // the grid stays in `.failed` for next time.
+                    if headTarget.id == id || headUnitContains(id: id) {
+                        failedHeadMessage = String(describing: error)
+                    } else {
+                        try? store.markDeferred(playerId: player.id, target: id)
+                    }
+                    refreshHead()
+                    refreshBudget()
+                }
+            }
+        }
+    }
+
+    private func jumpHead(to id: PanelTargetID) {
+        guard let idx = ReviewUnit.unitIndex(for: id, in: units) else { return }
+        headIndex = idx
+        failedHeadMessage = nil
+        refreshHead()
+    }
+
+    /// Looks up the full `PanelTarget` (with spec payload) for a `PanelTargetID`
+    /// by scanning the template. Needed for `PanelGridCellStatus.derive` and
+    /// for the ad-hoc retry task's `runOneAppendingCandidate` call.
+    private func lookupTarget(id: PanelTargetID) -> PanelTarget? {
+        switch id {
+        case .panel(let n):
+            guard let spec = template.panels.first(where: { $0.n == n }) else { return nil }
+            return .panel(n: n, spec: spec)
+        case .cover:
+            return .cover(spec: template.cover)
+        }
+    }
+
+    // MARK: - Slice I (#69) — Generate PDF from the grid sheet
+
+    private func onGeneratePDFTapped() {
+        let deferredNames = deferredTargetNames()
+        if deferredNames.isEmpty {
+            Task { await generatePDF() }
+        } else {
+            pendingDeferredFinalize = deferredNames
+        }
+    }
+
+    /// Story-ordered human labels for every deferred target — fed into the
+    /// empty-cells confirm copy mirrored from `PlayerDetailView`'s slice-H
+    /// implementation so the operator gets the same warning whether they
+    /// finalize from player detail or from the grid sheet.
+    private func deferredTargetNames() -> [String] {
+        var names: [String] = []
+        for panel in template.panels where store.isDeferred(playerId: player.id, target: .panel(panel.n)) {
+            names.append("Panel \(panel.n)")
+        }
+        if store.isDeferred(playerId: player.id, target: .cover) {
+            names.append("Cover")
+        }
+        return names
+    }
+
+    private var deferredFinalizeMessage: String {
+        let names = pendingDeferredFinalize
+        if names.count == 1 {
+            return "\(names[0]) has no image — your comic will have an empty cell. Generate anyway?"
+        }
+        let joined = names.joined(separator: ", ")
+        return "\(joined) have no images — your comic will have empty cells. Generate anyway?"
+    }
+
+    private func generatePDF() async {
+        isRenderingPDF = true
+        defer { isRenderingPDF = false }
+        do {
+            let url = try await PDFRenderer.render(player: player,
+                                                   template: template,
+                                                   store: store)
+            // Dismiss the grid sheet before presenting the PDF preview —
+            // SwiftUI won't stack two sheets from the same host view, and
+            // the preview is the natural endpoint once render succeeds.
+            showingGrid = false
+            // Small delay so the grid's dismissal animation completes before
+            // the preview sheet animates in; without it the second sheet
+            // either drops the presentation or stutters.
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            pdfPreviewItem = PreviewItem(url: url)
+            if BillingModeStore().current == .sponsored {
+                let backend = trialBackend
+                let playerId = player.id
+                Task { try? await backend.recordFinalized(playerId: playerId) }
+            }
+        } catch {
+            lastError = "PDF render failed: \(error.localizedDescription)"
         }
     }
 
