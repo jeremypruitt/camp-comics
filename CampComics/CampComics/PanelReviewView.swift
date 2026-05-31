@@ -12,6 +12,7 @@ struct PanelReviewView: View {
     let template: ClassTemplate
     let store: PlayerStore
     let generator: any PanelGenerator
+    let onRequestFinalize: (() -> Void)?
 
     @State private var currentTarget: PanelTarget
     @State private var review: PanelReviewState
@@ -27,19 +28,27 @@ struct PanelReviewView: View {
     @State private var showingMissingPhotoCapture: Bool = false
     @State private var showingGrid: Bool = false
     @State private var showingReprompt: Bool = false
+    @State private var budget: GenerationBudget = .empty
+    @State private var showingExhaustionModal: Bool = false
+    /// Read at `body` build time so chip + gate respond to mid-comic flips
+    /// (the exhaustion modal's Switch-to-BYO action is one such flip).
+    @State private var billingMode: BillingMode = BillingModeStore().current
+    @Environment(\.dismiss) private var dismiss
 
-    /// Fallback wait when Vertex 429s without a parseable retry-after.
+    /// Fallback wait when the model 429s without a parseable retry-after.
     private static let defaultRetryAfterSeconds: TimeInterval = 6
 
     init(player: PlayerRecord,
          template: ClassTemplate,
          store: PlayerStore,
          generator: any PanelGenerator = FirebaseAIPanelGenerator(billingMode: BillingModeStore().current),
-         startAt: PanelTarget) {
+         startAt: PanelTarget,
+         onRequestFinalize: (() -> Void)? = nil) {
         self.player = player
         self.template = template
         self.store = store
         self.generator = generator
+        self.onRequestFinalize = onRequestFinalize
         _currentTarget = State(initialValue: startAt)
         _review = State(initialValue: PanelReviewState.hydrate(playerId: player.id,
                                                                target: startAt.id,
@@ -70,7 +79,11 @@ struct PanelReviewView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle(headerTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear(perform: reloadCurrentTarget)
+        .onAppear {
+            reloadCurrentTarget()
+            refreshBudget()
+            billingMode = BillingModeStore().current
+        }
         .onDisappear {
             pendingTask?.cancel()
             throttleTask?.cancel()
@@ -109,6 +122,29 @@ struct PanelReviewView: View {
                           onCancel: { showingReprompt = false })
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showingExhaustionModal) {
+            ExhaustionModalSheet(
+                player: player,
+                template: template,
+                store: store,
+                isPresented: $showingExhaustionModal,
+                onFinalize: {
+                    onRequestFinalize?()
+                    dismiss()
+                },
+                onSwitchToBYO: {
+                    BillingModeStore().current = .byo
+                    billingMode = .byo
+                    // TODO(#52): trigger BYO key paste sheet here once that slice lands.
+                },
+                onSelectMissing: { target in
+                    currentTarget = target
+                    afterNav()
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingGrid) {
             NavigationStack {
@@ -149,11 +185,17 @@ struct PanelReviewView: View {
     // MARK: - Subviews
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if !currentBeat.isEmpty {
-                Text(currentBeat)
-                    .font(.footnote.italic())
-                    .foregroundStyle(.secondary)
+        let card = VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                if !currentBeat.isEmpty {
+                    Text(currentBeat)
+                        .font(.footnote.italic())
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                if let chip = budgetChipText {
+                    budgetPill(chip)
+                }
             }
             HStack {
                 Text(stateLabel).font(.headline)
@@ -167,6 +209,62 @@ struct PanelReviewView: View {
         .padding()
         .background(Color(.secondarySystemGroupedBackground),
                     in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+        #if DEBUG
+        return card.contextMenu {
+            Button("Drain to 1 re-roll (DEBUG)") {
+                try? store.setGenerationBudget(playerId: player.id,
+                                               GenerationBudget(spent: GenerationBudget.limit - 1))
+                refreshBudget()
+            }
+            Button("Refill to \(GenerationBudget.limit) (DEBUG)") {
+                try? store.setGenerationBudget(playerId: player.id, .empty)
+                refreshBudget()
+            }
+            Button("Flip mode to sponsored (DEBUG)") {
+                BillingModeStore().current = .sponsored
+                billingMode = .sponsored
+            }
+            Button("Flip mode to BYO (DEBUG)") {
+                BillingModeStore().current = .byo
+                billingMode = .byo
+            }
+        }
+        #else
+        return card
+        #endif
+    }
+
+    /// Per-comic budget chip per ADR-0008. Two display states:
+    ///   • `.sponsored` + `remaining > 0`: numeric chip ("23 re-rolls left").
+    ///   • `.byo`: non-numeric "BYO · uncapped" badge so the operator can
+    ///     always see which billing axis they're on. Returns `nil` only when
+    ///     `.sponsored` + `remaining == 0` (modal up; chip would be redundant).
+    private var budgetChipText: String? {
+        if billingMode == .byo { return "BYO · uncapped" }
+        let remaining = budget.remaining
+        guard remaining > 0 else { return nil }
+        return remaining == 1 ? "1 re-roll left" : "\(remaining) re-rolls left"
+    }
+
+    private func budgetPill(_ text: String) -> some View {
+        let isByo = billingMode == .byo
+        let tint: Color = isByo ? .secondary : .accentColor
+        let icon = isByo ? "key.fill" : "die.face.5"
+        return HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.caption2.weight(.semibold))
+            Text(text)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(tint.opacity(0.18),
+                    in: Capsule(style: .continuous))
+        .foregroundStyle(tint)
+        .accessibilityLabel(text)
     }
 
     private var outOfOrderChip: Text? {
@@ -422,6 +520,17 @@ struct PanelReviewView: View {
         lastError = nil
         throttleTask?.cancel()
         throttleCountdown = 0
+        // Per-comic budget gate (ADR-0008). Sponsored mode only — BYO is uncapped.
+        // Pre-call decrement, no refunds: failures + throttle auto-retries burn
+        // the unit because the model has already been billed by then.
+        if billingMode == .sponsored {
+            if budget.isExhausted {
+                showingExhaustionModal = true
+                return
+            }
+            try? store.setGenerationBudget(playerId: player.id, budget.decremented())
+            refreshBudget()
+        }
         let target = currentTarget
         guard let photoData = store.loadPhoto(playerId: player.id,
                                               requirement: currentRequirement) else {
@@ -567,6 +676,10 @@ struct PanelReviewView: View {
         } catch {
             lastError = String(describing: error)
         }
+    }
+
+    private func refreshBudget() {
+        budget = store.generationBudget(playerId: player.id)
     }
 
     private func reloadCurrentTarget() {
