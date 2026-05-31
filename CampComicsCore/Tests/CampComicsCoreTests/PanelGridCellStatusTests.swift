@@ -161,7 +161,7 @@ struct PanelGridCellStatusTests {
     @Test func panelWithDeferMarkerYieldsFailed() throws {
         // Slice H: a deferred panel persists a `.failed` sentinel under
         // `_candidates/{stem}/`. The grid surfaces it as `.failed` so the
-        // operator can return from the grid and retry from `PanelReviewView`.
+        // operator can return from the grid and retry from the swipe stack.
         let (store, _) = try makeStore()
         let template = makeTemplate()
         let player = try store.create(playerName: "Alex", characterName: "",

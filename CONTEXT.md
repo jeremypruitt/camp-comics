@@ -19,7 +19,7 @@ The 16th generated artifact, sibling to (not a kind of) panel. Has its own promp
 _Avoid_: "panel 16", "cover panel".
 
 **PanelTarget**:
-Code-level discriminator for the shared review surface: `panel(n: Int, spec: PanelSpec) | cover(spec: CoverSpec)`. Parameterizes `PanelReviewView`, `PromptBuilder`, and `PhotoReferenceResolver` so panels and the cover share one code path. On-disk identity is a sibling enum `PanelTargetID` (`.panel(Int) | .cover`) — serialized as the string discriminator `"panel_07"` / `"cover"` in `_attempts.json` and used by `PlayerStore` to address files.
+Code-level discriminator for the shared review surface: `panel(n: Int, spec: PanelSpec) | cover(spec: CoverSpec)`. Parameterizes `ReviewStackView`, `PromptBuilder`, and `PhotoReferenceResolver` so panels and the cover share one code path. On-disk identity is a sibling enum `PanelTargetID` (`.panel(Int) | .cover`) — serialized as the string discriminator `"panel_07"` / `"cover"` in `_attempts.json` and used by `PlayerStore` to address files.
 
 ### Print layout
 
@@ -50,7 +50,7 @@ An in-flight image contender for a panel slot or the cover, produced by one call
 _Avoid_: "attempt" (overlaps with the retry counter), "draft" (suggests a non-final form rather than a competitor).
 
 **Gallery**:
-The live set of candidates for one panel during a review session. Empty after Accept. Re-populated when Re-roll-after-accept demotes the prior winner back in. Surfaced as the filmstrip at the bottom of `PanelReviewView`.
+The live set of candidates for one panel during a review session. Empty after Accept. Re-populated when Re-roll-after-accept demotes the prior winner back in. Surfaced as the swipe-up/down cycle on the head [[Review card]].
 _Avoid_: "candidates" (the directory) when you mean the set being reviewed.
 
 **Accepted image**:
@@ -60,7 +60,7 @@ _Avoid_: "the panel" (the panel is the slot), "winner" (only meaningful mid-revi
 ### Review surface
 
 **Review stack**:
-The full-screen card stack the operator works through to finalize a comic. Cards are ordered by [[PanelTarget]] in story order (panel 2, panel 3, ..., panel 15, cover); under the [[Generation queue]]'s panel-1-first batch shape, the stack only begins populating after panel 1 is generated and accepted in a separate phase. One card at a time is the head; swipe gestures act on the head. Replaces the legacy `PanelReviewView` + filmstrip + grid navigation as the single review surface.
+The full-screen card stack the operator works through to finalize a comic. Cards are ordered by [[PanelTarget]] in story order (panel 2, panel 3, ..., panel 15, cover); under the [[Generation queue]]'s panel-1-first batch shape, the stack only begins populating after panel 1 is generated and accepted in a separate phase. One card at a time is the head; swipe gestures act on the head. The single review surface — replaced the legacy per-panel review screen + filmstrip + grid navigation in ADR-0009.
 _Avoid_: "swipe deck" (less specific), "review queue" (queue refers to the generation backlog, not the review surface).
 
 **Review card**:
@@ -103,7 +103,7 @@ _Avoid_: "style block" (suggests it's just decorative).
 ### Generation states
 
 **Throttled**:
-Vertex 429 (per-minute quota exhausted). Its own state in `PanelReviewStateMachine`, distinct from Failed. The state shows a countdown and auto-retries **once**; if the retry also 429s, holds at Throttled until the operator taps Retry. Expected under cohort load; not an error.
+Vertex 429 (per-minute quota exhausted). First-class state in the swipe surface, distinct from Failed. Shows a countdown and auto-retries **once**; if the retry also 429s, holds at Throttled until the operator taps Retry. Expected under cohort load; not an error.
 _Avoid_: treating throttled as a flavor of Failed.
 
 **Failed**:

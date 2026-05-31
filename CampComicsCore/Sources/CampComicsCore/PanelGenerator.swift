@@ -4,7 +4,8 @@ public enum PanelGeneratorError: Error, Equatable, Sendable {
     case noImageReturned
     /// Vertex 429 / RESOURCE_EXHAUSTED. `retryAfterSeconds` is parsed from the
     /// underlying RetryInfo if present; nil means the UI should fall back to
-    /// a constant default. Drives `PanelReviewState.throttled`.
+    /// a constant default. Drives the throttled-state countdown in the swipe
+    /// surface.
     case throttled(retryAfterSeconds: TimeInterval?)
     case underlying(String)
 

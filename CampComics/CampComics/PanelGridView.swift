@@ -174,10 +174,9 @@ private struct Cell: View {
         PanelGridCellStatus.derive(target: target, playerId: playerId, store: store)
     }
 
-    /// Match what `PanelReviewView.reloadCurrentTarget` shows on entry:
-    /// accepted PNG if present, else the last (highest-indexed) candidate.
-    /// Either could be absent in `.missingPhoto` / `.unstarted` — those render
-    /// the empty rounded rect placeholder.
+    /// Accepted PNG if present, else the last (highest-indexed) candidate.
+    /// Either may be absent (missing-photo / unstarted) — those render the
+    /// empty rounded-rect placeholder.
     private func thumbnail() -> UIImage? {
         if let data = store.loadPanel(playerId: playerId, target: target.id),
            let image = UIImage(data: data) {
