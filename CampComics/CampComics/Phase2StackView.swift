@@ -1502,10 +1502,8 @@ struct Phase2StackView: View {
 /// addenda ("less smoke", "the prop should be visible") are one-shot and
 /// persisting them would silently bias every Re-roll on the panel.
 ///
-/// This sheet is distinct from `RepromptSheet` in `PanelReviewView.swift`,
-/// which edits the preamble in place (slice 11c, panel-loop UX). The new
-/// swipe-review surface deliberately leaves the assembled prompt locked and
-/// only appends the addendum, per ADR-0009 (and the slice F issue spec).
+/// The swipe-review surface deliberately leaves the assembled prompt locked
+/// and only appends the addendum, per ADR-0009 (and the slice F issue spec).
 private struct RepromptAddendumSheet: View {
     @Environment(\.themeKind) private var theme
     let assembledPrompt: String

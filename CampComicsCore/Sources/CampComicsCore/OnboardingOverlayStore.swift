@@ -2,10 +2,9 @@ import Foundation
 
 /// First-launch flag for the swipe-review tutorial overlay (ADR-0009 Slice K).
 /// The overlay auto-presents the first time an operator lands on
-/// `ReviewStackView` with the swipe-surface flag on, then sets `hasSeen = true`
-/// and never auto-shows again. Settings → "Show review tutorial" flips it back
-/// to false to re-summon on next stack mount. Mirrors the
-/// `UseSwipeReviewSurfaceStore` shape for parity.
+/// `ReviewStackView`, then sets `hasSeen = true` and never auto-shows again.
+/// Settings → "Show review tutorial" flips it back to false to re-summon on
+/// next stack mount.
 public struct OnboardingOverlayStore: @unchecked Sendable {
     public static let defaultsKey = "hasSeenReviewTutorial"
 

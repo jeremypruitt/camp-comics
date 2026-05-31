@@ -3,9 +3,10 @@ import UIKit
 import CampComicsCore
 
 /// Minimal intermediate screen (project_panel_loop_design.md #11): summary +
-/// a single Start / Continue generation button that pushes into
-/// `PanelReviewView`. Auto-start from the player list is deliberately gated so
-/// the operator opts in to Vertex spend.
+/// a single Start / Continue generation button. New players (no panel 1 yet)
+/// land on `StartCampaignView` so sponsored-trial spend + the two-phase
+/// explainer fire before generation; mid-flight players push directly into
+/// `ReviewStackView`, which resumes at Phase 2 when panel 1 is on disk.
 struct PlayerDetailView: View {
     @Environment(\.themeKind) private var theme
     let player: PlayerRecord
@@ -14,7 +15,7 @@ struct PlayerDetailView: View {
     let generator: any PanelGenerator
     let trialBackend: any SponsoredTrialBackend
 
-    @State private var showingReview = false
+    @State private var showingReviewStack = false
     @State private var showingStartCampaign = false
     @State private var previewItem: PreviewItem?
     @State private var isRendering = false
@@ -63,13 +64,12 @@ struct PlayerDetailView: View {
         .toolbarBackground(p.paper, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(theme.preferredColorScheme, for: .navigationBar)
-        .navigationDestination(isPresented: $showingReview) {
-            PanelReviewView(player: player,
+        .navigationDestination(isPresented: $showingReviewStack) {
+            ReviewStackView(player: player,
                             template: template,
                             store: store,
-                            generator: generator,
-                            startAt: startTarget,
-                            onRequestFinalize: { Task { await generatePDF() } })
+                            generator: generator)
+                .environment(\.themeKind, theme)
         }
         .navigationDestination(isPresented: $showingStartCampaign) {
             StartCampaignView(player: player,
@@ -145,15 +145,14 @@ struct PlayerDetailView: View {
 
     private var continueButton: some View {
         ThemedPrimaryButton(continueLabel, systemImage: "sparkles") {
-            // ADR-0009 flag-gated handoff. New players (no panel 1 yet) with
-            // the swipe-surface flag on get the Start CTA → ReviewStackView
-            // pipeline. Mid-flight players stay on `PanelReviewView` so the
-            // partial Phase 1 surface doesn't collide with their gallery
-            // state (the legacy review machine doesn't go away until slice L).
-            if UseSwipeReviewSurfaceStore().isEnabled && finalizedCount == 0 {
+            // ADR-0009 routing. New players (no panel 1 yet) hit the Start
+            // CTA so sponsored-trial spend + the two-phase explainer run
+            // before generation; mid-flight players resume in the swipe stack,
+            // which jumps to Phase 2 on its own when panel 1 is on disk.
+            if finalizedCount == 0 {
                 showingStartCampaign = true
             } else {
-                showingReview = true
+                showingReviewStack = true
             }
         }
     }
@@ -215,9 +214,8 @@ struct PlayerDetailView: View {
 
     // MARK: - Derived
 
-    /// Ordered review surface: 12 panels + the cover sibling. Mirrors
-    /// `PanelReviewView.allTargets` — both screens have to agree on what "N
-    /// of 13" means and which slot Start/Continue jumps to.
+    /// Ordered review surface: 12 panels + the cover sibling. Used to derive
+    /// `finalizedCount` and the Start/Continue label.
     private var allTargets: [PanelTarget] {
         var out: [PanelTarget] = template.panels.map { .panel(n: $0.n, spec: $0) }
         out.append(.cover(spec: template.cover))

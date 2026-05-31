@@ -1,12 +1,12 @@
 import Foundation
 
-/// Disk-derived per-target status used by the slice-11d grid overlay. Distinct
-/// from `PanelReviewState.Phase` because the grid is a *snapshot* of every
-/// target's state on sheet open — it can't observe runtime-only phases like
-/// `.generating` or `.throttled` that live only inside an active session. Five
-/// cases below are exactly the states a fresh `PlayerStore` inspection can
-/// prove from disk; `.failed` (slice H) is the persisted deferred-failure
-/// marker from ADR-0009's failed-card recovery path.
+/// Disk-derived per-target status used by the slice-11d grid overlay. A
+/// *snapshot* of every target's state on sheet open — it can't observe
+/// runtime-only phases like `.generating` or `.throttled` that live only
+/// inside an active session. Five cases below are exactly the states a fresh
+/// `PlayerStore` inspection can prove from disk; `.failed` (slice H) is the
+/// persisted deferred-failure marker from ADR-0009's failed-card recovery
+/// path.
 public enum PanelGridCellStatus: Equatable, Sendable {
     case unstarted
     case reviewing
