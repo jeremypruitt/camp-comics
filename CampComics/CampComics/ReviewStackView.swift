@@ -2,14 +2,14 @@ import SwiftUI
 import UIKit
 import CampComicsCore
 
-/// ADR-0009 Phase 1 surface. Single-card stack scoped to panel 1 only — the
-/// "panel 1 sets your style" beat that must clear before the Phase 2 batch
-/// worker pool (Slice D / #64) gets enqueued. Auto-fires generation on mount
-/// (the Start CTA is the operator commitment, not a second tap here). Swipe
-/// right accepts the current candidate → writes `panel_01.png` → flips to the
-/// Phase 2 placeholder. Phase 2's worker pool, gallery cycling, Re-roll, and
-/// Re-prompt land in Slices D–H; this slice deliberately ships gestures and
-/// gallery state as out-of-scope.
+/// ADR-0009 Phase 1 + Phase 2 surface. Single-card stack scoped to panel 1
+/// (the "panel 1 sets your style" beat) until acceptance flips into Phase 2,
+/// where a story-ordered worker pool generates panels 2..N + cover in parallel
+/// and the operator swipes through the head as each candidate lands on disk.
+/// Auto-fires Phase 1 generation on mount (the Start CTA is the commitment).
+/// Swipe-right on Phase 1's candidate writes `panel_01.png` and pushes into
+/// Phase 2. Swipe-left, swipe-up/down, long-press are Slice E/F/G — wired as
+/// no-ops here so the gesture surface exists for the next slices to extend.
 struct ReviewStackView: View {
     @Environment(\.themeKind) private var theme
     let player: PlayerRecord
@@ -26,7 +26,7 @@ struct ReviewStackView: View {
     private enum Phase: Equatable {
         case generatingPhase1
         case reviewingPhase1
-        case phase2Pending
+        case runningPhase2
         case failedPhase1(String)
     }
 
@@ -44,22 +44,15 @@ struct ReviewStackView: View {
         let p = theme.palette
         ZStack {
             ThemedBackground()
-            VStack(spacing: 18) {
-                Text(headerText)
-                    .font(theme.headingFont(18))
-                    .foregroundStyle(p.inkPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                cardBody
-                if let lastError {
-                    Text(lastError)
-                        .font(theme.captionFont(12))
-                        .foregroundStyle(p.danger)
-                        .padding(.horizontal)
-                }
-                Spacer()
+            switch phase {
+            case .runningPhase2:
+                Phase2StackView(player: player,
+                                template: template,
+                                store: store,
+                                generator: generator)
+            default:
+                phase1Body
             }
-            .padding(.vertical)
         }
         .navigationTitle("Review")
         .navigationBarTitleDisplayMode(.inline)
@@ -68,10 +61,10 @@ struct ReviewStackView: View {
         .toolbarColorScheme(theme.preferredColorScheme, for: .navigationBar)
         .onAppear {
             // Re-entering with panel 1 already accepted (e.g. mid-flight player
-            // flipped flag on, navigated back) skips straight to the Phase 2
-            // placeholder rather than re-firing the generation.
+            // flipped flag on, navigated back) skips straight to Phase 2 rather
+            // than re-firing panel 1 generation.
             if store.hasPanel(playerId: player.id, target: .panel(1)) {
-                phase = .phase2Pending
+                phase = .runningPhase2
             } else if pendingTask == nil, case .generatingPhase1 = phase {
                 startPanel1Generation()
             }
@@ -79,10 +72,30 @@ struct ReviewStackView: View {
         .onDisappear { pendingTask?.cancel() }
     }
 
+    private var phase1Body: some View {
+        let p = theme.palette
+        return VStack(spacing: 18) {
+            Text(headerText)
+                .font(theme.headingFont(18))
+                .foregroundStyle(p.inkPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+            cardBody
+            if let lastError {
+                Text(lastError)
+                    .font(theme.captionFont(12))
+                    .foregroundStyle(p.danger)
+                    .padding(.horizontal)
+            }
+            Spacer()
+        }
+        .padding(.vertical)
+    }
+
     private var headerText: String {
         switch phase {
         case .generatingPhase1, .reviewingPhase1: return "Panel 1 — sets the style"
-        case .phase2Pending: return "Phase 2 — batch generation"
+        case .runningPhase2: return ""
         case .failedPhase1: return "Panel 1 — failed"
         }
     }
@@ -98,8 +111,8 @@ struct ReviewStackView: View {
             } else {
                 placeholderCard
             }
-        case .phase2Pending:
-            phase2PlaceholderCard
+        case .runningPhase2:
+            EmptyView()
         case .failedPhase1(let message):
             failedCard(message: message)
         }
@@ -151,22 +164,6 @@ struct ReviewStackView: View {
                         }
                     }
             )
-    }
-
-    private var phase2PlaceholderCard: some View {
-        let p = theme.palette
-        return ThemedCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Panel 1 locked in.")
-                    .font(theme.headingFont(18))
-                    .foregroundStyle(p.inkPrimary)
-                Text("Phase 2 — panels 2–15 and the cover — lands in Slice D. Tap back to return to the campaign log.")
-                    .font(theme.bodyFont(14))
-                    .foregroundStyle(p.inkSecondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal)
     }
 
     private func failedCard(message: String) -> some View {
@@ -221,6 +218,9 @@ struct ReviewStackView: View {
                 let saved = try store.savePendingCandidate(playerId: player.id,
                                                            target: target.id,
                                                            pngData: pngData)
+                // Spend one panel 1 call against the per-comic budget so the
+                // chip the Phase 2 surface reads on mount reflects reality.
+                spendOne()
                 await MainActor.run {
                     candidate = saved
                     phase = .reviewingPhase1
@@ -246,7 +246,7 @@ struct ReviewStackView: View {
                 swipeOffset = CGSize(width: 600, height: 0)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                phase = .phase2Pending
+                phase = .runningPhase2
                 swipeOffset = .zero
                 self.candidate = nil
             }
@@ -254,6 +254,12 @@ struct ReviewStackView: View {
             lastError = String(describing: error)
             withAnimation(.spring) { swipeOffset = .zero }
         }
+    }
+
+    private func spendOne() {
+        let current = store.generationBudget(playerId: player.id,
+                                             panelCount: template.panels.count)
+        try? store.setGenerationBudget(playerId: player.id, current.decremented())
     }
 
     private func loadImage(_ url: URL) -> UIImage? {
