@@ -7,12 +7,21 @@ import CampComicsCore
 /// "sibling, not panel 13" stance from CONTEXT.md. Read-only and stateless:
 /// no observation of in-flight generation, no live refresh. Operator dismisses
 /// + reopens to see new state.
+///
+/// Slice I (#69): an optional `onGeneratePDF` closure renders a prominent
+/// finalize CTA inside the sheet — the natural endpoint when the grid
+/// auto-presents at completion, replacing the panel-loop-era "back out to
+/// player detail and tap Print" two-step. Callers that present the grid as a
+/// mid-flight escape hatch pass nil and the CTA is suppressed.
 struct PanelGridView: View {
     @Environment(\.themeKind) private var theme
     let player: PlayerRecord
     let template: ClassTemplate
     let store: PlayerStore
     let onSelect: (PanelTargetID) -> Void
+    var onGeneratePDF: (() -> Void)? = nil
+    var generatePDFLabel: String = "Generate PDF"
+    var isGeneratingPDF: Bool = false
 
     private var panelTargets: [PanelTarget] {
         template.panels.map { .panel(n: $0.n, spec: $0) }
@@ -26,6 +35,16 @@ struct PanelGridView: View {
             ThemedBackground()
             ScrollView {
                 VStack(spacing: 22) {
+                    if let onGeneratePDF {
+                        ThemedPrimaryButton(
+                            isGeneratingPDF ? "Generating…" : generatePDFLabel,
+                            systemImage: isGeneratingPDF ? nil : "doc.richtext",
+                            isLoading: isGeneratingPDF,
+                            isEnabled: !isGeneratingPDF
+                        ) {
+                            onGeneratePDF()
+                        }
+                    }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 12)],
                               spacing: 14) {
                         ForEach(panelTargets, id: \.id) { target in
