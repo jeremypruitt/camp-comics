@@ -22,6 +22,12 @@ struct ReviewStackView: View {
     @State private var pendingTask: Task<Void, Never>?
     @State private var lastError: String?
     @State private var swipeOffset: CGSize = .zero
+    /// Set when Phase 1 Accept on a panel-1 candidate trips the cascade-warn
+    /// predicate (slice J / #70). On a fresh comic this never fires — Phase 1
+    /// is by definition first-time accept — but a mid-flight player re-entering
+    /// the Phase 1 surface with downstream work already on disk could trigger
+    /// it, and the gate keeps the rule uniform across surfaces.
+    @State private var pendingPanel1AcceptIndex: Int?
 
     private enum Phase: Equatable {
         case generatingPhase1
@@ -70,6 +76,23 @@ struct ReviewStackView: View {
             }
         }
         .onDisappear { pendingTask?.cancel() }
+        .confirmationDialog(
+            "Panel 1 anchors the continuity of every other panel. The new look won't auto-propagate. Re-roll downstream panels from the grid if anything looks off.",
+            isPresented: Binding(get: { pendingPanel1AcceptIndex != nil },
+                                 set: { if !$0 { pendingPanel1AcceptIndex = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Continue") {
+                if let idx = pendingPanel1AcceptIndex {
+                    pendingPanel1AcceptIndex = nil
+                    finalizeAcceptPanel1(candidateIndex: idx)
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                pendingPanel1AcceptIndex = nil
+                withAnimation(.spring) { swipeOffset = .zero }
+            }
+        }
     }
 
     private var phase1Body: some View {
@@ -238,10 +261,24 @@ struct ReviewStackView: View {
 
     private func commitAcceptPanel1() {
         guard let candidate else { return }
+        if Panel1CascadeWarning.shouldWarn(playerId: player.id,
+                                           acceptingCandidateIndex: candidate.index,
+                                           store: store,
+                                           panelCount: template.panels.count) {
+            // Hold the swipe-released card in place (don't spring it back) so
+            // the candidate stays visible behind the dialog.
+            pendingPanel1AcceptIndex = candidate.index
+            return
+        }
+        finalizeAcceptPanel1(candidateIndex: candidate.index)
+    }
+
+    /// Shared by the unguarded swipe path and the cascade-warn Continue button.
+    private func finalizeAcceptPanel1(candidateIndex: Int) {
         do {
             try store.acceptCandidate(playerId: player.id,
                                       target: .panel(1),
-                                      candidateIndex: candidate.index)
+                                      candidateIndex: candidateIndex)
             withAnimation(.easeOut(duration: 0.2)) {
                 swipeOffset = CGSize(width: 600, height: 0)
             }
