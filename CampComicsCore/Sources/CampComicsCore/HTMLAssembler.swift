@@ -28,11 +28,18 @@ public enum HTMLAssembler {
         }
     }
 
+    /// `deferred` lists targets whose `<img>` tag should be omitted because
+    /// the operator chose Defer on a failed generation (slice H — ADR-0009).
+    /// The figure/cover frame still renders so the print layout's geometry
+    /// stays intact; an empty cell shows the cream page background plus the
+    /// figcaption.
     public static func assemble(player: PlayerRecord,
                                 template: ClassTemplate,
-                                constants: Constants = .default) -> String {
-        let body = renderCover(player: player, constants: constants)
-            + (1...3).map { renderActPage(act: $0, template: template) }.joined()
+                                constants: Constants = .default,
+                                deferred: Set<PanelTargetID> = []) -> String {
+        let body = renderCover(player: player, constants: constants,
+                               coverDeferred: deferred.contains(.cover))
+            + (1...3).map { renderActPage(act: $0, template: template, deferred: deferred) }.joined()
         return """
         <!DOCTYPE html>
         <html lang="en">
@@ -49,10 +56,12 @@ public enum HTMLAssembler {
         """
     }
 
-    private static func renderCover(player: PlayerRecord, constants: Constants) -> String {
-        """
+    private static func renderCover(player: PlayerRecord, constants: Constants,
+                                    coverDeferred: Bool) -> String {
+        let art = coverDeferred ? "" : #"<img class="cover-art" src="cover.png" alt="">"#
+        return """
         <section class="page cover">
-          <img class="cover-art" src="cover.png" alt="">
+          \(art)
           <div class="cover-overlay">
             <h1 class="character-name">\(escape(player.characterName))</h1>
             <p class="subtitle">A Tale from \(escape(constants.campName))</p>
@@ -81,7 +90,8 @@ public enum HTMLAssembler {
     private static let pInTriptychPanels: ClosedRange<Int> = 3...5
     private static let hOutTriptychPanels: ClosedRange<Int> = 12...14
 
-    private static func renderActPage(act: Int, template: ClassTemplate) -> String {
+    private static func renderActPage(act: Int, template: ClassTemplate,
+                                      deferred: Set<PanelTargetID>) -> String {
         let range = actPanelRanges[act] ?? 1...0
         let panels = template.panels.filter { range.contains($0.n) }
         var body = ""
@@ -91,15 +101,18 @@ public enum HTMLAssembler {
             if let triptychRange, triptychRange.contains(panel.n) {
                 if !emittedTriptych {
                     let triptychPanels = panels.filter { triptychRange.contains($0.n) }
-                    body += renderTriptych(panels: triptychPanels, kind: triptychKind(forActPage: act))
+                    body += renderTriptych(panels: triptychPanels,
+                                           kind: triptychKind(forActPage: act),
+                                           deferred: deferred)
                     emittedTriptych = true
                 }
                 continue
             }
             let filename = String(format: "panel_%02d.png", panel.n)
+            let img = deferred.contains(.panel(panel.n)) ? "" : #"<img src="\#(filename)" alt="">"#
             body += """
               <figure class="panel panel-\(panel.n)">
-                <img src="\(filename)" alt="">
+                \(img)
                 <figcaption>\(escape(panel.beat))</figcaption>
               </figure>
             """
@@ -136,11 +149,19 @@ public enum HTMLAssembler {
     /// the visual border continues across the cuts (same approach as the
     /// legacy diagonal pair). `clip-path` cuts the rectangular border off the
     /// diagonal portions of each cell, so the SVG overlay supplies it.
-    private static func renderTriptych(panels: [PanelSpec], kind: String) -> String {
-        let imgs = zip(panels, ["tri-left", "tri-middle", "tri-right"]).map { panel, cls in
-            let filename = String(format: "panel_%02d.png", panel.n)
-            return #"<img class="\#(cls)" src="\#(filename)" alt="">"#
-        }.joined(separator: "\n    ")
+    private static func renderTriptych(panels: [PanelSpec], kind: String,
+                                       deferred: Set<PanelTargetID>) -> String {
+        let imgs = zip(panels, ["tri-left", "tri-middle", "tri-right"])
+            .compactMap { panel, cls -> String? in
+                // Slice H: deferred sub-panels emit nothing — the clip-path
+                // shape stays in the stylesheet (it's pinned to the parent's
+                // grid cell), so the cream container background shows through
+                // the missing child while sibling sub-panels render normally.
+                if deferred.contains(.panel(panel.n)) { return nil }
+                let filename = String(format: "panel_%02d.png", panel.n)
+                return #"<img class="\#(cls)" src="\#(filename)" alt="">"#
+            }
+            .joined(separator: "\n    ")
         return """
           <figure class="panel-triptych-\(kind)">
             \(imgs)

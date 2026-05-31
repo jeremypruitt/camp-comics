@@ -36,9 +36,21 @@ public final class PDFRenderer: NSObject {
                      template: ClassTemplate,
                      store: PlayerStore,
                      constants: HTMLAssembler.Constants) async throws -> URL {
+        // Slice H (#68): a deferred panel/cover renders as an empty cell
+        // (cream background + figcaption, no `<img>`). The set is derived
+        // from disk so the renderer doesn't need a separate parameter from
+        // PlayerDetailView's "Generate PDF" call site.
+        var deferred = Set<PanelTargetID>()
+        for panel in template.panels where store.isDeferred(playerId: player.id, target: .panel(panel.n)) {
+            deferred.insert(.panel(panel.n))
+        }
+        if store.isDeferred(playerId: player.id, target: .cover) {
+            deferred.insert(.cover)
+        }
         let html = HTMLAssembler.assemble(player: player,
                                           template: template,
-                                          constants: constants)
+                                          constants: constants,
+                                          deferred: deferred)
         let panelsDir = store.panelsDirectory(playerId: player.id)
         try FileManager.default.createDirectory(at: panelsDir, withIntermediateDirectories: true)
         try Self.copyBundledFonts(to: panelsDir)

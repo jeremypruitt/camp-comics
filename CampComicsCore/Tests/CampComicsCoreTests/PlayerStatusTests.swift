@@ -207,6 +207,48 @@ struct PlayerStatusTests {
         #expect(status == .generating(done: 12, total: 13))
     }
 
+    @Test func deferredPanelCountsAsResolvedForDone() throws {
+        // Slice H: a deferred panel (one with the `.failed` sentinel from
+        // ADR-0009) counts as "resolved" for `.done` so the operator can
+        // finalize a comic with an empty cell. Otherwise the only way out of
+        // a content-policy bounce would be to keep retrying until success.
+        let (store, _) = try makeStore()
+        let template = makeTemplate()
+        let player = try store.create(playerName: "Alex", characterName: "",
+                                      classKey: "druid")
+        try captureAllPhotos(for: template, playerId: player.id, store: store)
+        for panel in template.panels where panel.n != 7 {
+            try store.savePanel(playerId: player.id, target: .panel(panel.n),
+                                pngData: Data([0x89, 0x50, 0x4E, 0x47]))
+        }
+        try store.savePanel(playerId: player.id, target: .cover,
+                            pngData: Data([0x89, 0x50, 0x4E, 0x47]))
+        try store.markDeferred(playerId: player.id, target: .panel(7))
+
+        let status = PlayerStatus.derive(playerId: player.id,
+                                         template: template,
+                                         store: store)
+        #expect(status == .done)
+    }
+
+    @Test func deferredCoverCountsAsResolvedForDone() throws {
+        let (store, _) = try makeStore()
+        let template = makeTemplate()
+        let player = try store.create(playerName: "Alex", characterName: "",
+                                      classKey: "druid")
+        try captureAllPhotos(for: template, playerId: player.id, store: store)
+        for panel in template.panels {
+            try store.savePanel(playerId: player.id, target: .panel(panel.n),
+                                pngData: Data([0x89, 0x50, 0x4E, 0x47]))
+        }
+        try store.markDeferred(playerId: player.id, target: .cover)
+
+        let status = PlayerStatus.derive(playerId: player.id,
+                                         template: template,
+                                         store: store)
+        #expect(status == .done)
+    }
+
     @Test func missingPhotoDoesNotFlagWhenEveryPanelResolved() throws {
         let (store, _) = try makeStore()
         let template = makeTemplate()

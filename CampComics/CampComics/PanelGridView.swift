@@ -129,6 +129,7 @@ private struct Cell: View {
         case .reviewing: return "reviewing"
         case .missingPhoto: return "needs photo"
         case .unstarted: return "unstarted"
+        case .failed: return "deferred"
         }
     }
 
@@ -139,6 +140,7 @@ private struct Cell: View {
         case .reviewing: return p.accent
         case .missingPhoto: return p.warning
         case .unstarted: return p.inkSecondary
+        case .failed: return p.danger
         }
     }
 

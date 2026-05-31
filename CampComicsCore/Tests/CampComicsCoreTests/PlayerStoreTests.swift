@@ -421,6 +421,81 @@ struct PlayerStoreTests {
         #expect(!FileManager.default.fileExists(atPath: dir.path))
     }
 
+    // MARK: - Defer marker (slice H — ADR-0009 failed-card recovery)
+
+    @Test func markDeferredWritesSentinelInCandidatesDir() throws {
+        // Slice H: a deferred panel persists a zero-byte `.failed` sentinel at
+        // `panels/_candidates/{stem}/.failed`. Co-locating with the gallery
+        // means `acceptCandidate`'s existing `removeItem(_candidates/{stem})`
+        // auto-clears the marker if the operator later retries-and-accepts.
+        let (store, root) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.markDeferred(playerId: player.id, target: .panel(7))
+        let url = root.appendingPathComponent(
+            "players/\(player.id)/panels/_candidates/07/.failed")
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        #expect(store.isDeferred(playerId: player.id, target: .panel(7)))
+    }
+
+    @Test func markDeferredForCoverWritesUnderCoverDir() throws {
+        let (store, root) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.markDeferred(playerId: player.id, target: .cover)
+        let url = root.appendingPathComponent(
+            "players/\(player.id)/panels/_candidates/cover/.failed")
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        #expect(store.isDeferred(playerId: player.id, target: .cover))
+    }
+
+    @Test func unmarkDeferredRemovesSentinel() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.markDeferred(playerId: player.id, target: .panel(3))
+        #expect(store.isDeferred(playerId: player.id, target: .panel(3)))
+        try store.unmarkDeferred(playerId: player.id, target: .panel(3))
+        #expect(!store.isDeferred(playerId: player.id, target: .panel(3)))
+    }
+
+    @Test func unmarkDeferredIsNoOpWhenAbsent() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.unmarkDeferred(playerId: player.id, target: .panel(4))
+        #expect(!store.isDeferred(playerId: player.id, target: .panel(4)))
+    }
+
+    @Test func isDeferredIsFalseForFreshPanel() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        #expect(!store.isDeferred(playerId: player.id, target: .panel(7)))
+        #expect(!store.isDeferred(playerId: player.id, target: .cover))
+    }
+
+    @Test func acceptCandidateClearsDeferMarker() throws {
+        // Retry path: the operator deferred a failed panel, later retried, a
+        // candidate landed, Accept cleared the gallery dir. Since the marker
+        // lives inside `_candidates/{stem}/`, acceptCandidate's existing
+        // removeItem wipes it without us having to call unmarkDeferred.
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.markDeferred(playerId: player.id, target: .panel(5))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(5),
+                                           pngData: Data([0xAA]))
+        try store.acceptCandidate(playerId: player.id, target: .panel(5), candidateIndex: 0)
+        #expect(!store.isDeferred(playerId: player.id, target: .panel(5)))
+    }
+
+    @Test func savePendingCandidateClearsDeferMarker() throws {
+        // Retry that produces a candidate (operator hasn't accepted yet)
+        // should clear the marker too — otherwise the cell would render as
+        // both .failed and .reviewing simultaneously.
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.markDeferred(playerId: player.id, target: .panel(5))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(5),
+                                           pngData: Data([0xAA]))
+        #expect(!store.isDeferred(playerId: player.id, target: .panel(5)))
+    }
+
     @Test func attemptsStateReturnsEmptyForLegacyNSchemaJSON() throws {
         // Slice 11b: hard cutover — pre-slice-11b _attempts.json carried
         // `{"n": 1, ...}` rows. They no longer match PanelAttempt's shape, so

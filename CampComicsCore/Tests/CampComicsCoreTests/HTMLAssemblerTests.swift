@@ -169,6 +169,71 @@ struct HTMLAssemblerTests {
         #expect(html.contains(#"<meta name="viewport" content="width=636">"#))
     }
 
+    // MARK: - Deferred / empty-cell tolerance (slice H — ADR-0009)
+
+    @Test func deferredPanelOmitsItsImgTag() {
+        // Slice H: a panel marked deferred-failed (e.g. content-policy bounce
+        // the operator chose to skip) gets its `<img src=...>` omitted from
+        // the assembled HTML. The figure + figcaption + cream background still
+        // render, producing the documented "empty cell" placeholder.
+        let html = HTMLAssembler.assemble(player: Self.player(),
+                                          template: Self.template(),
+                                          deferred: [.panel(2)])
+        let act1 = actBlock(in: html, act: 1)
+        #expect(!act1.contains("panel_02.png"))
+        #expect(act1.contains(#"<figure class="panel panel-2">"#))
+        #expect(act1.contains("Beat 2 caption"))
+    }
+
+    @Test func deferredPanelInTriptychOmitsThatChildOnly() {
+        // P-in triptych: deferring panel 4 leaves panels 3 and 5 in the
+        // triptych but drops the middle child's `<img>`. The clip-path layout
+        // is preserved (operator gets a cream slot in the middle).
+        let html = HTMLAssembler.assemble(player: Self.player(),
+                                          template: Self.template(),
+                                          deferred: [.panel(4)])
+        let act1 = actBlock(in: html, act: 1)
+        let triptych = triptychFigure(in: act1, kind: "in")
+        #expect(triptych.contains("panel_03.png"))
+        #expect(!triptych.contains("panel_04.png"))
+        #expect(triptych.contains("panel_05.png"))
+    }
+
+    @Test func deferredCoverOmitsCoverArt() {
+        let html = HTMLAssembler.assemble(player: Self.player(),
+                                          template: Self.template(),
+                                          deferred: [.cover])
+        let cover = coverBlock(in: html)
+        #expect(!cover.contains("cover.png"))
+        // Cover overlay (title, subtitle) should still render so the deferred
+        // cover isn't a fully blank page.
+        #expect(cover.contains("Faeloria"))
+    }
+
+    @Test func nonDeferredPanelsStillEmitTheirImg() {
+        // Defer one — the others must keep their `<img>` exactly as before.
+        let html = HTMLAssembler.assemble(player: Self.player(),
+                                          template: Self.template(),
+                                          deferred: [.panel(7)])
+        for n in 1...15 where n != 7 {
+            let filename = String(format: "panel_%02d.png", n)
+            #expect(html.contains(filename), "missing \(filename)")
+        }
+        #expect(!html.contains("panel_07.png"))
+    }
+
+    @Test func defaultDeferredSetIsBackCompatEmpty() {
+        // Existing call sites that don't pass `deferred:` get the full layout
+        // with every `<img>` present (back-compat with slice 15).
+        let html = HTMLAssembler.assemble(player: Self.player(),
+                                          template: Self.template())
+        for n in 1...15 {
+            let filename = String(format: "panel_%02d.png", n)
+            #expect(html.contains(filename))
+        }
+        #expect(html.contains("cover.png"))
+    }
+
     private func coverBlock(in html: String) -> Substring {
         guard let openRange = html.range(of: #"<section class="page cover">"#) else { return "" }
         let after = html[openRange.upperBound...]
