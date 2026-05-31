@@ -245,6 +245,25 @@ public struct PlayerStore: Sendable {
         try FileManager.default.removeItem(at: panelFile)
     }
 
+    // MARK: - Per-comic generation budget (slice 23)
+
+    /// Lazy: returns `.empty` when the JSON file is absent, so a freshly
+    /// created player has the full 32-call budget without us having to write
+    /// the file on player creation. Persisted at
+    /// `players/NNN/generation_budget.json`.
+    public func generationBudget(playerId: String) -> GenerationBudget {
+        let url = generationBudgetURL(playerId: playerId)
+        guard let data = try? Data(contentsOf: url) else { return .empty }
+        return (try? JSONDecoder().decode(GenerationBudget.self, from: data)) ?? .empty
+    }
+
+    public func setGenerationBudget(playerId: String, _ budget: GenerationBudget) throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(budget)
+        try data.write(to: generationBudgetURL(playerId: playerId), options: .atomic)
+    }
+
     public func attemptsState(playerId: String) -> [PanelAttempt] {
         let url = attemptsURL(playerId: playerId)
         guard let data = try? Data(contentsOf: url) else { return [] }
@@ -347,6 +366,10 @@ public struct PlayerStore: Sendable {
 
     private func attemptsURL(playerId: String) -> URL {
         panelsDir(for: playerId).appendingPathComponent("_attempts.json")
+    }
+
+    private func generationBudgetURL(playerId: String) -> URL {
+        playerDir(for: playerId).appendingPathComponent("generation_budget.json")
     }
 
     /// Cover and panels share the parent `_candidates/` dir but get different

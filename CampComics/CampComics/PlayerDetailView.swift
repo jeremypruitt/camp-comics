@@ -63,7 +63,8 @@ struct PlayerDetailView: View {
                             template: template,
                             store: store,
                             generator: generator,
-                            startAt: startTarget)
+                            startAt: startTarget,
+                            onRequestFinalize: { Task { await generatePDF() } })
         }
         .sheet(item: $previewItem) { item in
             PDFPreview(url: item.url)
