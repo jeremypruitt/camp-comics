@@ -358,6 +358,69 @@ struct PlayerStoreTests {
         #expect(json.contains("\"target\":\"cover\""))
     }
 
+    // MARK: - Candidate timestamp + re-roll append semantics (slice E)
+
+    @Test func savePendingCandidateStampsGeneratedAt() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        let before = Date()
+        let candidate = try store.savePendingCandidate(playerId: player.id,
+                                                       target: .panel(3),
+                                                       pngData: Data([0xAA]))
+        let after = Date()
+        let stamped = try #require(candidate.generatedAt)
+        #expect(stamped >= before.addingTimeInterval(-1))
+        #expect(stamped <= after.addingTimeInterval(1))
+    }
+
+    @Test func listCandidatesPopulatesGeneratedAt() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(3), pngData: Data([0xAA]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(3), pngData: Data([0xBB]))
+
+        let candidates = store.listCandidates(playerId: player.id, target: .panel(3))
+        #expect(candidates.count == 2)
+        for c in candidates {
+            #expect(c.generatedAt != nil)
+        }
+    }
+
+    @Test func rerollAppendsNewCandidateAtNextIndex() throws {
+        // The slice-E re-roll path is just another `savePendingCandidate` call:
+        // it must land at index = current_max + 1 and not disturb prior bytes.
+        // This guards against any future "rotate / replace" refactor.
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(5), pngData: Data([0xAA]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(5), pngData: Data([0xBB]))
+
+        let rerolled = try store.savePendingCandidate(playerId: player.id, target: .panel(5),
+                                                      pngData: Data([0xCC]))
+        #expect(rerolled.index == 2)
+
+        let candidates = store.listCandidates(playerId: player.id, target: .panel(5))
+        let bytes = try candidates.map { try Data(contentsOf: $0.url) }
+        #expect(bytes == [Data([0xAA]), Data([0xBB]), Data([0xCC])])
+    }
+
+    @Test func acceptCandidatePromotesVisibleAndDiscardsRest() throws {
+        // Slice-E swipe-right Accept must use the *currently visible* index,
+        // not always "last". Three candidates, accept #1 (middle) — verify the
+        // chosen bytes win and the candidates directory is wiped.
+        let (store, root) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(7), pngData: Data([0xAA]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(7), pngData: Data([0xBB]))
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(7), pngData: Data([0xCC]))
+
+        try store.acceptCandidate(playerId: player.id, target: .panel(7), candidateIndex: 1)
+
+        #expect(store.loadPanel(playerId: player.id, target: .panel(7)) == Data([0xBB]))
+        let dir = root.appendingPathComponent("players/\(player.id)/panels/_candidates/07")
+        #expect(!FileManager.default.fileExists(atPath: dir.path))
+    }
+
     @Test func attemptsStateReturnsEmptyForLegacyNSchemaJSON() throws {
         // Slice 11b: hard cutover — pre-slice-11b _attempts.json carried
         // `{"n": 1, ...}` rows. They no longer match PanelAttempt's shape, so

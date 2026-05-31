@@ -2,16 +2,24 @@ import SwiftUI
 import UIKit
 import CampComicsCore
 
-/// ADR-0009 Phase 2 surface (slice D / #64). Hosts a `GenerationQueue` worker
-/// pool that pulls panels 2..N + cover in story order and generates them under
-/// adaptive K. Renders the strictly story-ordered head — never panel 7 before
-/// panel 3 even if 7 lands on disk first — with a spinner placeholder while the
-/// head's underlying generation is in flight. Mid-stack in-flight panels are
-/// invisible (no thumbnails behind the head, by ADR-0009 design).
+/// ADR-0009 Phase 2 surface. Hosts a `GenerationQueue` worker pool that pulls
+/// panels 2..N + cover in story order and generates them under adaptive K, and
+/// layers slice-E's per-panel review gallery on top: every head panel can have
+/// 1..n candidates that the operator cycles through with swipe-up/down (zero
+/// API calls), re-rolls with swipe-left (one call → append to gallery, jump to
+/// newest), and accepts with swipe-right (promotes the *currently visible*
+/// candidate and wipes the rest of the gallery from disk).
 ///
-/// Single-candidate-per-panel in this slice. Swipe-right Accept advances the
-/// stack; swipe-left, swipe-up/down, long-press are Slice E/F/G — gestures
-/// stubbed as no-ops so the surface area exists for those slices to extend.
+/// The head is rendered strictly in story order — never panel 7 before panel 3
+/// even if 7 lands on disk first. Mid-stack in-flight panels are invisible (no
+/// thumbnails behind the head, by ADR-0009 design).
+///
+/// Re-roll runs through a standalone ad-hoc `Task` calling the same `runOne`
+/// worker the queue uses. It does NOT enqueue into the FIFO actor (which is
+/// fixed-shape and story-ordered); it bypasses the actor only for the purpose
+/// of "spawn one extra generation for the head", and the worker still spends
+/// budget the same way the queue does. The exhausted-budget gate is enforced
+/// at the call site so swipe-left bounces back instead of starting work.
 struct Phase2StackView: View {
     @Environment(\.themeKind) private var theme
     let player: PlayerRecord
@@ -20,12 +28,15 @@ struct Phase2StackView: View {
     let generator: any PanelGenerator
 
     @State private var headIndex: Int = 0
-    @State private var candidate: PanelCandidate?
+    @State private var gallery: [PanelCandidate] = []
+    @State private var cursor: GalleryCursor = .forNewHead(count: 0)
     @State private var swipeOffset: CGSize = .zero
     @State private var queueTask: Task<Void, Never>?
-    @State private var headTick: Int = 0   // bumps to force head re-resolve on completion
+    @State private var rerollTask: Task<Void, Never>?
+    @State private var headTick: Int = 0
     @State private var budget: GenerationBudget
     @State private var lastError: String?
+    @State private var showExhaustionModal: Bool = false
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -57,7 +68,13 @@ struct Phase2StackView: View {
             ToolbarItem(placement: .topBarTrailing) { budgetChip }
         }
         .onAppear { startQueueIfNeeded() }
-        .onDisappear { queueTask?.cancel() }
+        .onDisappear {
+            queueTask?.cancel()
+            rerollTask?.cancel()
+        }
+        .sheet(isPresented: $showExhaustionModal) {
+            exhaustionModal
+        }
     }
 
     // MARK: - Subviews
@@ -85,8 +102,8 @@ struct Phase2StackView: View {
     private var cardBody: some View {
         if isAllDone {
             doneCard
-        } else if let candidate, let image = loadImage(candidate.url) {
-            candidateCard(image: image)
+        } else if let visible, let image = loadImage(visible.url) {
+            candidateCard(candidate: visible, image: image)
         } else {
             placeholderCard
         }
@@ -99,7 +116,7 @@ struct Phase2StackView: View {
             .overlay {
                 VStack(spacing: 14) {
                     ProgressView()
-                    Text("Generating…")
+                    Text(isRerolling ? "Re-rolling…" : "Generating…")
                         .font(theme.captionFont(13))
                         .foregroundStyle(p.inkSecondary)
                 }
@@ -109,36 +126,92 @@ struct Phase2StackView: View {
             .id(headTick)
     }
 
-    private func candidateCard(image: UIImage) -> some View {
+    private func candidateCard(candidate: PanelCandidate, image: UIImage) -> some View {
         let p = theme.palette
-        return Image(uiImage: image)
-            .resizable()
-            .scaledToFit()
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .padding(.horizontal)
-            .offset(swipeOffset)
-            .rotationEffect(.degrees(Double(swipeOffset.width / 20)))
-            .overlay(alignment: .topTrailing) {
-                if swipeOffset.width > 40 {
-                    Text("ACCEPT")
-                        .font(theme.headingFont(20))
-                        .foregroundStyle(p.accent)
-                        .padding(8)
-                        .background(p.paper, in: RoundedRectangle(cornerRadius: 8))
-                        .padding(24)
+        return VStack(spacing: 10) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .offset(swipeOffset)
+                .rotationEffect(.degrees(Double(swipeOffset.width / 20)))
+                .overlay(alignment: .topTrailing) { acceptBadge }
+                .overlay(alignment: .topLeading) { rerollBadge }
+                .gesture(stackGesture)
+            galleryFooter(candidate: candidate)
+        }
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private var acceptBadge: some View {
+        let p = theme.palette
+        if swipeOffset.width > 40 {
+            Text("ACCEPT")
+                .font(theme.headingFont(20))
+                .foregroundStyle(p.accent)
+                .padding(8)
+                .background(p.paper, in: RoundedRectangle(cornerRadius: 8))
+                .padding(24)
+        }
+    }
+
+    @ViewBuilder
+    private var rerollBadge: some View {
+        let p = theme.palette
+        if swipeOffset.width < -40 {
+            Text(budget.isExhausted ? "OUT OF BUDGET" : "RE-ROLL")
+                .font(theme.headingFont(20))
+                .foregroundStyle(budget.isExhausted ? p.danger : p.accent)
+                .padding(8)
+                .background(p.paper, in: RoundedRectangle(cornerRadius: 8))
+                .padding(24)
+        }
+    }
+
+    @ViewBuilder
+    private func galleryFooter(candidate: PanelCandidate) -> some View {
+        let p = theme.palette
+        HStack(spacing: 10) {
+            DotIndicatorView(cursor: cursor)
+            Spacer()
+            Text(cursor.positionLabel)
+                .font(theme.captionFont(12))
+                .foregroundStyle(p.inkSecondary)
+            if let stamped = candidate.generatedAt {
+                Text(Self.timestampFormatter.string(from: stamped))
+                    .font(theme.captionFont(12))
+                    .foregroundStyle(p.inkSecondary)
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private var stackGesture: some Gesture {
+        DragGesture()
+            .onChanged { swipeOffset = $0.translation }
+            .onEnded { value in
+                let t = value.translation
+                let absX = abs(t.width)
+                let absY = abs(t.height)
+                // Horizontal beats vertical when |dx| > |dy|; otherwise vertical.
+                if absX > absY {
+                    if t.width > 120 {
+                        commitAcceptVisible()
+                    } else if t.width < -120 {
+                        commitRerollHead()
+                    } else {
+                        withAnimation(.spring) { swipeOffset = .zero }
+                    }
+                } else {
+                    if t.height < -80 {
+                        cycleGallery(forward: true)
+                    } else if t.height > 80 {
+                        cycleGallery(forward: false)
+                    }
+                    withAnimation(.spring) { swipeOffset = .zero }
                 }
             }
-            .gesture(
-                DragGesture()
-                    .onChanged { swipeOffset = $0.translation }
-                    .onEnded { value in
-                        if value.translation.width > 120 {
-                            commitAcceptHead()
-                        } else {
-                            withAnimation(.spring) { swipeOffset = .zero }
-                        }
-                    }
-            )
     }
 
     private var doneCard: some View {
@@ -157,6 +230,31 @@ struct Phase2StackView: View {
         .padding(.horizontal)
     }
 
+    private var exhaustionModal: some View {
+        // Mirrors slice 23's existing modal copy/affordances — kept inline here
+        // because the surface owner (Phase2StackView) is its only call site for
+        // now. If a second caller surfaces, lift it into a reusable view.
+        let p = theme.palette
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("Out of generations for this comic")
+                .font(theme.headingFont(20))
+                .foregroundStyle(p.inkPrimary)
+            Text("Accept the candidates you already have to finalize, or paste a personal API key in Settings to keep re-rolling.")
+                .font(theme.bodyFont(14))
+                .foregroundStyle(p.inkSecondary)
+            ThemedPrimaryButton("Accept current and finalize",
+                                systemImage: "checkmark.circle.fill") {
+                showExhaustionModal = false
+            }
+            ThemedPrimaryButton("Paste BYO key in Settings",
+                                systemImage: "key.fill") {
+                showExhaustionModal = false
+            }
+            Spacer()
+        }
+        .padding()
+    }
+
     // MARK: - Header text
 
     private var headerText: String {
@@ -170,8 +268,8 @@ struct Phase2StackView: View {
     // MARK: - Queue lifecycle
 
     private func startQueueIfNeeded() {
-        // Refresh candidate / budget on (re-)appear so navigating back into the
-        // surface picks up anything the queue advanced in the background.
+        // Refresh head + budget on (re-)appear so navigating back in picks up
+        // anything the queue advanced in the background.
         refreshHead()
         guard queueTask == nil else { return }
         let targetsSnapshot = targets
@@ -214,7 +312,7 @@ struct Phase2StackView: View {
         }
     }
 
-    // MARK: - Single-target worker (called from inside the queue's actor)
+    // MARK: - Single-target worker (shared by queue + ad-hoc re-roll)
 
     static func runOne(target: PanelTarget,
                        playerId: String,
@@ -222,6 +320,22 @@ struct Phase2StackView: View {
                        store: PlayerStore,
                        generator: any PanelGenerator) async throws {
         if store.hasPanel(playerId: playerId, target: target.id) { return }
+        try await runOneAppendingCandidate(target: target,
+                                           playerId: playerId,
+                                           template: template,
+                                           store: store,
+                                           generator: generator)
+    }
+
+    /// Slice E: explicit "always generate + append" path used by Re-roll. The
+    /// `hasPanel` guard is skipped because the head panel is by definition not
+    /// yet accepted (Accept advances the stack). Decrements budget on success
+    /// the same way the queue's worker does.
+    static func runOneAppendingCandidate(target: PanelTarget,
+                                         playerId: String,
+                                         template: ClassTemplate,
+                                         store: PlayerStore,
+                                         generator: any PanelGenerator) async throws {
         guard let photoData = store.loadPhoto(playerId: playerId,
                                               requirement: target.requirement) else {
             throw PanelGeneratorError.underlying("Missing reference photo for \(target.diskName).")
@@ -240,16 +354,11 @@ struct Phase2StackView: View {
                                                template: template,
                                                tokens: ["camper_name": playerNameLookup(playerId: playerId, store: store)])
         let pngData = try await generator.generatePanel(prompt: prompt, references: references)
-        // Single-candidate-per-panel for slice D — save then auto-accept onto
-        // disk so the head card and `hasPanel` agree. Re-roll / gallery cycling
-        // land in Slices E/F.
         let saved = try store.savePendingCandidate(playerId: playerId,
                                                    target: target.id,
                                                    pngData: pngData)
         appendAttempt(playerId: playerId, store: store, target: target.id,
                       prompt: prompt, candidate: saved)
-        // Spend the budget atomically with the completion event so the chip
-        // updates regardless of whether the head is this panel.
         let current = store.generationBudget(playerId: playerId,
                                              panelCount: template.panels.count)
         try? store.setGenerationBudget(playerId: playerId, current.decremented())
@@ -294,11 +403,29 @@ struct Phase2StackView: View {
 
     private func refreshHead() {
         if isAllDone {
-            candidate = nil
+            gallery = []
+            cursor = .forNewHead(count: 0)
             return
         }
         let head = headTarget
-        candidate = store.listCandidates(playerId: player.id, target: head.id).last
+        let newGallery = store.listCandidates(playerId: player.id, target: head.id)
+        let wasEmpty = gallery.isEmpty
+        let grew = newGallery.count > gallery.count
+        gallery = newGallery
+        // Cursor rules:
+        // - empty → empty (placeholder card renders)
+        // - just-appeared first candidate → start at 0
+        // - re-roll appended a new candidate → jump to newest (slice E)
+        // - regular tick with same count → keep operator's cursor where it is
+        if newGallery.isEmpty {
+            cursor = .forNewHead(count: 0)
+        } else if wasEmpty {
+            cursor = .forNewHead(count: newGallery.count)
+        } else if grew {
+            cursor = .afterAppend(count: newGallery.count)
+        } else {
+            cursor = GalleryCursor(index: cursor.index, count: newGallery.count)
+        }
         headTick &+= 1
     }
 
@@ -307,16 +434,18 @@ struct Phase2StackView: View {
                                         panelCount: template.panels.count)
     }
 
-    private func commitAcceptHead() {
+    // MARK: - Gesture commits
+
+    private func commitAcceptVisible() {
         let head = headTarget
-        // If the head already has an accepted panel on disk (race: queue and
-        // operator both completed) we just advance without re-accepting.
+        // Race: queue and operator both completed. `hasPanel` says we already
+        // accepted something for this head — advance without re-accepting.
         if !store.hasPanel(playerId: player.id, target: head.id) {
-            guard let candidate else { return }
+            guard let visible else { return }
             do {
                 try store.acceptCandidate(playerId: player.id,
                                           target: head.id,
-                                          candidateIndex: candidate.index)
+                                          candidateIndex: visible.index)
             } catch {
                 lastError = String(describing: error)
                 withAnimation(.spring) { swipeOffset = .zero }
@@ -332,6 +461,65 @@ struct Phase2StackView: View {
             refreshHead()
             refreshBudget()
         }
+    }
+
+    private func commitRerollHead() {
+        guard !budget.isExhausted else {
+            // Budget exhausted: bounce back + surface the slice-23 modal. The
+            // operator can still cycle (up/down) or accept (right) — no further
+            // gate needed because those don't spend budget.
+            withAnimation(.spring) { swipeOffset = .zero }
+            showExhaustionModal = true
+            return
+        }
+        guard rerollTask == nil else {
+            withAnimation(.spring) { swipeOffset = .zero }
+            return
+        }
+        let head = headTarget
+        let playerId = player.id
+        let template = template
+        let store = store
+        let generator = generator
+        withAnimation(.easeOut(duration: 0.2)) {
+            swipeOffset = CGSize(width: -600, height: 0)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            swipeOffset = .zero
+            // Optimistically clear the visible candidate so the placeholder
+            // ("Re-rolling…") shows while the call is in flight. Gallery state
+            // is the on-disk listing — we'll re-list when the task finishes.
+            gallery = []
+            cursor = .forNewHead(count: 0)
+            headTick &+= 1
+        }
+        rerollTask = Task {
+            defer { rerollTask = nil }
+            do {
+                try await Self.runOneAppendingCandidate(target: head,
+                                                        playerId: playerId,
+                                                        template: template,
+                                                        store: store,
+                                                        generator: generator)
+                await MainActor.run {
+                    refreshHead()
+                    refreshBudget()
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await MainActor.run {
+                    lastError = String(describing: error)
+                    refreshHead()
+                    refreshBudget()
+                }
+            }
+        }
+    }
+
+    private func cycleGallery(forward: Bool) {
+        guard gallery.count > 1 else { return }
+        cursor = forward ? cursor.advanced() : cursor.retreated()
     }
 
     // MARK: - Targets
@@ -355,8 +543,50 @@ struct Phase2StackView: View {
         headIndex >= targets.count
     }
 
+    private var visible: PanelCandidate? {
+        guard !gallery.isEmpty, cursor.index < gallery.count else { return nil }
+        return gallery[cursor.index]
+    }
+
+    private var isRerolling: Bool {
+        rerollTask != nil
+    }
+
     private func loadImage(_ url: URL) -> UIImage? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return UIImage(data: data)
+    }
+
+    private static let timestampFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .none
+        f.timeStyle = .short
+        return f
+    }()
+}
+
+/// Slice E: row of dots beneath the head card, one per candidate, filled at
+/// the cursor's index. Caps at six visible dots — beyond that the gallery is
+/// either a rendering nightmare or a sign the operator is in a re-roll
+/// runaway loop; either way "1 of 9" in the label still tells them where
+/// they are. Color uses the accent palette so it visually rhymes with the
+/// ACCEPT / RE-ROLL badges.
+struct DotIndicatorView: View {
+    @Environment(\.themeKind) private var theme
+    let cursor: GalleryCursor
+
+    private static let maxVisibleDots = 6
+
+    var body: some View {
+        let p = theme.palette
+        let visibleCount = min(cursor.count, Self.maxVisibleDots)
+        HStack(spacing: 6) {
+            ForEach(0..<visibleCount, id: \.self) { i in
+                Circle()
+                    .fill(i == cursor.index ? p.accent : p.inkSecondary.opacity(0.3))
+                    .frame(width: 6, height: 6)
+            }
+        }
+        .accessibilityLabel(Text("Candidate \(cursor.positionLabel)"))
     }
 }
