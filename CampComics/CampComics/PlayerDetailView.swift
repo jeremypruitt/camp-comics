@@ -15,6 +15,7 @@ struct PlayerDetailView: View {
     let trialBackend: any SponsoredTrialBackend
 
     @State private var showingReview = false
+    @State private var showingStartCampaign = false
     @State private var previewItem: PreviewItem?
     @State private var isRendering = false
     @State private var renderError: String?
@@ -66,6 +67,13 @@ struct PlayerDetailView: View {
                             startAt: startTarget,
                             onRequestFinalize: { Task { await generatePDF() } })
         }
+        .navigationDestination(isPresented: $showingStartCampaign) {
+            StartCampaignView(player: player,
+                              template: template,
+                              store: store,
+                              generator: generator,
+                              trialBackend: trialBackend)
+        }
         .sheet(item: $previewItem) { item in
             PDFPreview(url: item.url)
         }
@@ -108,7 +116,16 @@ struct PlayerDetailView: View {
 
     private var continueButton: some View {
         ThemedPrimaryButton(continueLabel, systemImage: "sparkles") {
-            showingReview = true
+            // ADR-0009 flag-gated handoff. New players (no panel 1 yet) with
+            // the swipe-surface flag on get the Start CTA → ReviewStackView
+            // pipeline. Mid-flight players stay on `PanelReviewView` so the
+            // partial Phase 1 surface doesn't collide with their gallery
+            // state (the legacy review machine doesn't go away until slice L).
+            if UseSwipeReviewSurfaceStore().isEnabled && finalizedCount == 0 {
+                showingStartCampaign = true
+            } else {
+                showingReview = true
+            }
         }
     }
 
