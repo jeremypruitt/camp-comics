@@ -214,6 +214,14 @@ public enum ReviewUnit: Equatable, Sendable {
         }
     }
 
+    /// Slice P (#97): quiet message shown when the operator has worked through
+    /// every card in the deck. ADR-0010's "The Finalize button is persistent"
+    /// paragraph is explicit: no celebratory modal, no auto-finalize — the
+    /// toolbar Finalize button remains the action. Lives here (not in the
+    /// view) so the wording is pinned by `PanelTriptychTests`.
+    public static let emptyDeckQuietMessage =
+        "All cards reviewed — Finalize from the toolbar."
+
     /// Slice N (#95): card-deck variant — same story-ordered build as
     /// `phase2Units`, but panel 1 is included as the first `.single` so it can
     /// be the top card of the deck from t=0. ADR-0010 supersedes ADR-0009's

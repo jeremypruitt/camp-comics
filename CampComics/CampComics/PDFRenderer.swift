@@ -36,15 +36,18 @@ public final class PDFRenderer: NSObject {
                      template: ClassTemplate,
                      store: PlayerStore,
                      constants: HTMLAssembler.Constants) async throws -> URL {
-        // Slice H (#68): a deferred panel/cover renders as an empty cell
-        // (cream background + figcaption, no `<img>`). The set is derived
-        // from disk so the renderer doesn't need a separate parameter from
-        // PlayerDetailView's "Generate PDF" call site.
+        // Slice H (#68) + Slice P (#97): a panel/cover that has no accepted
+        // PNG on disk renders as an empty cell (cream background + figcaption,
+        // no `<img>`). Slice H originated this for deferred (`.failed`)
+        // targets so the operator could finalize past a stuck panel; slice P
+        // broadens it to any not-yet-accepted target because the persistent
+        // Finalize button can fire mid-deck (un-accepted panels lack a PNG
+        // and would otherwise render as broken `<img>` tags).
         var deferred = Set<PanelTargetID>()
-        for panel in template.panels where store.isDeferred(playerId: player.id, target: .panel(panel.n)) {
+        for panel in template.panels where !store.hasPanel(playerId: player.id, target: .panel(panel.n)) {
             deferred.insert(.panel(panel.n))
         }
-        if store.isDeferred(playerId: player.id, target: .cover) {
+        if !store.hasPanel(playerId: player.id, target: .cover) {
             deferred.insert(.cover)
         }
         let html = HTMLAssembler.assemble(player: player,
