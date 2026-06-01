@@ -321,6 +321,62 @@ struct PlayerStoreTests {
         #expect(bytes == Data([0xAA]))
     }
 
+    // MARK: - Slice R (#99) — grid-tap pulls card back to deck top
+
+    @Test func demoteAndPopToDeckTopDemotesAcceptedPanel() throws {
+        // Slice R: tapping an accepted cell in the grid demotes its PNG back to
+        // the candidate gallery as index 0 — same on-disk semantics as
+        // demoteAcceptedToCandidate, exposed under a name that describes the
+        // grid → deck flow it powers.
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(7), pngData: Data([0xAA]))
+        try store.acceptCandidate(playerId: player.id, target: .panel(7), candidateIndex: 0)
+        #expect(store.hasPanel(playerId: player.id, target: .panel(7)))
+
+        try store.demoteAndPopToDeckTop(playerId: player.id, target: .panel(7))
+
+        #expect(store.hasPanel(playerId: player.id, target: .panel(7)) == false)
+        let candidates = store.listCandidates(playerId: player.id, target: .panel(7))
+        #expect(candidates.count == 1)
+        let bytes = try Data(contentsOf: candidates[0].url)
+        #expect(bytes == Data([0xAA]))
+    }
+
+    @Test func demoteAndPopToDeckTopIsNoopWhenNothingAccepted() throws {
+        // Slice R: tapping a non-accepted cell (spinning / stuck / empty) pops
+        // the card to deck top in the view layer; the store-level op must not
+        // mutate disk in that case. The card still pops because the view does
+        // not gate its head-jump on this call's return value.
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        _ = try store.savePendingCandidate(playerId: player.id, target: .panel(3), pngData: Data([0xBB]))
+        let before = store.listCandidates(playerId: player.id, target: .panel(3))
+        #expect(before.count == 1)
+        #expect(store.hasPanel(playerId: player.id, target: .panel(3)) == false)
+
+        try store.demoteAndPopToDeckTop(playerId: player.id, target: .panel(3))
+
+        #expect(store.hasPanel(playerId: player.id, target: .panel(3)) == false)
+        let after = store.listCandidates(playerId: player.id, target: .panel(3))
+        #expect(after.count == 1)
+        let bytes = try Data(contentsOf: after[0].url)
+        #expect(bytes == Data([0xBB]))
+    }
+
+    @Test func demoteAndPopToDeckTopIsNoopForEmptyTarget() throws {
+        // Slice R: a fully-empty target (no accepted PNG, no candidates) still
+        // accepts the call without throwing — the view layer pops to deck top
+        // regardless of disk state.
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+
+        try store.demoteAndPopToDeckTop(playerId: player.id, target: .cover)
+
+        #expect(store.hasPanel(playerId: player.id, target: .cover) == false)
+        #expect(store.listCandidates(playerId: player.id, target: .cover).isEmpty)
+    }
+
     @Test func setAttemptsStateRoundTrips() throws {
         let (store, _) = try makeStore()
         let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
