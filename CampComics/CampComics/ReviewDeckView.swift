@@ -42,6 +42,13 @@ struct ReviewDeckView: View {
     @State private var showingGrid: Bool = false
     @State private var rerollCounter = RerollCounter()
     @State private var pendingFriction: PendingFrictionConfirm?
+    /// Slice P (#97): persistent Finalize toolbar state. The button is
+    /// available from t=0; tapping renders the PDF with whatever is accepted
+    /// at that moment. Un-accepted panels render as empty cells per slice H's
+    /// existing `PDFRenderer` path. No confirm dialog — ADR-0010 is explicit.
+    @State private var pdfPreviewItem: PreviewItem?
+    @State private var isRenderingPDF: Bool = false
+    @State private var pdfRenderError: String?
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -76,6 +83,12 @@ struct ReviewDeckView: View {
                         .foregroundStyle(p.danger)
                         .padding(.horizontal)
                 }
+                if let pdfRenderError {
+                    Text(pdfRenderError)
+                        .font(theme.captionFont(12))
+                        .foregroundStyle(p.danger)
+                        .padding(.horizontal)
+                }
                 Spacer()
             }
             .padding(.vertical)
@@ -87,6 +100,7 @@ struct ReviewDeckView: View {
         .toolbarColorScheme(theme.preferredColorScheme, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { budgetChip }
+            ToolbarItem(placement: .topBarLeading) { finalizeButton }
             ToolbarItem(placement: .topBarLeading) {
                 Button {
                     showingGrid = true
@@ -122,6 +136,50 @@ struct ReviewDeckView: View {
         }
         .sheet(isPresented: $showingGrid) {
             gridSheet
+        }
+        .sheet(item: $pdfPreviewItem) { item in
+            PDFPreview(url: item.url)
+        }
+    }
+
+    // MARK: - Slice P (#97) — persistent Finalize toolbar
+
+    /// Always-available Finalize button. Renders the PDF against whatever is
+    /// accepted right now; empty cells are handled by slice H's `PDFRenderer`
+    /// (cream background + figcaption, no `<img>`). Per ADR-0010 there is no
+    /// confirm dialog before render — the operator decides when done.
+    private var finalizeButton: some View {
+        let p = theme.palette
+        return Button {
+            Task { await runPDFRender() }
+        } label: {
+            if isRenderingPDF {
+                ProgressView()
+            } else {
+                Image(systemName: "doc.richtext")
+            }
+        }
+        .disabled(isRenderingPDF)
+        .tint(p.accent)
+        .accessibilityLabel("Finalize comic")
+    }
+
+    private func runPDFRender() async {
+        pdfRenderError = nil
+        isRenderingPDF = true
+        defer { isRenderingPDF = false }
+        do {
+            let url = try await PDFRenderer.render(player: player,
+                                                   template: template,
+                                                   store: store)
+            pdfPreviewItem = PreviewItem(url: url)
+            if BillingModeStore().current == .sponsored {
+                let backend = trialBackend
+                let playerId = player.id
+                Task { try? await backend.recordFinalized(playerId: playerId) }
+            }
+        } catch {
+            pdfRenderError = "PDF render failed: \(error.localizedDescription)"
         }
     }
 
@@ -772,14 +830,14 @@ struct ReviewDeckView: View {
 
     // MARK: - Done state
 
+    /// Slice P (#97): quiet empty-deck state. ADR-0010 "The Finalize button is
+    /// persistent": no celebratory modal, no auto-finalize. The toolbar
+    /// Finalize button remains the action — this message just points there.
     private var doneCard: some View {
         let p = theme.palette
         return ThemedCard {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Stack complete.")
-                    .font(theme.headingFont(18))
-                    .foregroundStyle(p.inkPrimary)
-                Text("Every panel and the cover are accepted. Tap back to finalize the PDF.")
+                Text(ReviewUnit.emptyDeckQuietMessage)
                     .font(theme.bodyFont(14))
                     .foregroundStyle(p.inkSecondary)
             }

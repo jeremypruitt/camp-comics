@@ -435,4 +435,16 @@ struct ReviewUnitTests {
         if case .single(let t) = last { #expect(t.id == .cover) }
         else { Issue.record("last unit should be the cover") }
     }
+
+    // MARK: - Slice P (#97) — empty-deck quiet completion message
+
+    @Test func emptyDeckMessagePointsAtPersistentFinalizeToolbar() {
+        // ADR-0010 "The Finalize button is persistent": when the operator has
+        // worked through every card, the deck shows a quiet message that
+        // routes them to the toolbar Finalize — no celebratory modal, no
+        // auto-finalize. The wording is contractual; this test exists to
+        // catch silent drift.
+        let message = ReviewUnit.emptyDeckQuietMessage
+        #expect(message == "All cards reviewed — Finalize from the toolbar.")
+    }
 }
