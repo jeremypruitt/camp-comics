@@ -31,6 +31,7 @@ struct ReviewDeckView: View {
     @State private var queueTask: Task<Void, Never>?
     @State private var rerollTask: Task<Void, Never>?
     @State private var triptychRerollTask: Task<Void, Never>?
+    @State private var stuckRetryTask: Task<Void, Never>?
     @State private var headTick: Int = 0
     @State private var budget: GenerationBudget
     @State private var startError: String?
@@ -116,6 +117,7 @@ struct ReviewDeckView: View {
             queueTask?.cancel()
             rerollTask?.cancel()
             triptychRerollTask?.cancel()
+            stuckRetryTask?.cancel()
         }
         .alert("Re-roll this panel again?",
                isPresented: Binding(get: { pendingFriction != nil },
@@ -320,8 +322,38 @@ struct ReviewDeckView: View {
             .rotationEffect(.degrees(Double(swipeOffset.width / 20)))
             .overlay(alignment: .topLeading) { acceptBadge }
             .overlay(alignment: .topTrailing) { rerollBadge }
+            .overlay(alignment: .center) { stuckRetryAffordance }
             .gesture(topCardGesture)
             .id(headTick)
+    }
+
+    /// Slice Q (#98): "tap to try one more time" — small, centered, only
+    /// visible when the head unit is stuck. Doesn't compete with swipe gestures
+    /// because it's a single tap target inside the image area. Re-tappable
+    /// while the deferred sentinel persists.
+    @ViewBuilder
+    private var stuckRetryAffordance: some View {
+        let p = theme.palette
+        if isTopStuck && stuckRetryTask == nil {
+            Button(action: commitStuckRetry) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("Tap to try one more time")
+                        .font(theme.captionFont(12))
+                }
+                .foregroundStyle(p.inkPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(p.paper.opacity(0.92), in: Capsule())
+                .overlay(Capsule().stroke(p.inkPrimary.opacity(0.35), lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
+        } else if isTopStuck && stuckRetryTask != nil {
+            ProgressView()
+                .padding(8)
+                .background(p.paper.opacity(0.92), in: Capsule())
+        }
     }
 
     /// Either a single-panel placeholder/filled card or a composed triptych
@@ -354,8 +386,9 @@ struct ReviewDeckView: View {
     }
 
     /// Newest candidate (or accepted PNG) → `.filled`. Empty → `.spinning`.
-    /// The top card may override with the cursor-selected candidate index so
-    /// swipe-up/down cycling works.
+    /// A `.failed` sentinel on disk (Slice Q via `StuckCardCoordinator`) →
+    /// `.stuck`. The top card may override with the cursor-selected candidate
+    /// index so swipe-up/down cycling works.
     private func slotState(for target: PanelTarget, isTop: Bool) -> PlaceholderSlotState {
         // Accepted artifact wins (operator may have re-entered the deck after
         // accepting in a prior session — unlikely now that the deck mounts
@@ -363,6 +396,19 @@ struct ReviewDeckView: View {
         if let bytes = store.loadPanel(playerId: player.id, target: target.id),
            let img = UIImage(data: bytes) {
             return .filled(img)
+        }
+        // Slice Q: a deferred sentinel means the queue exhausted its 7-attempt
+        // retry budget. Render greyed; preserve any pre-failure candidate that
+        // happens to exist (extremely rare — a candidate sometimes lands then
+        // a subsequent re-roll exhausts retries — but we show the last bytes
+        // so the operator at least sees what the model produced).
+        if store.isDeferred(playerId: player.id, target: target.id) {
+            let candidates = store.listCandidates(playerId: player.id, target: target.id)
+            if let newest = candidates.max(by: { $0.index < $1.index }),
+               let img = loadImage(newest.url) {
+                return .stuck(img)
+            }
+            return .stuck(nil)
         }
         let candidates = store.listCandidates(playerId: player.id, target: target.id)
         if isTop, isHeadSingle(target: target),
@@ -392,16 +438,30 @@ struct ReviewDeckView: View {
                 let absX = abs(t.width)
                 let absY = abs(t.height)
                 if absX > absY {
-                    // Inverted vocabulary per ADR-0010: LEFT=Accept, RIGHT=Re-roll.
-                    if t.width < -120 {
-                        commitAcceptTop()
-                    } else if t.width > 120 {
-                        commitRerollTop()
+                    if isTopStuck {
+                        // Slice Q (#98): on a stuck card, swipe-LEFT advances
+                        // past (leaving an empty cell the PDF handles per
+                        // slice H); swipe-RIGHT is disabled because there's
+                        // no candidate to re-roll from. Up/down are no-ops.
+                        if t.width < -120 {
+                            commitAdvancePastStuck()
+                        } else {
+                            bounceWithHaptic()
+                        }
                     } else {
-                        withAnimation(.spring) { swipeOffset = .zero }
+                        // Inverted vocabulary per ADR-0010: LEFT=Accept, RIGHT=Re-roll.
+                        if t.width < -120 {
+                            commitAcceptTop()
+                        } else if t.width > 120 {
+                            commitRerollTop()
+                        } else {
+                            withAnimation(.spring) { swipeOffset = .zero }
+                        }
                     }
                 } else {
-                    if case .single = units[headIndex] {
+                    if isTopStuck {
+                        bounceWithHaptic()
+                    } else if case .single = units[headIndex] {
                         if t.height < -80 {
                             cycleGallery(forward: true)
                         } else if t.height > 80 {
@@ -411,6 +471,103 @@ struct ReviewDeckView: View {
                     withAnimation(.spring) { swipeOffset = .zero }
                 }
             }
+    }
+
+    private var isTopStuck: Bool {
+        units[headIndex].isStuck(playerId: player.id, store: store)
+    }
+
+    private func bounceWithHaptic() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.spring) { swipeOffset = .zero }
+    }
+
+    /// Slice Q (#98): "swipe-LEFT on stuck = advances past, leaves empty cell".
+    /// We do NOT call `acceptCandidate` here — there's no candidate to accept;
+    /// the deferred sentinel persists so the grid still reports `.failed` and
+    /// the PDF renders an empty cell for this slot. For triptychs, swipe-left
+    /// on a unit with any stuck sub-panel skips the whole unit; the operator
+    /// can return via the grid to re-attempt the stuck sub-panel(s).
+    private func commitAdvancePastStuck() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            swipeOffset = CGSize(width: -600, height: 0)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            swipeOffset = .zero
+            headIndex += 1
+            refreshHead()
+            refreshBudget()
+        }
+    }
+
+    /// Slice Q (#98) tap-to-retry: one operator-initiated generation against
+    /// `GenerationBudget`. This DOES spend budget (operator intent, explicit
+    /// re-roll). For triptychs, only the stuck sub-panels are retried; the
+    /// atomic-Accept rule is unchanged because Accept fires elsewhere.
+    private func commitStuckRetry() {
+        let stuckIDs = units[headIndex].stuckTargetIDs(playerId: player.id, store: store)
+        guard !stuckIDs.isEmpty else { return }
+        let needed = stuckIDs.count
+        guard budget.remaining >= needed else {
+            softBounce()
+            return
+        }
+        guard stuckRetryTask == nil else { return }
+        let playerId = player.id
+        let template = template
+        let store = store
+        let generator = generator
+        // Pull the full PanelTarget for each stuck id from the head unit so
+        // `runOneAppendingCandidate` gets the spec it needs.
+        let targets: [PanelTarget] = stuckTargetsForHead()
+        stuckRetryTask = Task {
+            defer {
+                Task { @MainActor in
+                    stuckRetryTask = nil
+                    headTick &+= 1
+                    refreshHead()
+                    refreshBudget()
+                }
+            }
+            await withTaskGroup(of: Void.self) { group in
+                for target in targets {
+                    group.addTask {
+                        do {
+                            try await Phase2StackView.runOneAppendingCandidate(
+                                target: target,
+                                playerId: playerId,
+                                template: template,
+                                store: store,
+                                generator: generator)
+                        } catch is CancellationError {
+                            return
+                        } catch {
+                            // Tap-to-retry was one chance; a failure leaves
+                            // the deferred sentinel in place (`savePendingCandidate`
+                            // only clears it on success), so the card stays
+                            // stuck and re-tappable.
+                            await MainActor.run {
+                                lastError = "Couldn't generate — tap again to retry."
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Resolves the head unit's stuck sub-target IDs back into their full
+    /// `PanelTarget` payloads (with `PanelSpec` / `CoverSpec`) so the retry
+    /// task has everything `runOneAppendingCandidate` needs.
+    private func stuckTargetsForHead() -> [PanelTarget] {
+        let stuckIDs = units[headIndex].stuckTargetIDs(playerId: player.id, store: store)
+        guard !stuckIDs.isEmpty else { return [] }
+        switch units[headIndex] {
+        case .single(let target):
+            return stuckIDs.contains(target.id) ? [target] : []
+        case .triptych(let trip):
+            return trip.subTargets.filter { stuckIDs.contains($0.id) }
+        }
     }
 
     @ViewBuilder
@@ -537,6 +694,7 @@ struct ReviewDeckView: View {
                                                  generator: generator)
             }
         )
+        let coordinator = StuckCardCoordinator(playerId: playerId, store: store)
         queueTask = Task {
             let stream = await queue.events
             async let drain: Void = {
@@ -550,12 +708,15 @@ struct ReviewDeckView: View {
                         case .throttled:
                             refreshBudget()
                         case .failed(let id, let message):
-                            // Camp Comics invariant: terminal failures don't
-                            // penalize the operator. Log + tick; Slice Q will
-                            // surface the stuck-card UX.
+                            // Slice Q (#98): the queue exhausted its 7-attempt
+                            // retry budget. Persist a `.failed` sentinel so the
+                            // card renders as stuck; the operator's tap-to-retry
+                            // is the only manual escape hatch.
                             NSLog("Camp Comics: terminal panel failure — id=%@ msg=%@",
                                   String(describing: id), message)
+                            coordinator.handle(event: event)
                             headTick &+= 1
+                            refreshHead()
                             refreshBudget()
                         }
                     }

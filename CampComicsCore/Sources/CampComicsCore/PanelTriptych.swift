@@ -263,4 +263,30 @@ public enum ReviewUnit: Equatable, Sendable {
         units.append(.single(.cover(spec: template.cover)))
         return units
     }
+
+    /// Slice Q (#98): targets in this unit whose `GenerationQueue` retry budget
+    /// has been exhausted (persisted as `markDeferred`). For singles this is at
+    /// most a one-element list; for triptychs it can be any subset of the three
+    /// sub-panels in story order. An accepted target is never stuck even if a
+    /// stale marker lingers — the accepted PNG is the operator's commitment.
+    public func stuckTargetIDs(playerId: String, store: PlayerStore) -> [PanelTargetID] {
+        switch self {
+        case .single(let target):
+            if store.hasPanel(playerId: playerId, target: target.id) { return [] }
+            return store.isDeferred(playerId: playerId, target: target.id) ? [target.id] : []
+        case .triptych(let trip):
+            return trip.subTargetIDs.filter { id in
+                if store.hasPanel(playerId: playerId, target: id) { return false }
+                return store.isDeferred(playerId: playerId, target: id)
+            }
+        }
+    }
+
+    /// Convenience: at least one target in this unit is stuck. A triptych unit
+    /// is stuck if *any* sub-panel is stuck (the tap-to-retry only retries the
+    /// stuck sub-panels, not the whole triptych — atomic Accept/Re-roll/cycle
+    /// still apply to non-stuck operations).
+    public func isStuck(playerId: String, store: PlayerStore) -> Bool {
+        !stuckTargetIDs(playerId: playerId, store: store).isEmpty
+    }
 }
