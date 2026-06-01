@@ -287,6 +287,24 @@ public struct PlayerStore: Sendable {
         try FileManager.default.removeItem(at: panelFile)
     }
 
+    // MARK: - Deck-mounted marker (slice N — ADR-0010 first-mount idempotency)
+
+    /// Zero-byte sentinel at `players/NNN/.deck_mounted`. Slice N flips this on
+    /// the first time `ReviewDeckView` appears for a player, gating
+    /// `SponsoredTrialBackend.spend(playerId:)` so the trial decrement happens
+    /// exactly once per player even across launches.
+    public func markDeckMounted(playerId: String) throws {
+        try Data().write(to: deckMountedURL(playerId: playerId), options: .atomic)
+    }
+
+    public func hasDeckBeenMounted(playerId: String) -> Bool {
+        FileManager.default.fileExists(atPath: deckMountedURL(playerId: playerId).path)
+    }
+
+    private func deckMountedURL(playerId: String) -> URL {
+        playerDir(for: playerId).appendingPathComponent(".deck_mounted")
+    }
+
     // MARK: - Per-comic generation budget (slice 23)
 
     /// Lazy: returns `.empty(panelCount:)` when the JSON file is absent, so a

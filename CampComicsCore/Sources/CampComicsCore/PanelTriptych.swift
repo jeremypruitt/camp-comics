@@ -199,6 +199,19 @@ public enum ReviewUnit: Equatable, Sendable {
         return nil
     }
 
+    /// Slice N (#95): card-deck variant — same story-ordered build as
+    /// `phase2Units`, but panel 1 is included as the first `.single` so it can
+    /// be the top card of the deck from t=0. ADR-0010 supersedes ADR-0009's
+    /// Phase 1 / Phase 2 split, so the deck mounts everything together.
+    public static func deckUnits(from template: ClassTemplate) -> [ReviewUnit] {
+        var units: [ReviewUnit] = []
+        if let panel1 = template.panels.first(where: { $0.n == 1 }) {
+            units.append(.single(.panel(n: 1, spec: panel1)))
+        }
+        units.append(contentsOf: phase2Units(from: template))
+        return units
+    }
+
     /// Story-ordered build: panels 2..N then cover, with the two triptychs
     /// collapsed into single units. Panel 1 is excluded (Phase 1 owns it).
     public static func phase2Units(from template: ClassTemplate) -> [ReviewUnit] {
