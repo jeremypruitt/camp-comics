@@ -199,6 +199,21 @@ public enum ReviewUnit: Equatable, Sendable {
         return nil
     }
 
+    /// Slice O (#96): stable per-unit identity for the in-memory re-roll
+    /// counter. Singles key off the on-disk panel/cover name so the counter
+    /// survives view-redraws; triptychs share one counter across their three
+    /// sub-panels because the unit re-rolls atomically.
+    public var frictionKey: String {
+        switch self {
+        case .single(let target): return target.diskName
+        case .triptych(let trip):
+            switch trip.kind {
+            case .pIn: return "triptych_pIn"
+            case .hOut: return "triptych_hOut"
+            }
+        }
+    }
+
     /// Slice N (#95): card-deck variant — same story-ordered build as
     /// `phase2Units`, but panel 1 is included as the first `.single` so it can
     /// be the top card of the deck from t=0. ADR-0010 supersedes ADR-0009's
