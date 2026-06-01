@@ -35,12 +35,13 @@ struct ReviewDeckView: View {
     @State private var budget: GenerationBudget
     @State private var startError: String?
     @State private var lastError: String?
-    @State private var showExhaustionModal: Bool = false
     /// Slice R (#99): grid sheet visibility — the deck surface's only undo
     /// path. Operator opens via the toolbar grid icon, taps any cell, and the
     /// tapped unit re-pops to deck top with no confirm dialog (the slice-I
     /// dialog complex is gone; see ADR-0010 "the grid is the only undo path").
     @State private var showingGrid: Bool = false
+    @State private var rerollCounter = RerollCounter()
+    @State private var pendingFriction: PendingFrictionConfirm?
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -102,8 +103,22 @@ struct ReviewDeckView: View {
             rerollTask?.cancel()
             triptychRerollTask?.cancel()
         }
-        .sheet(isPresented: $showExhaustionModal) {
-            exhaustionModal
+        .alert("Re-roll this panel again?",
+               isPresented: Binding(get: { pendingFriction != nil },
+                                    set: { if !$0 { pendingFriction = nil } })) {
+            Button("Re-roll", role: .destructive) {
+                if let pending = pendingFriction {
+                    pendingFriction = nil
+                    fireConfirmedReroll(pending)
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                pendingFriction = nil
+            }
+        } message: {
+            if let pending = pendingFriction {
+                Text("This is re-roll #\(pending.priorCount + 1) on this card. Sure?")
+            }
         }
         .sheet(isPresented: $showingGrid) {
             gridSheet
@@ -185,10 +200,14 @@ struct ReviewDeckView: View {
     }
 
     private var budgetChip: some View {
+        // Slice O (#96): at remaining==0 the chip flips to a calm "accept-only"
+        // indicator instead of a red exhausted count. The soft-block itself is
+        // the entire exhaustion UX — no modal, no warning shape.
         let p = theme.palette
-        return Text("\(budget.remaining) / \(budget.limit)")
+        let text = budget.isExhausted ? "0 — accept-only" : "\(budget.remaining) / \(budget.limit)"
+        return Text(text)
             .font(theme.captionFont(12))
-            .foregroundStyle(budget.isExhausted ? p.danger : p.inkSecondary)
+            .foregroundStyle(budget.isExhausted ? p.inkSecondary : p.inkSecondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(p.surfaceRaised, in: Capsule())
@@ -351,11 +370,14 @@ struct ReviewDeckView: View {
 
     @ViewBuilder
     private var rerollBadge: some View {
+        // Slice O (#96): at exhaustion the swipe-right is a soft bounce — no
+        // alarmist "OUT OF BUDGET" overlay. The dim accent communicates "this
+        // gesture won't fire" without escalating the surface.
         let p = theme.palette
         if swipeOffset.width > 40 {
             Text(rerollBadgeText)
                 .font(theme.headingFont(20))
-                .foregroundStyle(budget.isExhausted ? p.danger : p.accent)
+                .foregroundStyle(budget.isExhausted ? p.inkSecondary.opacity(0.5) : p.accent)
                 .padding(8)
                 .background(p.paper, in: RoundedRectangle(cornerRadius: 8))
                 .padding(24)
@@ -363,7 +385,6 @@ struct ReviewDeckView: View {
     }
 
     private var rerollBadgeText: String {
-        if budget.isExhausted { return "OUT OF BUDGET" }
         if case .triptych = units[headIndex] { return "RE-ROLL ×3" }
         return "RE-ROLL"
     }
@@ -563,15 +584,31 @@ struct ReviewDeckView: View {
     }
 
     private func commitRerollSingle(target: PanelTarget) {
-        guard !budget.isExhausted else {
-            withAnimation(.spring) { swipeOffset = .zero }
-            showExhaustionModal = true
+        let unit = units[headIndex]
+        let key = unit.frictionKey
+        let prior = rerollCounter.count(unitId: key)
+        switch RerollDecider.decide(remaining: budget.remaining,
+                                    cost: 1,
+                                    priorRerolls: prior) {
+        case .bounce:
+            softBounce()
             return
+        case .requireConfirm:
+            withAnimation(.spring) { swipeOffset = .zero }
+            pendingFriction = .single(target: target, priorCount: prior)
+            return
+        case .fire:
+            break
         }
         guard rerollTask == nil else {
             withAnimation(.spring) { swipeOffset = .zero }
             return
         }
+        rerollCounter.increment(unitId: key)
+        performRerollSingle(target: target)
+    }
+
+    private func performRerollSingle(target: PanelTarget) {
         let playerId = player.id
         let template = template
         let store = store
@@ -605,15 +642,30 @@ struct ReviewDeckView: View {
     }
 
     private func commitRerollTriptych(trip: PanelTriptych) {
-        guard budget.remaining >= PanelTriptych.budgetCost else {
-            withAnimation(.spring) { swipeOffset = .zero }
-            showExhaustionModal = true
+        let key = ReviewUnit.triptych(trip).frictionKey
+        let prior = rerollCounter.count(unitId: key)
+        switch RerollDecider.decide(remaining: budget.remaining,
+                                    cost: PanelTriptych.budgetCost,
+                                    priorRerolls: prior) {
+        case .bounce:
+            softBounce()
             return
+        case .requireConfirm:
+            withAnimation(.spring) { swipeOffset = .zero }
+            pendingFriction = .triptych(trip: trip, priorCount: prior)
+            return
+        case .fire:
+            break
         }
         guard triptychRerollTask == nil, rerollTask == nil else {
             withAnimation(.spring) { swipeOffset = .zero }
             return
         }
+        rerollCounter.increment(unitId: key)
+        performRerollTriptych(trip: trip)
+    }
+
+    private func performRerollTriptych(trip: PanelTriptych) {
         withAnimation(.easeOut(duration: 0.2)) {
             swipeOffset = CGSize(width: 600, height: 0)
         }
@@ -736,26 +788,25 @@ struct ReviewDeckView: View {
         .padding(.horizontal)
     }
 
-    private var exhaustionModal: some View {
-        let p = theme.palette
-        return VStack(alignment: .leading, spacing: 16) {
-            Text("Out of generations for this comic")
-                .font(theme.headingFont(20))
-                .foregroundStyle(p.inkPrimary)
-            Text("Accept the candidates you already have to finalize, or paste a personal API key in Settings to keep re-rolling.")
-                .font(theme.bodyFont(14))
-                .foregroundStyle(p.inkSecondary)
-            ThemedPrimaryButton("Accept current and finalize",
-                                systemImage: "checkmark.circle.fill") {
-                showExhaustionModal = false
-            }
-            ThemedPrimaryButton("Paste BYO key in Settings",
-                                systemImage: "key.fill") {
-                showExhaustionModal = false
-            }
-            Spacer()
+    // Slice O (#96): bounce a swipe-right when budget can't cover the re-roll.
+    // No modal — the snap-back animation + light haptic IS the new exhaustion
+    // UX. The chip's "0 — accept-only" text carries the explanation.
+    private func softBounce() {
+        withAnimation(.spring) { swipeOffset = .zero }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    // Friction confirm landed and the operator chose to proceed. Spends budget
+    // by way of the regular re-roll path.
+    private func fireConfirmedReroll(_ pending: PendingFrictionConfirm) {
+        switch pending {
+        case .single(let target, _):
+            rerollCounter.increment(unitId: ReviewUnit.single(target).frictionKey)
+            performRerollSingle(target: target)
+        case .triptych(let trip, _):
+            rerollCounter.increment(unitId: ReviewUnit.triptych(trip).frictionKey)
+            performRerollTriptych(trip: trip)
         }
-        .padding()
     }
 
     // MARK: - Derived
@@ -785,6 +836,22 @@ struct ReviewDeckView: View {
     private func loadImage(_ url: URL) -> UIImage? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return UIImage(data: data)
+    }
+}
+
+// MARK: - Friction confirm payload
+
+/// Slice O (#96): a re-roll that hit the per-card friction threshold and is
+/// waiting on the operator's confirm. Carries the prior count purely for the
+/// alert's message text — the decider has already authorized it.
+private enum PendingFrictionConfirm: Equatable {
+    case single(target: PanelTarget, priorCount: Int)
+    case triptych(trip: PanelTriptych, priorCount: Int)
+
+    var priorCount: Int {
+        switch self {
+        case .single(_, let n), .triptych(_, let n): return n
+        }
     }
 }
 
