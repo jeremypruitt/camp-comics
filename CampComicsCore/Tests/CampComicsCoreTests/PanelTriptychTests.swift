@@ -447,4 +447,117 @@ struct ReviewUnitTests {
         let message = ReviewUnit.emptyDeckQuietMessage
         #expect(message == "All cards reviewed — Finalize from the toolbar.")
     }
+
+    // MARK: - Slice Q (#98) — stuck-card detection
+
+    @Test func stuckTargetIDsIsEmptyWhenNoDeferredMarkers() throws {
+        let (store, playerId) = try makeStoreForTerminal()
+        let units = ReviewUnit.deckUnits(from: makeTemplate())
+        // A fresh player has no deferred markers → no stuck targets.
+        for unit in units {
+            #expect(unit.stuckTargetIDs(playerId: playerId, store: store).isEmpty)
+            #expect(unit.isStuck(playerId: playerId, store: store) == false)
+        }
+    }
+
+    @Test func stuckTargetIDsForSingleReturnsItsTargetWhenDeferred() throws {
+        let (store, playerId) = try makeStoreForTerminal()
+        let units = ReviewUnit.deckUnits(from: makeTemplate())
+        try store.markDeferred(playerId: playerId, target: .panel(2))
+        // Panel 2 is index 1 in the deck (after panel 1).
+        let panel2Unit = units[1]
+        #expect(panel2Unit.stuckTargetIDs(playerId: playerId, store: store) == [.panel(2)])
+        #expect(panel2Unit.isStuck(playerId: playerId, store: store))
+        // Other units stay unaffected.
+        #expect(units[0].stuckTargetIDs(playerId: playerId, store: store).isEmpty)
+    }
+
+    @Test func stuckTargetIDsForTriptychListsOnlyDeferredSubPanels() throws {
+        let (store, playerId) = try makeStoreForTerminal()
+        let units = ReviewUnit.deckUnits(from: makeTemplate())
+        // P-in triptych is panels 3,4,5 (deck index 2). Defer only the middle.
+        try store.markDeferred(playerId: playerId, target: .panel(4))
+        let pIn = units[2]
+        #expect(pIn.stuckTargetIDs(playerId: playerId, store: store) == [.panel(4)])
+        #expect(pIn.isStuck(playerId: playerId, store: store))
+    }
+
+    @Test func stuckTargetIDsForTriptychReturnsAllDeferredSubPanelsInOrder() throws {
+        let (store, playerId) = try makeStoreForTerminal()
+        let units = ReviewUnit.deckUnits(from: makeTemplate())
+        // H-out triptych is panels 12,13,14 (deck index 9). Defer left + right.
+        try store.markDeferred(playerId: playerId, target: .panel(12))
+        try store.markDeferred(playerId: playerId, target: .panel(14))
+        let hOut = units[9]
+        // Story order: left (12), right (14). Middle (13) is not stuck.
+        #expect(hOut.stuckTargetIDs(playerId: playerId, store: store) == [.panel(12), .panel(14)])
+    }
+
+    @Test func acceptedTargetIsNotStuckEvenIfMarkerSomehowLingers() throws {
+        let (store, playerId) = try makeStoreForTerminal()
+        let units = ReviewUnit.deckUnits(from: makeTemplate())
+        // Belt-and-suspenders: a target with an accepted PNG on disk should
+        // never count as stuck, even if a stale `.failed` marker exists. The
+        // accepted artifact is the operator's commitment.
+        try store.savePanel(playerId: playerId, target: .panel(2),
+                            pngData: Data([0x89, 0x50, 0x4E, 0x47]))
+        try store.markDeferred(playerId: playerId, target: .panel(2))
+        let panel2Unit = units[1]
+        #expect(panel2Unit.stuckTargetIDs(playerId: playerId, store: store).isEmpty)
+        #expect(panel2Unit.isStuck(playerId: playerId, store: store) == false)
+    }
+}
+
+// MARK: - Slice Q (#98) — StuckCardCoordinator
+
+@Suite("StuckCardCoordinator")
+struct StuckCardCoordinatorTests {
+
+    private func makeStoreAndPlayer() throws -> (PlayerStore, String) {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("camp-comics-stuck-coord-\(UUID().uuidString)",
+                                    isDirectory: true)
+        let store = try PlayerStore(root: root)
+        let player = try store.create(playerName: "Alex", characterName: "",
+                                      classKey: "druid")
+        return (store, player.id)
+    }
+
+    @Test func failedEventMarksTheTargetDeferred() throws {
+        let (store, playerId) = try makeStoreAndPlayer()
+        let coord = StuckCardCoordinator(playerId: playerId, store: store)
+
+        coord.handle(event: .failed(.panel(7), "model safety block"))
+
+        #expect(store.isDeferred(playerId: playerId, target: .panel(7)))
+    }
+
+    @Test func completedEventDoesNotMarkAnythingDeferred() throws {
+        let (store, playerId) = try makeStoreAndPlayer()
+        let coord = StuckCardCoordinator(playerId: playerId, store: store)
+
+        coord.handle(event: .completed(.panel(3)))
+
+        #expect(!store.isDeferred(playerId: playerId, target: .panel(3)))
+    }
+
+    @Test func throttledEventDoesNotMarkAnythingDeferred() throws {
+        let (store, playerId) = try makeStoreAndPlayer()
+        let coord = StuckCardCoordinator(playerId: playerId, store: store)
+
+        // Camp Comics invariant: a throttle is observability for adaptive-K,
+        // not a terminal failure. The queue keeps retrying — never auto-defer.
+        coord.handle(event: .throttled(.panel(11)))
+
+        #expect(!store.isDeferred(playerId: playerId, target: .panel(11)))
+    }
+
+    @Test func coverFailureMarksCoverDeferred() throws {
+        let (store, playerId) = try makeStoreAndPlayer()
+        let coord = StuckCardCoordinator(playerId: playerId, store: store)
+
+        coord.handle(event: .failed(.cover, "out of regions"))
+
+        #expect(store.isDeferred(playerId: playerId, target: .cover))
+    }
 }
