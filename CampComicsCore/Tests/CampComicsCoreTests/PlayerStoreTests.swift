@@ -496,6 +496,34 @@ struct PlayerStoreTests {
         #expect(!store.isDeferred(playerId: player.id, target: .panel(5)))
     }
 
+    // MARK: - Deck-mounted marker (slice N — ADR-0010 first-mount idempotency)
+
+    @Test func hasDeckBeenMountedIsFalseForFreshPlayer() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        #expect(!store.hasDeckBeenMounted(playerId: player.id))
+    }
+
+    @Test func markDeckMountedWritesSentinelAtPlayerRoot() throws {
+        // Slice N: the marker idempotency-gates `SponsoredTrialBackend.spend`
+        // at first deck mount per player. Lives at the player root (not under
+        // panels/) because it's a player-lifecycle event, not a panel event.
+        let (store, root) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.markDeckMounted(playerId: player.id)
+        let url = root.appendingPathComponent("players/\(player.id)/.deck_mounted")
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        #expect(store.hasDeckBeenMounted(playerId: player.id))
+    }
+
+    @Test func markDeckMountedIsIdempotent() throws {
+        let (store, _) = try makeStore()
+        let player = try store.create(playerName: "Alex", characterName: "", classKey: "druid")
+        try store.markDeckMounted(playerId: player.id)
+        try store.markDeckMounted(playerId: player.id)
+        #expect(store.hasDeckBeenMounted(playerId: player.id))
+    }
+
     @Test func attemptsStateReturnsEmptyForLegacyNSchemaJSON() throws {
         // Slice 11b: hard cutover — pre-slice-11b _attempts.json carried
         // `{"n": 1, ...}` rows. They no longer match PanelAttempt's shape, so

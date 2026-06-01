@@ -3,10 +3,11 @@ import UIKit
 import CampComicsCore
 
 /// Minimal intermediate screen (project_panel_loop_design.md #11): summary +
-/// a single Start / Continue generation button. New players (no panel 1 yet)
-/// land on `StartCampaignView` so sponsored-trial spend + the two-phase
-/// explainer fire before generation; mid-flight players push directly into
-/// `ReviewStackView`, which resumes at Phase 2 when panel 1 is on disk.
+/// a single Start / Continue generation button. Slice N (#95, ADR-0010):
+/// Continue routes directly to `ReviewDeckView` — the deck mounts every unit
+/// (including panel 1) from t=0, so the prior `StartCampaignView` two-phase
+/// explainer is obsolete. `StartCampaignView` / `ReviewStackView` stay alive
+/// but unrouted until Slice S deletes them.
 struct PlayerDetailView: View {
     @Environment(\.themeKind) private var theme
     let player: PlayerRecord
@@ -15,8 +16,7 @@ struct PlayerDetailView: View {
     let generator: any PanelGenerator
     let trialBackend: any SponsoredTrialBackend
 
-    @State private var showingReviewStack = false
-    @State private var showingStartCampaign = false
+    @State private var showingReviewDeck = false
     @State private var previewItem: PreviewItem?
     @State private var isRendering = false
     @State private var renderError: String?
@@ -64,19 +64,13 @@ struct PlayerDetailView: View {
         .toolbarBackground(p.paper, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(theme.preferredColorScheme, for: .navigationBar)
-        .navigationDestination(isPresented: $showingReviewStack) {
-            ReviewStackView(player: player,
-                            template: template,
-                            store: store,
-                            generator: generator)
+        .navigationDestination(isPresented: $showingReviewDeck) {
+            ReviewDeckView(player: player,
+                           template: template,
+                           store: store,
+                           generator: generator,
+                           trialBackend: trialBackend)
                 .environment(\.themeKind, theme)
-        }
-        .navigationDestination(isPresented: $showingStartCampaign) {
-            StartCampaignView(player: player,
-                              template: template,
-                              store: store,
-                              generator: generator,
-                              trialBackend: trialBackend)
         }
         .sheet(item: $previewItem) { item in
             PDFPreview(url: item.url)
@@ -145,15 +139,7 @@ struct PlayerDetailView: View {
 
     private var continueButton: some View {
         ThemedPrimaryButton(continueLabel, systemImage: "sparkles") {
-            // ADR-0009 routing. New players (no panel 1 yet) hit the Start
-            // CTA so sponsored-trial spend + the two-phase explainer run
-            // before generation; mid-flight players resume in the swipe stack,
-            // which jumps to Phase 2 on its own when panel 1 is on disk.
-            if finalizedCount == 0 {
-                showingStartCampaign = true
-            } else {
-                showingReviewStack = true
-            }
+            showingReviewDeck = true
         }
     }
 

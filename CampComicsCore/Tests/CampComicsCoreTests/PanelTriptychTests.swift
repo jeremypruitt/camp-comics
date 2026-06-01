@@ -391,4 +391,48 @@ struct ReviewUnitTests {
         try store.markDeferred(playerId: playerId, target: .panel(4))
         #expect(ReviewUnit.allTerminal(units: units, playerId: playerId, store: store) == true)
     }
+
+    // MARK: - Slice N (#95) — deck units include panel 1
+
+    @Test func deckUnitsIncludesPanel1AsFirstSingle() {
+        // Slice N: the card-deck surface mounts every reviewable unit from t=0,
+        // including panel 1 (which Phase 1 owned in ADR-0009). Panel 1 is the
+        // first unit so it's the top card.
+        let units = ReviewUnit.deckUnits(from: makeTemplate())
+        if case .single(let target) = units.first ?? .single(.cover(spec: makeTemplate().cover)) {
+            #expect(target.id == .panel(1))
+        } else {
+            Issue.record("expected .single(.panel(1)) at index 0")
+        }
+    }
+
+    @Test func deckUnitsCountIsPhase2UnitsPlusOne() {
+        // Panel 1 prepended to the Phase-2 build: same triptych collapsing,
+        // same story order, same cover terminator. Druid template (15 panels)
+        // yields 11 Phase-2 units → 12 deck units.
+        let p2 = ReviewUnit.phase2Units(from: makeTemplate())
+        let deck = ReviewUnit.deckUnits(from: makeTemplate())
+        #expect(deck.count == p2.count + 1)
+        #expect(deck.count == 12)
+    }
+
+    @Test func deckUnitsKeepsStoryOrderAndCollapsesTriptychs() {
+        let units = ReviewUnit.deckUnits(from: makeTemplate())
+        // index 0: panel 1; index 1: panel 2; index 2: P-in triptych;
+        // index 9: H-out triptych; last: cover.
+        if case .single(let t) = units[0] { #expect(t.id == .panel(1)) }
+        else { Issue.record("expected panel 1 at 0") }
+        if case .single(let t) = units[1] { #expect(t.id == .panel(2)) }
+        else { Issue.record("expected panel 2 at 1") }
+        if case .triptych(let trip) = units[2] { #expect(trip.kind == .pIn) }
+        else { Issue.record("expected P-in at 2") }
+        if case .triptych(let trip) = units[9] { #expect(trip.kind == .hOut) }
+        else { Issue.record("expected H-out at 9") }
+        guard let last = units.last else {
+            Issue.record("deck units must not be empty")
+            return
+        }
+        if case .single(let t) = last { #expect(t.id == .cover) }
+        else { Issue.record("last unit should be the cover") }
+    }
 }
