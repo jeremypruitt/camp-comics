@@ -264,6 +264,18 @@ public struct PlayerStore: Sendable {
             atPath: deferMarkerURL(playerId: playerId, target: target).path)
     }
 
+    /// Slice R (#99): the grid is the only undo path. Tapping any grid cell
+    /// pulls that card back to the top of the deck. For an accepted target the
+    /// PNG is demoted back into `_candidates/0/` (same write semantics as
+    /// `demoteAcceptedToCandidate`); for a non-accepted target (spinning,
+    /// stuck, or empty) the call is a deliberate no-op — the view layer pops
+    /// the card to the top regardless, so this method's contract is "leave
+    /// disk in a state where the card is reviewable again, without throwing".
+    public func demoteAndPopToDeckTop(playerId: String, target: PanelTargetID) throws {
+        guard hasPanel(playerId: playerId, target: target) else { return }
+        try demoteAcceptedToCandidate(playerId: playerId, target: target)
+    }
+
     /// Re-roll-after-accept (design memo #3). Moves `panel_NN.png` / `cover.png`
     /// back into the candidate dir as index 0 and removes the accepted file —
     /// the operator's prior choice stays visible in the gallery until they

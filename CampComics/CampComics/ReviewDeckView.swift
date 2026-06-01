@@ -36,6 +36,11 @@ struct ReviewDeckView: View {
     @State private var startError: String?
     @State private var lastError: String?
     @State private var showExhaustionModal: Bool = false
+    /// Slice R (#99): grid sheet visibility — the deck surface's only undo
+    /// path. Operator opens via the toolbar grid icon, taps any cell, and the
+    /// tapped unit re-pops to deck top with no confirm dialog (the slice-I
+    /// dialog complex is gone; see ADR-0010 "the grid is the only undo path").
+    @State private var showingGrid: Bool = false
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -81,6 +86,14 @@ struct ReviewDeckView: View {
         .toolbarColorScheme(theme.preferredColorScheme, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { budgetChip }
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    showingGrid = true
+                } label: {
+                    Image(systemName: "square.grid.3x3")
+                }
+                .accessibilityLabel("Open panel grid")
+            }
         }
         .onAppear { onFirstAppear() }
         .onDisappear {
@@ -92,6 +105,65 @@ struct ReviewDeckView: View {
         .sheet(isPresented: $showExhaustionModal) {
             exhaustionModal
         }
+        .sheet(isPresented: $showingGrid) {
+            gridSheet
+        }
+    }
+
+    // MARK: - Slice R (#99) — grid sheet + cell tap → demote + pop to deck top
+
+    private var gridSheet: some View {
+        NavigationStack {
+            PanelGridView(
+                player: player,
+                template: template,
+                store: store,
+                onSelect: handleGridSelect
+            )
+            .navigationTitle("Grid")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { showingGrid = false }
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    /// ADR-0010 "the grid is the only undo path". For an accepted target the
+    /// PNG demotes back to `_candidates/0/`; for any non-accepted target the
+    /// disk is left alone. Either way the deck head jumps to the unit owning
+    /// that target and the sheet dismisses, so the operator can immediately
+    /// swipe-left to re-accept, swipe-right to re-roll, or swipe-up/down to
+    /// cycle candidates. Triptych sub-cells demote every accepted sub-panel
+    /// in the triptych (atomic-triptych rule from slice G) so the whole card
+    /// returns to candidate review.
+    private func handleGridSelect(targetID: PanelTargetID) {
+        guard let unitIdx = ReviewUnit.unitIndex(for: targetID, in: units) else {
+            showingGrid = false
+            return
+        }
+        let unit = units[unitIdx]
+        do {
+            switch unit {
+            case .single(let target):
+                try store.demoteAndPopToDeckTop(playerId: player.id, target: target.id)
+            case .triptych(let trip):
+                for id in trip.subTargetIDs {
+                    try store.demoteAndPopToDeckTop(playerId: player.id, target: id)
+                }
+            }
+        } catch {
+            lastError = "Couldn't pull card back: \(error.localizedDescription)"
+            showingGrid = false
+            return
+        }
+        headIndex = unitIdx
+        showingGrid = false
+        refreshHead()
+        refreshBudget()
     }
 
     // MARK: - Header + chrome
