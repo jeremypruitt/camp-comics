@@ -300,26 +300,29 @@ struct ReviewDeckView: View {
         }
     }
 
-    /// Indices of the next 1–2 units behind the head, rendered as peeking
+    /// Indices of the next 1–3 units behind the head, rendered as peeking
     /// cards. Drawn back-to-front so the closest one to the head sits in front.
+    /// Three peeks (not two) so the deck visibly reads as a stack rather than
+    /// a card with one shadow underneath (#108).
     private var visiblePeekIndices: [Int] {
-        let nextOne = headIndex + 1
-        let nextTwo = headIndex + 2
-        var out: [Int] = []
-        if nextTwo < units.count { out.append(nextTwo) }
-        if nextOne < units.count { out.append(nextOne) }
-        return out
+        let candidates = [headIndex + 3, headIndex + 2, headIndex + 1]
+        return candidates.filter { $0 < units.count }
     }
+
+    /// Peek cards are the SAME size as the top card and offset down by a
+    /// fixed increment per depth — the visible sliver below each card is
+    /// exactly `peekSliverHeight` pt regardless of card or screen size.
+    /// Scale-based depth was the source of mismatched slivers (#108);
+    /// centered `scaleEffect` shrinks the bottom by H × (1-s)/2, which
+    /// depends on H and ate the offset inconsistently.
+    private static let peekSliverHeight: CGFloat = 22
 
     @ViewBuilder
     private func peekCard(at index: Int) -> some View {
         let depth = index - headIndex
-        // depth=1 → just behind head; depth=2 → two cards behind.
-        let scale = depth == 1 ? 0.94 : 0.88
-        let yOffset: CGFloat = depth == 1 ? 18 : 36
-        let opacity = depth == 1 ? 0.92 : 0.78
+        let yOffset = Self.peekSliverHeight * CGFloat(depth)
+        let opacity = max(0.65, 1.0 - 0.10 * Double(depth))
         unitCard(for: units[index], isTop: false)
-            .scaleEffect(scale)
             .offset(y: yOffset)
             .opacity(opacity)
             .allowsHitTesting(false)
@@ -388,11 +391,39 @@ struct ReviewDeckView: View {
                               slot: slot)
             }
         case .triptych(let trip):
-            PlaceholderTriptychCard(kind: trip.kind,
-                                    slots: trip.subTargets.map { sub in
-                                        slotState(for: sub, isTop: isTop)
-                                    })
+            // Triptych cards have a 16:9 / 2:1 aspect; wrap them in the same
+            // 1:1-image + 56pt-strip container the panel cards use so every
+            // deck card has identical external dimensions. Otherwise the
+            // shorter triptych floats above the panel cards' bottoms in the
+            // .center-aligned ZStack and the peek slivers go inconsistent.
+            deckCardContainer {
+                PlaceholderTriptychCard(kind: trip.kind,
+                                        slots: trip.subTargets.map { sub in
+                                            slotState(for: sub, isTop: isTop)
+                                        })
+                    .padding(.horizontal, 8)
+            }
         }
+    }
+
+    @ViewBuilder
+    private func deckCardContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        let p = theme.palette
+        VStack(spacing: 0) {
+            Color.clear
+                .aspectRatio(1, contentMode: .fit)
+                .background(p.surfaceRaised)
+                .overlay { content() }
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(p.surfaceRaised)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(p.inkPrimary.opacity(0.4), lineWidth: 1)
+        )
     }
 
     /// Newest candidate (or accepted PNG) → `.filled`. Empty → `.spinning`.
@@ -1109,55 +1140,61 @@ private struct CoverDeckCard: View {
     let characterName: String
     let className: String
     let slot: PlaceholderSlotState
+    var showsCaption: Bool = true
 
     var body: some View {
         let p = theme.palette
-        VStack(spacing: 10) {
+        VStack(spacing: 0) {
             imageArea
                 .background(p.surfaceRaised)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(p.inkPrimary.opacity(0.4), lineWidth: 1)
-                )
-            captionText
+            captionStrip
         }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(p.inkPrimary.opacity(0.4), lineWidth: 1)
+        )
     }
 
     @ViewBuilder
     private var imageArea: some View {
-        switch slot {
-        case .filled(let image):
-            Image(uiImage: image).resizable().scaledToFit()
-        case .spinning:
-            Color.clear
-                .aspectRatio(1, contentMode: .fit)
-                .overlay(ProgressView())
-        case .stuck(let image):
-            ZStack {
-                if let image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .saturation(0)
-                        .opacity(0.55)
-                } else {
-                    Color.clear.aspectRatio(1, contentMode: .fit)
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                switch slot {
+                case .filled(let image):
+                    Image(uiImage: image).resizable().scaledToFit()
+                case .spinning:
+                    ProgressView()
+                case .stuck(let image):
+                    if let image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .saturation(0)
+                            .opacity(0.55)
+                    }
                 }
             }
-        }
     }
 
-    private var captionText: some View {
+    private var captionStrip: some View {
         let p = theme.palette
         let label = characterName.isEmpty
             ? "Cover — \(playerName) the \(className)"
             : "Cover — \(characterName) (\(playerName)), \(className)"
-        return Text(label)
-            .font(theme.captionFont(13))
-            .foregroundStyle(p.inkSecondary)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 6)
+        return Group {
+            if showsCaption {
+                Text(label)
+                    .font(theme.captionFont(13))
+                    .foregroundStyle(p.inkSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .padding(.horizontal, 10)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .background(p.surfaceRaised)
     }
 }

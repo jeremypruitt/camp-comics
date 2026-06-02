@@ -33,56 +33,69 @@ struct PlaceholderPanelCard: View {
     let spec: PanelSpec
     let playerName: String
     let slot: PlaceholderSlotState
+    /// Peek cards (#108) suppress caption text but still render the colored
+    /// strip background so card dimensions stay uniform across the deck —
+    /// otherwise the visible sliver below the top card reveals readable
+    /// text from the peek behind it.
+    var showsCaption: Bool = true
 
     var body: some View {
         let p = theme.palette
-        VStack(spacing: 10) {
+        VStack(spacing: 0) {
             imageArea
                 .background(p.surfaceRaised)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(p.inkPrimary.opacity(0.4), lineWidth: 1)
-                )
-
-            captionText
+            captionStrip
         }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(p.inkPrimary.opacity(0.4), lineWidth: 1)
+        )
     }
 
     @ViewBuilder
     private var imageArea: some View {
-        switch slot {
-        case .filled(let image):
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-        case .spinning:
-            Color.clear
-                .aspectRatio(1, contentMode: .fit)
-                .overlay(ProgressView())
-        case .stuck(let image):
-            ZStack {
-                if let image {
+        // Always 1:1 regardless of slot — `.scaledToFit` alone would let a
+        // wider-than-tall generated image shrink the card's height, so
+        // peek cards (always 1:1) would tower over the top card and break
+        // the deck's offset math (#108).
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                switch slot {
+                case .filled(let image):
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFit()
-                        .saturation(0)
-                        .opacity(0.55)
-                } else {
-                    Color.clear.aspectRatio(1, contentMode: .fit)
+                case .spinning:
+                    ProgressView()
+                case .stuck(let image):
+                    if let image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .saturation(0)
+                            .opacity(0.55)
+                    }
                 }
             }
-        }
     }
 
-    private var captionText: some View {
+    private var captionStrip: some View {
         let p = theme.palette
-        return Text(PanelCaption.substitute(spec.beat, playerName: playerName))
-            .font(theme.captionFont(13))
-            .foregroundStyle(p.inkSecondary)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 6)
+        return Group {
+            if showsCaption {
+                Text(PanelCaption.substitute(spec.beat, playerName: playerName))
+                    .font(theme.captionFont(13))
+                    .foregroundStyle(p.inkSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .padding(.horizontal, 10)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .background(p.surfaceRaised)
     }
 }
 
