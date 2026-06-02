@@ -19,7 +19,7 @@ The 16th generated artifact, sibling to (not a kind of) panel. Has its own promp
 _Avoid_: "panel 16", "cover panel".
 
 **PanelTarget**:
-Code-level discriminator for the shared review surface: `panel(n: Int, spec: PanelSpec) | cover(spec: CoverSpec)`. Parameterizes `ReviewStackView`, `PromptBuilder`, and `PhotoReferenceResolver` so panels and the cover share one code path. On-disk identity is a sibling enum `PanelTargetID` (`.panel(Int) | .cover`) — serialized as the string discriminator `"panel_07"` / `"cover"` in `_attempts.json` and used by `PlayerStore` to address files.
+Code-level discriminator for the shared review surface: `panel(n: Int, spec: PanelSpec) | cover(spec: CoverSpec)`. Parameterizes `ReviewDeckView`, `PromptBuilder`, and `PhotoReferenceResolver` so panels and the cover share one code path. On-disk identity is a sibling enum `PanelTargetID` (`.panel(Int) | .cover`) — serialized as the string discriminator `"panel_07"` / `"cover"` in `_attempts.json` and used by `PlayerStore` to address files.
 
 ### Print layout
 
@@ -36,7 +36,7 @@ One of the three interior pages, each carrying a narrative beat from the class t
 _Avoid_: "interior page" when you mean the narrative beat ("Act II" reads as story; "page 3" reads as the third sheet).
 
 **Transition triptych**:
-A three-panel row sharing one figure container with constant-width cream gaps along diagonal seams. Two per comic, symmetrically placed: **P-in** on page 2 (panels 3–5, transition INTO fantasy, parallelogram middle + trapezoid bookends, //// slashes) and **H-out** on page 4 (panels 12–14, transition BACK to everyday, hexagonal diamond-middle + pentagon bookends). The middle cell is a face-out-of-frame close-up on the **prop**; the bookends frame it narratively. Triptych panels emit no `<figcaption>` (Watchmen-style); adjacent on-page panels carry the captions. See ADR-0007. In the review surface, a triptych is reviewed as **one super-card** (see [[Review card]]) — Accept/Re-roll/Re-prompt apply to all three sub-panels atomically; Re-prompt edits a single shared addendum string appended to each sub-panel's assembled prompt (the per-panel `caption`/`emotion`/`position` stay intact). A triptych Re-roll or Re-prompt spends 3 calls against the per-comic generation budget.
+A three-panel row sharing one figure container with constant-width cream gaps along diagonal seams. Two per comic, symmetrically placed: **P-in** on page 2 (panels 3–5, transition INTO fantasy, parallelogram middle + trapezoid bookends, //// slashes) and **H-out** on page 4 (panels 12–14, transition BACK to everyday, hexagonal diamond-middle + pentagon bookends). The middle cell is a face-out-of-frame close-up on the **prop**; the bookends frame it narratively. Triptych panels emit no `<figcaption>` (Watchmen-style); adjacent on-page panels carry the captions. See ADR-0007. In the review surface, a triptych is reviewed as **one super-card** (see [[Review card]]) — Accept and Re-roll apply to all three sub-panels atomically. A triptych Re-roll spends 3 calls against the per-comic generation budget.
 _Avoid_: "diagonal pair" (the OLD page-3 two-cell shape, superseded), "transition row" (loses the geometric "triptych" signal), "split panel" (suggests one panel was split, when these are three distinct `PanelSpec`s).
 
 **Prop / through-line**:
@@ -59,29 +59,30 @@ _Avoid_: "the panel" (the panel is the slot), "winner" (only meaningful mid-revi
 
 ### Review surface
 
-**Review stack**:
-The full-screen card stack the operator works through to finalize a comic. Cards are ordered by [[PanelTarget]] in story order (panel 2, panel 3, ..., panel 15, cover); under the [[Generation queue]]'s panel-1-first batch shape, the stack only begins populating after panel 1 is generated and accepted in a separate phase. One card at a time is the head; swipe gestures act on the head. The single review surface — replaced the legacy per-panel review screen + filmstrip + grid navigation in ADR-0009.
-_Avoid_: "swipe deck" (less specific), "review queue" (queue refers to the generation backlog, not the review surface).
+> The single-head-card model defined here (ADR-0009) is **superseded by [ADR-0010](docs/adr/0010-card-deck-review-surface.md)**. All sixteen review units (15 panels + cover, with bookend triptychs collapsed into super-cards) are now mounted as a single card deck from t=0, the swipe vocabulary is inverted (LEFT = Accept, RIGHT = Re-roll), long-press Re-prompt is dropped, and the grid is the only undo path.
+
+**Review deck**:
+The full-screen card deck the operator works through to finalize a comic. All review units (panels 1–15 + cover, with [[Transition triptych]]s collapsed into one super-card each) are mounted as cards from t=0 — twelve panel-shaped placeholder cards in story order are visible from the moment the deck appears, with the top card and 1–2 peeking below it. Panel 1 sits on top and serializes its first generation; the moment its first candidate lands, the remaining units fan out through [[Generation queue]]. One card at a time is the head; swipe gestures act on the head. The single review surface.
+_Avoid_: "review stack" (ADR-0009 single-head-card phrasing — superseded), "single head card" (the old surface mounted one card at a time; the deck shows all sixteen from t=0), "swipe deck" (less specific), "review queue" (queue refers to the generation backlog, not the review surface).
 
 **Review card**:
-A single card in the [[Review stack]] representing one [[PanelTarget]]. For ordinary panels and the cover, renders the head of that panel's [[Gallery]] full-screen. For a [[Transition triptych]], renders as a **super-card** showing all three sub-panels in the print-faithful triptych composition; Accept/Re-roll/Re-prompt act atomically on all three. While the underlying generation is in flight (or throttled per [[Throttled]]), the head card renders as a **placeholder card** with a spinner and the panel number; behind-head in-flight panels are invisible.
+A single card in the [[Review deck]] representing one [[PanelTarget]]. For ordinary panels and the cover, renders the head of that panel's [[Gallery]] full-screen. For a [[Transition triptych]], renders as a **super-card** showing all three sub-panels in the print-faithful triptych composition; Accept/Re-roll act atomically on all three. While the underlying generation is in flight (or throttled per [[Throttled]]), the card renders as a **placeholder card** in the panel's print-faithful frame with a spinner and the panel caption — the placeholder *is* the panel from t=0, not a "nothing here yet" state.
 _Avoid_: "swipe card", "panel card" (panel is the slot, not the visual element).
 
 **Swipe vocabulary**:
 The gesture set on a [[Review card]]:
-- **Swipe right** = Accept → promote currently-visible candidate, delete the rest of the gallery, advance the stack.
-- **Swipe left** = [[Re-roll]] → append a new candidate to this panel's gallery; new candidate becomes the head; gallery accumulates.
+- **Swipe left** = Accept → promote currently-visible candidate, delete the rest of the gallery, advance the deck.
+- **Swipe right** = [[Re-roll]] → append a new candidate to this panel's gallery; new candidate becomes the head; gallery accumulates.
 - **Swipe up / down** = cycle through this panel's gallery (zero API calls); newest on top.
-- **Long-press** = [[Re-prompt]] → opens the shared-addendum editor; result lands in the gallery like a Re-roll.
 The review surface must be a full-screen NavigationStack root, never a sheet (swipe-down on a sheet dismisses it, colliding with gallery navigation).
-_Avoid_: "swipe action" (too generic — name the gesture).
+_Avoid_: "swipe action" (too generic — name the gesture), "long-press Re-prompt" (dropped from the active surface in ADR-0010).
 
 **Panel grid**:
-The 4×4 thumbnail sheet showing all 15 panels + cover with their [[PanelGridCellStatus]] (Empty / Generating / Filled / Accepted). Two entry points from the [[Review stack]]: a toolbar grid-icon button (always available — escape hatch for re-opening accepted panels) and auto-presentation when the last unaccepted panel reaches Accept (pre-finalize confirmation, with prominent "Generate PDF" CTA). Tapping an Accepted cell triggers a Re-roll-after-accept confirm and jumps the stack back to that panel. Reuses the existing `PanelGridView` from slice 11d.
-_Avoid_: "grid sheet" (sheet is a presentation style, not the thing), "thumbnail grid" (less specific).
+The 4×4 thumbnail sheet showing all 15 panels + cover with their [[PanelGridCellStatus]] (Empty / Generating / Filled / Accepted). Entered via the toolbar grid-icon button on the [[Review deck]] (always available — the only undo path, per ADR-0010). Tapping any cell pulls that unit back to deck top: an accepted target demotes back to a candidate so the operator can immediately swipe-left to re-accept or swipe-right to re-roll; a non-accepted target just jumps the head. No confirm dialog. No auto-presentation. Reuses the existing `PanelGridView` from slice 11d.
+_Avoid_: "grid sheet" (sheet is a presentation style, not the thing), "thumbnail grid" (less specific), "confirm dialog" / "auto-present" (the ADR-0009 slice-I patterns — both removed in ADR-0010 slice R).
 
 **Generation queue**:
-The producer side of the [[Review stack]]. A worker pool with `K` concurrent workers pulling from a FIFO of [[PanelTarget]]s in story order. Phase 1 is single-target (panel 1, sequential). Phase 2 enqueues panels 2..15 + cover after panel 1 is accepted. Throughput is adaptive: `K` starts at 3, decrements on any 429 ([[Throttled]] absorbs single auto-retry per ADR-0003), increments after 5 consecutive successes; floor 1, ceiling 8. Per-session state, not persisted across launches. Results land into the gallery of their target panel; the review stack head re-renders whenever its gallery gains a candidate or completes generation.
+The producer side of the [[Review deck]]. A worker pool with `K` concurrent workers pulling from a FIFO of [[PanelTarget]]s in story order. Phase 1 is single-target (panel 1, sequential). Phase 2 enqueues panels 2..15 + cover after panel 1's first candidate lands. Throughput is adaptive: `K` starts at 3, decrements on any 429 ([[Throttled]] absorbs single auto-retry per ADR-0003), increments after 5 consecutive successes; floor 1, ceiling 8. Per-session state, not persisted across launches. Results land into the gallery of their target panel; the deck head re-renders whenever its gallery gains a candidate or completes generation.
 _Avoid_: "batch" (the queue isn't a fire-and-forget batch — it's a live producer), "background worker" (overloaded term).
 
 ### References (anti-drift)
@@ -107,8 +108,8 @@ Vertex 429 (per-minute quota exhausted). First-class state in the swipe surface,
 _Avoid_: treating throttled as a flavor of Failed.
 
 **Failed**:
-Vertex returned a non-retryable error, or [[Throttled]] busted through its single auto-retry budget. Operator-driven recovery — Retry button does not auto-fire. On a [[Review card]], a Failed head shows three affordances: Retry (re-enqueue at head), long-press = [[Re-prompt]] (content-policy recovery — edit prompt before retry), and **Defer** (secondary pill — advance the stack; the panel's gallery stays empty; the [[Panel grid]] cell becomes the `Failed` status). A comic with one or more Failed-Deferred panels finalizes after a confirm warning ("Panel N has no image — your comic will have an empty cell. Generate anyway?").
-_Avoid_: lumping rate-limit retries in here; "skip" (Skip was removed wholesale in slice 11a per ADR-0003 amendment — Defer is the new vocabulary).
+Vertex returned a non-retryable error, or [[Throttled]] busted through its single auto-retry budget. The [[Generation queue]] auto-retries with exponential backoff before declaring a target Failed; per the Camp Comics invariant that background failures never penalize the user, no Failed state spends budget. On the [[Review deck]] a Failed card renders **stuck** — greyed-out with a "tap to try one more time" affordance per ADR-0010 slice Q; the tap spends budget and either lands a candidate or leaves the card stuck for a future try. Swipe-left on a stuck card advances the deck (the [[Panel grid]] cell becomes `Failed`); swipe-right and swipe-up/down silently bounce. A comic with one or more Failed cells finalizes through a confirm warning ("Panel N has no image — your comic will have an empty cell. Generate anyway?").
+_Avoid_: lumping rate-limit retries in here; "skip" (Skip was removed wholesale in slice 11a per ADR-0003 amendment); "Defer pill" / "Retry button on head" (ADR-0009 slice-H affordances, removed in ADR-0010 slice Q in favor of the stuck-card tap-to-retry).
 
 ### Operator actions
 
@@ -157,7 +158,7 @@ The 2-comic free allotment each install gets on `.sponsored`. "Comic" here means
 _Avoid_: "free tier" (suggests an ongoing tier, not a finite trial).
 
 **Generation budget**:
-Per-comic ceiling of `(panel_count + 1) × 2` Vertex calls — i.e., one initial generation per slot + one full re-roll pass. For the current 15-panel template that's 32 calls (15 panels + 1 cover). The formula is **template-dynamic** so future shorter templates (a 9-panel trial template, a 5-panel demo) scale proportionally without code changes. Every `gemini-2.5-flash-image` call on this comic decrements it uniformly — initial generations, Re-rolls, Re-prompts, and Re-roll-after-accept. The **QA-gate** generation does NOT count (it gates whether the comic even starts). Visible mid-flight as a low-key chip ("23 re-rolls left"). On exhaustion, the swipe surface disables swipe-left (Re-roll) and long-press (Re-prompt); only swipe-right (Accept) and swipe-up/down (gallery cycle, 0 calls) remain. The exhaustion modal offers "accept current candidates and finalize" or "paste a Gemini key to continue in BYO." Per-comic budget exists only in `.sponsored`; `.byo` is uncapped.
+Per-comic ceiling of `(panel_count + 1) × 2` Vertex calls — i.e., one initial generation per slot + one full re-roll pass. For the current 15-panel template that's 32 calls (15 panels + 1 cover). The formula is **template-dynamic** so future shorter templates (a 9-panel trial template, a 5-panel demo) scale proportionally without code changes. Every `gemini-2.5-flash-image` call on this comic decrements it uniformly — initial generations, Re-rolls, and Re-roll-after-accept. The **QA-gate** generation does NOT count (it gates whether the comic even starts). Visible mid-flight as a low-key chip; at exhaustion the chip reads `"0 — accept-only"`. On exhaustion the [[Review deck]] **soft-blocks** Re-roll (per ADR-0010 slice O): swipe-right silently bounces with a haptic, no modal; swipe-left (Accept) and swipe-up/down (gallery cycle, 0 calls) still work so the operator can finalize whatever's already on disk. Per-comic budget exists only in `.sponsored`; `.byo` is uncapped.
 _Avoid_: "panel budget" (it's shared across all slots, not per-panel), "re-roll budget" (re-rolls are one consumer; initial generations and re-prompts also draw); "32-call cap" as a fixed phrase (it's the current 15-panel template's value, not the formula).
 
 **Global budget cap**:

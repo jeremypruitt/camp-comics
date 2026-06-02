@@ -1,16 +1,10 @@
 import SwiftUI
 import CampComicsCore
 
-/// ADR-0009 Slice K. First-launch tutorial overlay over `ReviewStackView` that
-/// teaches the swipe vocabulary. Demonstrates each `OverlayHint` with a
+/// First-launch tutorial overlay over `ReviewDeckView` that teaches the
+/// ADR-0010 inverted swipe vocabulary. Demonstrates each `OverlayHint` with a
 /// SwiftUI-only ghost-finger animation — no GIFs, no Lottie. Dismissable via
 /// tap, swipe, or the "Got it" button; persists via `OnboardingOverlayStore`.
-///
-/// The gesture catalog is extension-friendly: future slices (E swipe-left +
-/// gallery, F long-press re-prompt, G triptych) append cases to `OverlayHint`
-/// and the overlay picks them up automatically. Today's surface only ships
-/// swipe-right Accept (Slice C/D) — previewing gestures that don't yet exist
-/// would confuse the operator.
 struct ReviewTutorialOverlay: View {
     let hints: [OverlayHint]
     let onDismiss: () -> Void
@@ -120,47 +114,40 @@ struct ReviewTutorialOverlay: View {
     }
 }
 
-/// One animation beat in the tutorial. Future slices append cases as their
-/// gestures ship:
-/// - `.acceptSwipeRight` (Slice C/D — on `main` today)
-/// - `.rerollSwipeLeft`  (Slice E #65)
-/// - `.galleryCycle`     (Slice E #65)
-/// - `.reprompt`         (Slice F)
-/// - `.triptychAtomic`   (Slice G)
+/// One animation beat in the tutorial. ADR-0010 collapsed the gesture set to
+/// LEFT-accept / RIGHT-reroll / UP-DOWN-cycle; long-press Re-prompt was dropped
+/// from the active surface so its hint is gone.
 enum OverlayHint: CaseIterable, Hashable {
-    case acceptSwipeRight
-    case reprompt
+    case acceptSwipeLeft
+    case rerollSwipeRight
 
     var title: String {
         switch self {
-        case .acceptSwipeRight: return "Swipe right to accept"
-        case .reprompt: return "Long-press to re-prompt"
+        case .acceptSwipeLeft: return "Swipe left to accept"
+        case .rerollSwipeRight: return "Swipe right to re-roll"
         }
     }
 
     var detail: String {
         switch self {
-        case .acceptSwipeRight:
-            return "Like a panel? Flick it to the right. The next one in the stack slides up."
-        case .reprompt:
-            return "Hold the card to add a corrective note. The model rolls a fresh take with your addendum."
+        case .acceptSwipeLeft:
+            return "Like a panel? Flick it to the left. The next card in the deck slides up."
+        case .rerollSwipeRight:
+            return "Want a different take? Flick it to the right. The model rolls a fresh candidate."
         }
     }
 
     var startOffset: CGSize {
         switch self {
-        case .acceptSwipeRight: return CGSize(width: -80, height: 0)
-        // Re-prompt's "ghost finger" sits still — the gesture is a hold, not
-        // a drag — so start and end overlap and the only visible affordance
-        // is the opacity pulse.
-        case .reprompt: return .zero
+        case .acceptSwipeLeft: return CGSize(width: 80, height: 0)
+        case .rerollSwipeRight: return CGSize(width: -80, height: 0)
         }
     }
 
     var endOffset: CGSize {
         switch self {
-        case .acceptSwipeRight: return CGSize(width: 80, height: 0)
-        case .reprompt: return .zero
+        case .acceptSwipeLeft: return CGSize(width: -80, height: 0)
+        case .rerollSwipeRight: return CGSize(width: 80, height: 0)
         }
     }
 }

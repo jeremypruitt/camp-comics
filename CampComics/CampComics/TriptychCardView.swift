@@ -20,7 +20,7 @@ struct TriptychCardView: View {
     @Environment(\.themeKind) private var theme
     let kind: PanelTriptych.Kind
     /// Always three images, in `[left, middle, right]` order — matching
-    /// `PanelTriptych.subTargets`. Caller (Phase2StackView) loads the newest
+    /// `PanelTriptych.subTargets`. Caller (`ReviewDeckView`) loads the newest
     /// candidate per sub-panel before rendering.
     let images: [UIImage]
 

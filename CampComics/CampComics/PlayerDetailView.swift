@@ -3,11 +3,9 @@ import UIKit
 import CampComicsCore
 
 /// Minimal intermediate screen (project_panel_loop_design.md #11): summary +
-/// a single Start / Continue generation button. Slice N (#95, ADR-0010):
-/// Continue routes directly to `ReviewDeckView` — the deck mounts every unit
-/// (including panel 1) from t=0, so the prior `StartCampaignView` two-phase
-/// explainer is obsolete. `StartCampaignView` / `ReviewStackView` stay alive
-/// but unrouted until Slice S deletes them.
+/// a single Start / Continue generation button. Continue routes directly to
+/// `ReviewDeckView` — the deck mounts every unit (including panel 1) from
+/// t=0, per ADR-0010.
 struct PlayerDetailView: View {
     @Environment(\.themeKind) private var theme
     let player: PlayerRecord

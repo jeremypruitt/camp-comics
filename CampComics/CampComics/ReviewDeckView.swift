@@ -2,19 +2,17 @@ import SwiftUI
 import UIKit
 import CampComicsCore
 
-/// ADR-0010 review surface. Card-deck replacement for `Phase2StackView`: all
-/// twelve review units are mounted from t=0 as a single deck, with panel 1 on
-/// top. Panel 1 serializes sequentially; the moment a candidate lands, the
-/// remaining targets (panels 2–15 + cover) fan out through `GenerationQueue`.
+/// ADR-0010 review surface. All twelve review units are mounted from t=0 as a
+/// single card deck, with panel 1 on top. Panel 1 serializes sequentially; the
+/// moment a candidate lands, the remaining targets (panels 2–15 + cover) fan
+/// out through `GenerationQueue`.
 ///
-/// Gesture vocabulary is **inverted** from `Phase2StackView`:
+/// Gesture vocabulary:
 /// - swipe LEFT  = Accept
 /// - swipe RIGHT = Re-roll
 /// - swipe UP/DOWN = cycle gallery candidates (single-panel only)
 ///
-/// Per ADR-0010 long-press Re-prompt is dropped from the active surface; the
-/// failed-card UI, grid jump-back, and persistent Finalize toolbar arrive in
-/// Slices Q / R / P. This slice is the tracer-bullet that gates the fan-out.
+/// Per ADR-0010 long-press Re-prompt is dropped from the active surface.
 struct ReviewDeckView: View {
     @Environment(\.themeKind) private var theme
     let player: PlayerRecord
@@ -50,6 +48,9 @@ struct ReviewDeckView: View {
     @State private var pdfPreviewItem: PreviewItem?
     @State private var isRenderingPDF: Bool = false
     @State private var pdfRenderError: String?
+    @State private var showingTutorial: Bool = false
+
+    private let onboardingStore = OnboardingOverlayStore()
 
     init(player: PlayerRecord,
          template: ClassTemplate,
@@ -141,6 +142,15 @@ struct ReviewDeckView: View {
         }
         .sheet(item: $pdfPreviewItem) { item in
             PDFPreview(url: item.url)
+        }
+        .overlay {
+            if showingTutorial {
+                ReviewTutorialOverlay(hints: OverlayHint.allCases) {
+                    onboardingStore.hasSeen = true
+                    withAnimation(.easeOut(duration: 0.2)) { showingTutorial = false }
+                }
+                .transition(.opacity)
+            }
         }
     }
 
@@ -533,7 +543,7 @@ struct ReviewDeckView: View {
                 for target in targets {
                     group.addTask {
                         do {
-                            try await Phase2StackView.runOneAppendingCandidate(
+                            try await PanelGenerationWorker.runOneAppendingCandidate(
                                 target: target,
                                 playerId: playerId,
                                 template: template,
@@ -611,11 +621,13 @@ struct ReviewDeckView: View {
         Task { await spendSponsoredTrialIfFirstMount() }
         startPanel1IfNeeded()
         startQueueIfPanel1HasCandidate()
+        if !onboardingStore.hasSeen {
+            showingTutorial = true
+        }
     }
 
     /// ADR-0010: sponsored-trial spend fires at first deck mount per player,
-    /// idempotent across launches via `.deck_mounted`. Mirrors the call
-    /// previously made from `StartCampaignView`.
+    /// idempotent across launches via `.deck_mounted`.
     private func spendSponsoredTrialIfFirstMount() async {
         guard BillingModeStore().current == .sponsored else { return }
         if store.hasDeckBeenMounted(playerId: player.id) { return }
@@ -645,11 +657,11 @@ struct ReviewDeckView: View {
         panel1Task = Task {
             defer { Task { @MainActor in panel1Task = nil } }
             do {
-                try await Phase2StackView.runOneAppendingCandidate(target: target,
-                                                                   playerId: playerId,
-                                                                   template: template,
-                                                                   store: store,
-                                                                   generator: generator)
+                try await PanelGenerationWorker.runOneAppendingCandidate(target: target,
+                                                                         playerId: playerId,
+                                                                         template: template,
+                                                                         store: store,
+                                                                         generator: generator)
                 await MainActor.run {
                     refreshHead()
                     refreshBudget()
@@ -687,11 +699,11 @@ struct ReviewDeckView: View {
                 store.generationBudget(playerId: playerId, panelCount: panelCount).isExhausted
             },
             work: { target in
-                try await Phase2StackView.runOne(target: target,
-                                                 playerId: playerId,
-                                                 template: template,
-                                                 store: store,
-                                                 generator: generator)
+                try await PanelGenerationWorker.runOne(target: target,
+                                                       playerId: playerId,
+                                                       template: template,
+                                                       store: store,
+                                                       generator: generator)
             }
         )
         let coordinator = StuckCardCoordinator(playerId: playerId, store: store)
@@ -842,11 +854,11 @@ struct ReviewDeckView: View {
         rerollTask = Task {
             defer { Task { @MainActor in rerollTask = nil } }
             do {
-                try await Phase2StackView.runOneAppendingCandidate(target: target,
-                                                                   playerId: playerId,
-                                                                   template: template,
-                                                                   store: store,
-                                                                   generator: generator)
+                try await PanelGenerationWorker.runOneAppendingCandidate(target: target,
+                                                                         playerId: playerId,
+                                                                         template: template,
+                                                                         store: store,
+                                                                         generator: generator)
                 await MainActor.run { refreshHead(); refreshBudget() }
             } catch is CancellationError {
                 return
@@ -908,11 +920,11 @@ struct ReviewDeckView: View {
                 for sub in trip.subTargets {
                     group.addTask {
                         do {
-                            try await Phase2StackView.runOneAppendingCandidate(target: sub,
-                                                                               playerId: playerId,
-                                                                               template: template,
-                                                                               store: store,
-                                                                               generator: generator)
+                            try await PanelGenerationWorker.runOneAppendingCandidate(target: sub,
+                                                                                     playerId: playerId,
+                                                                                     template: template,
+                                                                                     store: store,
+                                                                                     generator: generator)
                             return .success(())
                         } catch is CancellationError {
                             return .success(())
@@ -1034,8 +1046,8 @@ struct ReviewDeckView: View {
         ReviewUnit.deckUnits(from: template)
     }
 
-    /// Targets to fan out *after* panel 1 lands: panels 2..N + cover. Mirrors
-    /// `Phase2StackView.targets` so the queue stays story-ordered.
+    /// Targets to fan out *after* panel 1 lands: panels 2..N + cover, in
+    /// story order so the queue stays story-ordered.
     private var fanOutTargets: [PanelTarget] {
         var out: [PanelTarget] = template.panels
             .filter { $0.n != 1 }
