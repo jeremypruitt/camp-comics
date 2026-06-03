@@ -38,10 +38,19 @@ struct TriptychCardView: View {
                 let shapes = TriptychShapes.cells(for: kind)
                 ForEach(Array(zip(shapes.indices, shapes)), id: \.0) { (i, shape) in
                     if i < images.count {
+                        // Scale each image to the polygon's bounding box rather
+                        // than the full card. Otherwise `.scaledToFill` centers
+                        // the image on the card and the side trapezoids show
+                        // only the image's left/right edge — the salient subject
+                        // (always centered by the model) lands behind the cream
+                        // gap. Issue #88.
+                        let bbox = shape.boundingBoxRect(in: geo.size)
                         Image(uiImage: images[i])
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(width: geo.size.width, height: geo.size.height)
+                            .frame(width: bbox.width, height: bbox.height)
+                            .clipped()
+                            .position(x: bbox.midX, y: bbox.midY)
                             .clipShape(shape)
                             .overlay(shape.stroke(p.inkPrimary, lineWidth: 1))
                     }
@@ -139,6 +148,21 @@ struct PolygonShape: Shape {
         }
         path.closeSubpath()
         return path
+    }
+
+    /// Axis-aligned bounding rect of the polygon mapped into a card of
+    /// `cardSize`. Triptych cells use this to size+position the underlying
+    /// image so `.scaledToFill` centers the salient subject inside the
+    /// visible portion of the trapezoid rather than behind the cream gap.
+    func boundingBoxRect(in cardSize: CGSize) -> CGRect {
+        guard !points.isEmpty else { return .zero }
+        let xs = points.map { $0.x }
+        let ys = points.map { $0.y }
+        let minX = (xs.min() ?? 0) * cardSize.width
+        let maxX = (xs.max() ?? 0) * cardSize.width
+        let minY = (ys.min() ?? 0) * cardSize.height
+        let maxY = (ys.max() ?? 0) * cardSize.height
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 }
 
