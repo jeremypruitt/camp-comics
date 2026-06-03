@@ -134,12 +134,18 @@ struct PlaceholderTriptychCard: View {
                       geo: GeometryProxy) -> some View {
         let p = theme.palette
         let centroid = shape.normalizedCentroid
+        // Size+position the underlying image to the polygon's bounding box so
+        // `.scaledToFill` keeps the salient subject visible inside the
+        // trapezoid rather than centering on the whole card (issue #88).
+        let bbox = shape.boundingBoxRect(in: geo.size)
         switch slot {
         case .filled(let img):
             Image(uiImage: img)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-                .frame(width: geo.size.width, height: geo.size.height)
+                .frame(width: bbox.width, height: bbox.height)
+                .clipped()
+                .position(x: bbox.midX, y: bbox.midY)
                 .clipShape(shape)
                 .overlay(shape.stroke(p.inkPrimary, lineWidth: 1))
         case .spinning:
@@ -156,7 +162,9 @@ struct PlaceholderTriptychCard: View {
                     Image(uiImage: img)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: geo.size.width, height: geo.size.height)
+                        .frame(width: bbox.width, height: bbox.height)
+                        .clipped()
+                        .position(x: bbox.midX, y: bbox.midY)
                         .clipShape(shape)
                         .saturation(0)
                         .opacity(0.55)
