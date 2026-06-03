@@ -336,8 +336,34 @@ struct ReviewDeckView: View {
             .overlay(alignment: .topLeading) { acceptBadge }
             .overlay(alignment: .topTrailing) { rerollBadge }
             .overlay(alignment: .center) { stuckRetryAffordance }
+            .overlay { inFlightOverlay }
             .gesture(topCardGesture)
+            .allowsHitTesting(!isRerollInFlight)
             .id(headTick)
+    }
+
+    /// Slice #109: while a re-roll (single, triptych, or stuck-retry) is
+    /// in-flight, dim the head card and show a single centered spinner so the
+    /// operator has unambiguous in-flight feedback. The whole top card is
+    /// `.allowsHitTesting(false)` for the duration so additional swipes /
+    /// pinches can't double-trigger.
+    @ViewBuilder
+    private var inFlightOverlay: some View {
+        if isRerollInFlight {
+            ZStack {
+                Color.black.opacity(0.35)
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(.white)
+                    .scaleEffect(1.4)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .transition(.opacity)
+        }
+    }
+
+    private var isRerollInFlight: Bool {
+        rerollTask != nil || triptychRerollTask != nil || stuckRetryTask != nil
     }
 
     /// Slice Q (#98): "tap to try one more time" — small, centered, only
@@ -347,6 +373,8 @@ struct ReviewDeckView: View {
     @ViewBuilder
     private var stuckRetryAffordance: some View {
         let p = theme.palette
+        // While `stuckRetryTask != nil` the unified `inFlightOverlay` carries
+        // the spinner — no second indicator here (#109).
         if isTopStuck && stuckRetryTask == nil {
             Button(action: commitStuckRetry) {
                 HStack(spacing: 6) {
@@ -362,10 +390,6 @@ struct ReviewDeckView: View {
                 .overlay(Capsule().stroke(p.inkPrimary.opacity(0.35), lineWidth: 0.5))
             }
             .buttonStyle(.plain)
-        } else if isTopStuck && stuckRetryTask != nil {
-            ProgressView()
-                .padding(8)
-                .background(p.paper.opacity(0.92), in: Capsule())
         }
     }
 
@@ -382,13 +406,15 @@ struct ReviewDeckView: View {
             case .panel(_, let spec):
                 PlaceholderPanelCard(spec: spec,
                                      playerName: player.playerName,
-                                     slot: slot)
+                                     slot: slot,
+                                     allowsZoom: isTop)
             case .cover:
                 CoverDeckCard(spec: target.coverSpec,
                               playerName: player.playerName,
                               characterName: player.characterName,
                               className: template.name,
-                              slot: slot)
+                              slot: slot,
+                              allowsZoom: isTop)
             }
         case .triptych(let trip):
             // Triptych cards have a 16:9 / 2:1 aspect; wrap them in the same
@@ -1141,6 +1167,8 @@ private struct CoverDeckCard: View {
     let className: String
     let slot: PlaceholderSlotState
     var showsCaption: Bool = true
+    /// Head-of-deck cover (#110) wraps the rendered image in `ZoomableImage`.
+    var allowsZoom: Bool = false
 
     var body: some View {
         let p = theme.palette
@@ -1163,7 +1191,11 @@ private struct CoverDeckCard: View {
             .overlay {
                 switch slot {
                 case .filled(let image):
-                    Image(uiImage: image).resizable().scaledToFit()
+                    if allowsZoom {
+                        ZoomableImage(image: image)
+                    } else {
+                        Image(uiImage: image).resizable().scaledToFit()
+                    }
                 case .spinning:
                     ProgressView()
                 case .stuck(let image):

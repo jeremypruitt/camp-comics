@@ -38,6 +38,11 @@ struct PlaceholderPanelCard: View {
     /// otherwise the visible sliver below the top card reveals readable
     /// text from the peek behind it.
     var showsCaption: Bool = true
+    /// Head-of-deck cards (#110) wrap the rendered image in `ZoomableImage`
+    /// so the operator can pinch into face/costume detail. Peek cards stay
+    /// non-zoomable so their UIScrollViews can't intercept the deck's swipe
+    /// gestures.
+    var allowsZoom: Bool = false
 
     var body: some View {
         let p = theme.palette
@@ -64,9 +69,13 @@ struct PlaceholderPanelCard: View {
             .overlay {
                 switch slot {
                 case .filled(let image):
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
+                    if allowsZoom {
+                        ZoomableImage(image: image)
+                    } else {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                    }
                 case .spinning:
                     ProgressView()
                 case .stuck(let image):
