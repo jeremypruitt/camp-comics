@@ -300,7 +300,7 @@ public enum HTMLAssembler {
     }
     .panel {
       position: relative; overflow: hidden;
-      border: 1pt solid #2a1f15; background: #000;
+      border: 1pt solid #2a1f15; background: #fffaf0;
       box-shadow: 0 1pt 3pt rgba(0, 0, 0, 0.3);
       min-height: 0; min-width: 0;
     }

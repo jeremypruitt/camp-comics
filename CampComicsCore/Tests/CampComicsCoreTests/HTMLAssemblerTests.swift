@@ -234,6 +234,24 @@ struct HTMLAssemblerTests {
         #expect(html.contains("cover.png"))
     }
 
+    /// Issue #112: empty single-panel cells (deferred with no `<img>`) were
+    /// rendering BLACK in the PDF because `.panel { background: #000 }` showed
+    /// through. Triptych cells weren't affected — `.panel-triptych-in/out`
+    /// explicitly set a cream background. The stylesheet's single-panel
+    /// background must match the triptych's cream so empty cells across both
+    /// paths render the same documented "cream + figcaption" placeholder.
+    @Test func singlePanelBackgroundIsCreamSoEmptyCellsDoNotRenderBlack() {
+        let html = HTMLAssembler.assemble(player: Self.player(),
+                                          template: Self.template())
+        // The `.panel` rule must not declare a black background — empty cells
+        // would otherwise show as black boxes in the PDF (issue #112). The
+        // legacy `background: #000` lived on the `.panel` selector; assert it
+        // is gone so any future regression breaks this test.
+        let panelRule = cssRule(in: html, selector: ".panel")
+        #expect(!panelRule.contains("background: #000"),
+                "`.panel` must not paint a black background — empty cells would render as black boxes (#112)")
+    }
+
     private func coverBlock(in html: String) -> Substring {
         guard let openRange = html.range(of: #"<section class="page cover">"#) else { return "" }
         let after = html[openRange.upperBound...]
@@ -246,6 +264,18 @@ struct HTMLAssemblerTests {
         guard let openRange = html.range(of: openMarker) else { return "" }
         let after = html[openRange.upperBound...]
         guard let closeRange = after.range(of: "</section>") else { return after }
+        return after[..<closeRange.lowerBound]
+    }
+
+    /// Slice the body of a CSS rule out of the inline stylesheet — everything
+    /// from `selector {` up to (but not including) the next `}`. Returns ""
+    /// when the selector isn't present. Used by issue-#112 regression to
+    /// inspect a specific rule's declarations.
+    private func cssRule(in html: String, selector: String) -> Substring {
+        let opener = "\(selector) {"
+        guard let openRange = html.range(of: opener) else { return "" }
+        let after = html[openRange.upperBound...]
+        guard let closeRange = after.range(of: "}") else { return after }
         return after[..<closeRange.lowerBound]
     }
 
