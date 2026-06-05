@@ -49,6 +49,14 @@ struct ReviewDeckView: View {
     @State private var isRenderingPDF: Bool = false
     @State private var pdfRenderError: String?
     @State private var showingTutorial: Bool = false
+    /// #117: stamped banner overlay for a swipe-right that was silently
+    /// dropped. `nil` = no banner. Setting drives spring-in; nil-ing drives
+    /// fade-out (see `triggerBlocked`).
+    @State private var blockedReason: SwipeBlockedReason?
+    @State private var blockedDismissTask: Task<Void, Never>?
+    /// #117: card-shake offset added on top of swipeOffset for blocked
+    /// swipe-right feedback. Animated through a fixed sequence by `runShake`.
+    @State private var shakeOffset: CGFloat = 0
 
     private let onboardingStore = OnboardingOverlayStore()
 
@@ -332,14 +340,55 @@ struct ReviewDeckView: View {
     private var topCard: some View {
         unitCard(for: units[headIndex], isTop: true)
             .offset(swipeOffset)
+            .offset(x: shakeOffset)
             .rotationEffect(.degrees(Double(swipeOffset.width / 20)))
             .overlay(alignment: .topLeading) { acceptBadge }
             .overlay(alignment: .topTrailing) { rerollBadge }
             .overlay(alignment: .center) { stuckRetryAffordance }
             .overlay { inFlightOverlay }
+            .overlay(alignment: .center) { blockedBanner }
             .gesture(topCardGesture)
             .allowsHitTesting(!isRerollInFlight)
-            .id(headTick)
+            // #116: identity follows the head unit, not `headTick`. The old
+            // `.id(headTick)` was bumped by every `refreshHead()` (including
+            // background queue completions), which destroyed the topCard
+            // mid-swipe and killed the swipe-left animation. With identity
+            // tied to `headIndex` the topCard view persists across unrelated
+            // refreshes; only an actual head advance triggers the transition.
+            .id(headIndex)
+            .transition(
+                .asymmetric(
+                    insertion: .scale(scale: 0.85).combined(with: .opacity),
+                    removal: .identity
+                )
+            )
+    }
+
+    /// #117: stamped "OUT OF REROLLS" / "STILL ROLLING…" / "NO CANDIDATE YET"
+    /// banner over the head card. Springs in tilted, holds ~1s, fades.
+    @ViewBuilder
+    private var blockedBanner: some View {
+        let p = theme.palette
+        if let reason = blockedReason {
+            Text(reason.bannerCopy)
+                .font(theme.headingFont(22))
+                .foregroundStyle(p.danger)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(p.paper, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(p.danger, lineWidth: 2.5)
+                )
+                .rotationEffect(.degrees(-6))
+                .transition(
+                    .asymmetric(
+                        insertion: .scale(scale: 0.55).combined(with: .opacity),
+                        removal: .opacity
+                    )
+                )
+                .allowsHitTesting(false)
+        }
     }
 
     /// Slice #109: while a re-roll (single, triptych, or stuck-retry) is
@@ -509,9 +558,12 @@ struct ReviewDeckView: View {
                         // Slice Q (#98): on a stuck card, swipe-LEFT advances
                         // past (leaving an empty cell the PDF handles per
                         // slice H); swipe-RIGHT is disabled because there's
-                        // no candidate to re-roll from. Up/down are no-ops.
+                        // no candidate to re-roll from.
                         if t.width < -120 {
                             commitAdvancePastStuck()
+                        } else if t.width > 120 {
+                            // #117: was silent — surface "NO CANDIDATE YET".
+                            triggerBlocked(.noCandidateYet)
                         } else {
                             bounceWithHaptic()
                         }
@@ -549,6 +601,38 @@ struct ReviewDeckView: View {
         withAnimation(.spring) { swipeOffset = .zero }
     }
 
+    /// #117: blocked swipe-right surfaces a stamped banner + card shake.
+    /// Snaps the card back, sets `blockedReason` for the overlay, fires
+    /// a rigid haptic, shakes ±14→±3 across 7 frames, and schedules a fade
+    /// after 1s. Re-firing while a banner is on screen replaces the reason
+    /// in place and restarts the dismiss timer.
+    private func triggerBlocked(_ reason: SwipeBlockedReason) {
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        withAnimation(.spring) { swipeOffset = .zero }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.5)) {
+            blockedReason = reason
+        }
+        runShake()
+        blockedDismissTask?.cancel()
+        blockedDismissTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.35)) {
+                blockedReason = nil
+            }
+        }
+    }
+
+    private func runShake() {
+        Task { @MainActor in
+            let frames: [CGFloat] = [-14, 14, -10, 10, -6, 6, -3, 0]
+            for f in frames {
+                withAnimation(.easeInOut(duration: 0.055)) { shakeOffset = f }
+                try? await Task.sleep(nanoseconds: 55_000_000)
+            }
+        }
+    }
+
     /// Slice Q (#98): "swipe-LEFT on stuck = advances past, leaves empty cell".
     /// We do NOT call `acceptCandidate` here — there's no candidate to accept;
     /// the deferred sentinel persists so the grid still reports `.failed` and
@@ -561,7 +645,9 @@ struct ReviewDeckView: View {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             swipeOffset = .zero
-            headIndex += 1
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.78)) {
+                headIndex += 1
+            }
             refreshHead()
             refreshBudget()
         }
@@ -827,8 +913,13 @@ struct ReviewDeckView: View {
             swipeOffset = CGSize(width: -600, height: 0)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            // #116: reset offset off-animation (the old card already flew
+            // away), then animate the head advance so the new topCard
+            // scale-fades in and peeks shift up smoothly.
             swipeOffset = .zero
-            headIndex += 1
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.78)) {
+                headIndex += 1
+            }
             refreshHead()
             refreshBudget()
         }
@@ -858,7 +949,9 @@ struct ReviewDeckView: View {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             swipeOffset = .zero
-            headIndex += 1
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.78)) {
+                headIndex += 1
+            }
             refreshHead()
             refreshBudget()
         }
@@ -879,7 +972,8 @@ struct ReviewDeckView: View {
                                     cost: 1,
                                     priorRerolls: prior) {
         case .bounce:
-            softBounce()
+            // #117: was silent softBounce — surface "OUT OF REROLLS".
+            triggerBlocked(.outOfRerolls)
             return
         case .requireConfirm:
             withAnimation(.spring) { swipeOffset = .zero }
@@ -889,7 +983,8 @@ struct ReviewDeckView: View {
             break
         }
         guard rerollTask == nil else {
-            withAnimation(.spring) { swipeOffset = .zero }
+            // #117: was silent — surface "STILL ROLLING…".
+            triggerBlocked(.stillRolling)
             return
         }
         rerollCounter.increment(unitId: key)
@@ -936,7 +1031,7 @@ struct ReviewDeckView: View {
                                     cost: PanelTriptych.budgetCost,
                                     priorRerolls: prior) {
         case .bounce:
-            softBounce()
+            triggerBlocked(.outOfRerolls)
             return
         case .requireConfirm:
             withAnimation(.spring) { swipeOffset = .zero }
@@ -946,7 +1041,7 @@ struct ReviewDeckView: View {
             break
         }
         guard triptychRerollTask == nil, rerollTask == nil else {
-            withAnimation(.spring) { swipeOffset = .zero }
+            triggerBlocked(.stillRolling)
             return
         }
         rerollCounter.increment(unitId: key)
@@ -1041,7 +1136,12 @@ struct ReviewDeckView: View {
             gallery = []
             cursor = .forNewHead(count: 0)
         }
-        headTick &+= 1
+        // #116: deliberately no `headTick &+= 1` here. Bumping on every
+        // refreshHead destroyed the topCard mid-swipe-left when a background
+        // queue task happened to land during the gesture. Image-replacement
+        // events (cycleGallery, performReroll, commitStuckRetry) still bump
+        // headTick locally, but topCard's identity now follows `headIndex`
+        // anyway — the bumps are no-ops for the topCard view but harmless.
     }
 
     private func isUnitFullyAccepted(_ unit: ReviewUnit) -> Bool {
