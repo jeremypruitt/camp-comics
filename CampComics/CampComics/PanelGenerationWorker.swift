@@ -11,7 +11,8 @@ enum PanelGenerationWorker {
                        playerId: String,
                        template: ClassTemplate,
                        store: PlayerStore,
-                       generator: any PanelGenerator) async throws {
+                       generator: any PanelGenerator,
+                       reason: BudgetLogEntry.Reason) async throws {
         if store.hasPanel(playerId: playerId, target: target.id) { return }
         // A deferred panel must not auto-regenerate on session start — the
         // operator chose to skip it; auto-retrying would burn budget silently.
@@ -22,7 +23,8 @@ enum PanelGenerationWorker {
                                            playerId: playerId,
                                            template: template,
                                            store: store,
-                                           generator: generator)
+                                           generator: generator,
+                                           reason: reason)
     }
 
     /// Always-generate-and-append path used by Re-roll and panel-1 bootstrap.
@@ -38,6 +40,7 @@ enum PanelGenerationWorker {
                                          template: ClassTemplate,
                                          store: PlayerStore,
                                          generator: any PanelGenerator,
+                                         reason: BudgetLogEntry.Reason,
                                          addendum: String? = nil) async throws {
         guard let photoData = store.loadPhoto(playerId: playerId,
                                               requirement: target.requirement) else {
@@ -65,7 +68,18 @@ enum PanelGenerationWorker {
                       prompt: prompt, candidate: saved)
         let current = store.generationBudget(playerId: playerId,
                                              panelCount: template.panels.count)
-        try? store.setGenerationBudget(playerId: playerId, current.decremented())
+        let next = current.decremented()
+        try? store.setGenerationBudget(playerId: playerId, next)
+        // #90 instrumentation: one spend entry per decrement. A triptych
+        // re-roll flows three sub-targets through here → three spend entries.
+        try? store.appendBudgetLog(playerId: playerId,
+                                   BudgetLogEntry(timestamp: Date(),
+                                                  event: .spend,
+                                                  reason: reason,
+                                                  target: target.id.diskName,
+                                                  spentAfter: next.spent,
+                                                  remainingAfter: next.remaining,
+                                                  cost: 1))
     }
 
     private static func materialize(plan: ReferencePlan, photoData: Data,

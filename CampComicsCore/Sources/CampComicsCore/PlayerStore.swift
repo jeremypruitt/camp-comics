@@ -359,6 +359,38 @@ public struct PlayerStore: Sendable {
         try data.write(to: attemptsURL(playerId: playerId), options: .atomic)
     }
 
+    // MARK: - Budget audit log (#90 instrumentation)
+
+    /// Lazy: returns `[]` when the JSON file is absent. Read-only diagnostic;
+    /// never affects budget behavior.
+    public func budgetLog(playerId: String) -> [BudgetLogEntry] {
+        let url = budgetLogURL(playerId: playerId)
+        guard let data = try? Data(contentsOf: url) else { return [] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode([BudgetLogEntry].self, from: data)) ?? []
+    }
+
+    /// Read-modify-write append. Matches `setAttemptsState` house style:
+    /// pretty-printed, sorted-keys, iso8601 dates, atomic write.
+    public func appendBudgetLog(playerId: String, _ entry: BudgetLogEntry) throws {
+        try FileManager.default.createDirectory(at: panelsDir(for: playerId),
+                                                withIntermediateDirectories: true)
+        var existing = budgetLog(playerId: playerId)
+        existing.append(entry)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(existing)
+        try data.write(to: budgetLogURL(playerId: playerId), options: .atomic)
+    }
+
+    /// On-disk address of the budget audit log, public so the Settings viewer
+    /// can hand it to a share sheet.
+    public func budgetLogURL(playerId: String) -> URL {
+        panelsDir(for: playerId).appendingPathComponent("_budget_log.json")
+    }
+
     /// Wipes `_candidates/{NN or cover}/` for one target. Public so triptych
     /// atomic Accept (slice G / #67) can clear the three sub-panel galleries
     /// after a coordinated three-write commit; the existing `acceptCandidate`

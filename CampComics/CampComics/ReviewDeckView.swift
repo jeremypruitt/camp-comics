@@ -662,6 +662,8 @@ struct ReviewDeckView: View {
         guard !stuckIDs.isEmpty else { return }
         let needed = stuckIDs.count
         guard budget.remaining >= needed else {
+            logBudgetEvent(.bounce, reason: .stuckRetry,
+                           target: units[headIndex].frictionKey, cost: needed)
             softBounce()
             return
         }
@@ -691,7 +693,8 @@ struct ReviewDeckView: View {
                                 playerId: playerId,
                                 template: template,
                                 store: store,
-                                generator: generator)
+                                generator: generator,
+                                reason: .stuckRetry)
                         } catch is CancellationError {
                             return
                         } catch {
@@ -804,7 +807,8 @@ struct ReviewDeckView: View {
                                                                          playerId: playerId,
                                                                          template: template,
                                                                          store: store,
-                                                                         generator: generator)
+                                                                         generator: generator,
+                                                                         reason: .bootstrap)
                 await MainActor.run {
                     refreshHead()
                     refreshBudget()
@@ -846,7 +850,8 @@ struct ReviewDeckView: View {
                                                        playerId: playerId,
                                                        template: template,
                                                        store: store,
-                                                       generator: generator)
+                                                       generator: generator,
+                                                       reason: .initial)
             }
         )
         let coordinator = StuckCardCoordinator(playerId: playerId, store: store)
@@ -973,9 +978,11 @@ struct ReviewDeckView: View {
                                     priorRerolls: prior) {
         case .bounce:
             // #117: was silent softBounce — surface "OUT OF REROLLS".
+            logBudgetEvent(.bounce, reason: .reroll, target: key, cost: 1)
             triggerBlocked(.outOfRerolls)
             return
         case .requireConfirm:
+            logBudgetEvent(.friction, reason: .reroll, target: key, cost: 1)
             withAnimation(.spring) { swipeOffset = .zero }
             pendingFriction = .single(target: target, priorCount: prior)
             return
@@ -1010,7 +1017,8 @@ struct ReviewDeckView: View {
                                                                          playerId: playerId,
                                                                          template: template,
                                                                          store: store,
-                                                                         generator: generator)
+                                                                         generator: generator,
+                                                                         reason: .reroll)
                 await MainActor.run { refreshHead(); refreshBudget() }
             } catch is CancellationError {
                 return
@@ -1031,9 +1039,11 @@ struct ReviewDeckView: View {
                                     cost: PanelTriptych.budgetCost,
                                     priorRerolls: prior) {
         case .bounce:
+            logBudgetEvent(.bounce, reason: .reroll, target: key, cost: PanelTriptych.budgetCost)
             triggerBlocked(.outOfRerolls)
             return
         case .requireConfirm:
+            logBudgetEvent(.friction, reason: .reroll, target: key, cost: PanelTriptych.budgetCost)
             withAnimation(.spring) { swipeOffset = .zero }
             pendingFriction = .triptych(trip: trip, priorCount: prior)
             return
@@ -1076,7 +1086,8 @@ struct ReviewDeckView: View {
                                                                                      playerId: playerId,
                                                                                      template: template,
                                                                                      store: store,
-                                                                                     generator: generator)
+                                                                                     generator: generator,
+                                                                                     reason: .reroll)
                             return .success(())
                         } catch is CancellationError {
                             return .success(())
@@ -1182,6 +1193,23 @@ struct ReviewDeckView: View {
     private func softBounce() {
         withAnimation(.spring) { swipeOffset = .zero }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    /// #90 instrumentation: a re-roll the budget couldn't (`bounce`) or
+    /// shouldn't-yet (`friction`) fire. Logged with the current budget state so
+    /// the `bounce` count empirically answers "is 32 too thin?". Additive only.
+    private func logBudgetEvent(_ event: BudgetLogEntry.Event,
+                                reason: BudgetLogEntry.Reason,
+                                target: String,
+                                cost: Int) {
+        try? store.appendBudgetLog(playerId: player.id,
+                                   BudgetLogEntry(timestamp: Date(),
+                                                  event: event,
+                                                  reason: reason,
+                                                  target: target,
+                                                  spentAfter: budget.spent,
+                                                  remainingAfter: budget.remaining,
+                                                  cost: cost))
     }
 
     // Friction confirm landed and the operator chose to proceed. Spends budget
