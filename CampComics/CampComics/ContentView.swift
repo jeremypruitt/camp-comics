@@ -50,7 +50,7 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $showingSettings) {
-                SettingsView()
+                SettingsView(store: store)
                     .environment(\.themeKind, theme)
             }
             .navigationDestination(item: $activePlayer) { player in
